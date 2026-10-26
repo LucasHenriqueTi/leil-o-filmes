@@ -59,6 +59,20 @@ class Client {
     assert.ok(A.chat.some((m) => m.text === "bora!" && m.name === "Beto"), "chat");
     assert.ok(A.reacts.some((r) => r.e === "🔥"), "reação");
 
+    // emoji no limite não é cortado no meio
+    await sleep(750);
+    await B.call("chat:send", { text: "a".repeat(139) + "🔥🔥" });
+    // doação na sala
+    assert.ok((await W.call("room:donate", { amount: 1 })).error, "espectador não doa");
+    assert.ok((await B.call("room:donate", { amount: 15 })).error, "precisa guardar R$ 1");
+    assert.ok((await B.call("room:donate", { amount: 4, text: "bora 💸" })).ok, "doar");
+    assert.ok((await B.call("room:donate", { amount: 1 })).error, "uma doação por vez");
+    await sleep(100);
+    assert.ok(!A.chat.some((m) => m.text && /\uD83D$/.test(m.text)), "emoji partido no chat");
+    const don = A.chat.find((m) => m.donate);
+    assert.ok(don && don.donate === 4 && don.name === "Beto" && don.text === "bora 💸", "doação chega no chat de todos");
+    assert.strictEqual(A.st.players.find((p) => p.name === "Beto").donated, 4);
+
     const lots = Array.from({ length: 6 }, (_, i) => ({ id: "tt" + (500 + i), title: "Filme " + i, year: 1980 + i * 7, g: ["Terror", "Drama"], r: 7 + i / 10, img: "https://evil.example.com/x.jpg" }));
     assert.ok((await B.call("game:start", { lots })).error, "só host começa");
     assert.ok((await A.call("game:start", { lots })).ok, "começar");
@@ -100,7 +114,7 @@ class Client {
     assert.strictEqual(A.st.phase, "over", "partida terminou");
     assert.strictEqual(W.st.phase, "over", "espectador vê o fim");
     assert.ok(A.st.players.every((p) => p.missions.every((m) => !m.hidden)), "missões reveladas no fim");
-    const spent = A.st.players.reduce((a, p) => a + (15 - p.money), 0);
+    const spent = A.st.players.reduce((a, p) => a + (15 - p.donated - p.money), 0);
     assert.strictEqual(spent, A.st.results.reduce((a, r) => a + r.price, 0), "dinheiro confere");
     assert.ok((await A.call("game:lobby")).ok, "voltar para a sala");
     await sleep(100);

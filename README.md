@@ -62,6 +62,12 @@ Se preferir configurar na mão: **New → Web Service**, ambiente **Node**, coma
 - **Mercado de gêneros** (inspirado em *Modern Art*, de Reiner Knizia): no fim, os três gêneros mais comprados dão +3, +2 e +1 ponto por filme. A bolsa aparece ao vivo durante o leilão.
 - **Missões secretas**: cada jogador recebe um objetivo escondido (ter 2 filmes do mesmo gênero, terminar com dinheiro guardado, fazer a compra mais cara etc.) que vale de 3 a 5 pontos. As missões são sorteadas a partir dos filmes da partida, então sempre dá para cumprir.
 
+### Donate na sala
+
+Antes do leilão começar, cada jogador pode mandar um donate a partir de R$ 1, com uma mensagem opcional. Ele aparece na tela de todo mundo como um alerta de live, com som. Cada real a mais deixa o alerta maior, com mais itens caindo e mais tempo no ar. Nas faixas de R$ 5, 10, 20, 30, 50 e 100 entram tela tremendo, buzina, sirene, clarão, voz lendo a mensagem e outros exageros. O valor sai do dinheiro inicial de quem doou, que sempre fica com pelo menos R$ 1 para o leilão. O botão 🔊 no chat liga ou desliga o som. Só funciona nas salas online.
+
+O chat também tem um seletor de emoji (botão 😀 ao lado do campo), e mensagens só com emoji aparecem em tamanho grande.
+
 ## De onde vêm os filmes
 
 Todas as fontes são gratuitas e não precisam de chave:

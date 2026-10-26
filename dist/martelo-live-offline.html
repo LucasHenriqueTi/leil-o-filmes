@@ -379,6 +379,72 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .fx-react { position: absolute; bottom: 10px; font-size: 30px; animation: floatUp 2.4s ease-out forwards; }
 @keyframes floatUp { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 15% { opacity: 1; transform: translateY(-30px) scale(1.1); } 100% { transform: translateY(-260px) translateX(var(--dx, 0)) scale(1); opacity: 0; } }
 
+/* ---------- donate na sala ---------- */
+.donate-panel { border-color: color-mix(in srgb, var(--coin) 40%, var(--line)); background: linear-gradient(160deg, color-mix(in srgb, var(--coin) 10%, var(--surface)), var(--surface) 55%); }
+.don-preview { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: var(--r-md); background: var(--ground); border: 1px dashed var(--line); }
+.don-preview .emo { font-size: 30px; line-height: 1; }
+.don-preview b { display: block; font-family: var(--display); font-size: 14px; }
+.prow .donated { font-size: 12px; font-weight: 700; color: var(--coin); white-space: nowrap; }
+/* o alerta: --lvl vai de 1 a 60 e cresce a cada real; a classe k0…k10 troca o visual por faixa */
+.don-layer { position: fixed; inset: 0; z-index: 45; pointer-events: none; overflow: hidden; display: grid; justify-items: center; align-items: start; padding: calc(84px + env(safe-area-inset-top, 0px)) 16px 16px; }
+.don-card { position: relative; width: min(calc(320px + var(--lvl) * 3px), 100%); text-align: center; padding: 18px 24px 20px; border-radius: 20px; background: var(--surface); border: 2px solid var(--coin); color: var(--ink);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 calc(var(--lvl) * 1.4px) color-mix(in srgb, var(--coin) 70%, transparent);
+  animation: donIn var(--dur) cubic-bezier(.2, .9, .2, 1) forwards; }
+.don-emo { font-size: calc(40px + var(--lvl) * 0.8px); line-height: 1.1; display: inline-block; animation: donBounce 0.9s ease-in-out infinite; }
+.don-title { font-family: var(--display); font-weight: 800; font-size: calc(12px + var(--lvl) * 0.2px); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); }
+.don-amount { font-family: var(--display); font-weight: 800; font-size: calc(36px + var(--lvl) * 0.9px); line-height: 1.05; letter-spacing: -0.03em; color: var(--coin); }
+.don-who { display: inline-flex; gap: 8px; align-items: center; margin-top: 6px; font-size: 15px; }
+.don-who b { color: var(--pc); }
+.don-msg { margin: 10px 0 0; font-size: calc(15px + var(--lvl) * 0.1px); font-weight: 600; overflow-wrap: anywhere; }
+.don-rain i { position: absolute; top: -60px; font-style: normal; animation-name: donFall; animation-timing-function: linear; animation-fill-mode: both; }
+.don-dim { position: absolute; inset: 0; background: rgba(8, 5, 14, 0.7); animation: donFade var(--dur) linear forwards; }
+.don-flash { position: absolute; inset: 0; background: #fff; opacity: 0; animation: donFlash 0.7s ease-out; }
+.don-rays { position: absolute; left: 50%; top: 50%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax; opacity: 0.35;
+  background: repeating-conic-gradient(from 0deg, var(--coin) 0 6deg, transparent 6deg 18deg); animation: donSpin 6s linear infinite, donFade var(--dur) linear forwards; }
+.k1 .don-card { background: linear-gradient(150deg, color-mix(in srgb, var(--coin) 22%, var(--surface)), var(--surface)); }
+.k2 .don-card { border-color: var(--mint); background: linear-gradient(150deg, color-mix(in srgb, var(--mint) 24%, var(--surface)), var(--surface)); }
+.k2 .don-amount { color: var(--mint); }
+.k3 .don-card { border-color: #ff9d5c; background: linear-gradient(170deg, #5a1d1d, #2a1220 70%); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 calc(20px + var(--lvl) * 1.5px) #ff6a3d; }
+.k3 .don-emo { animation: donFlicker 0.25s steps(2) infinite; }
+.k4 .don-card { border-color: #7aa7ff; background: linear-gradient(170deg, #1f2c66, #160f2c); animation-name: donRocket; }
+.k4 .don-amount { color: #a9c4ff; }
+.k5 .don-card, .k8 .don-card, .k9 .don-card, .k10 .don-card { border-color: transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, conic-gradient(#ff4f6d, #ffd166, #4be3b0, #7aa7ff, #b48cff, #ff4f6d) border-box; border-width: 4px; }
+.k5 .don-amount { background: linear-gradient(90deg, #7aa7ff, #ff8fd8, #5ee0f0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.k6 .don-card { border-color: #fff3c4; background: linear-gradient(140deg, #ffd166, #ff9d5c); color: var(--coin-ink); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 calc(30px + var(--lvl) * 1.5px) var(--coin); }
+.k6 .don-title, .k6 .don-who b { color: var(--coin-ink); }
+.k6 .don-amount { color: #2a1a00; }
+.k7 .don-card { border-color: #ff4f2d; background: radial-gradient(120% 100% at 50% 100%, #ff4f2d, #3a0d0d 60%, #12060a); box-shadow: 0 0 calc(40px + var(--lvl) * 2px) #ff4f2d; }
+.k7 .don-amount { color: #ffe08a; text-shadow: 0 0 18px #ff6a00, 0 0 40px #ff2d00; }
+.don-layer.k8, .don-layer.k9, .don-layer.k10 { align-items: center; padding-top: 16px; }
+.k8 .don-card, .k9 .don-card, .k10 .don-card { animation: donIn var(--dur) cubic-bezier(.2, .9, .2, 1) forwards, donHue 1.6s linear infinite; }
+.k8 .don-amount, .k9 .don-amount, .k10 .don-amount { color: #fff; text-shadow: 0 0 20px var(--coin), 0 0 50px var(--live); }
+.k8 .don-title, .k9 .don-title, .k10 .don-title { color: var(--coin); }
+.k10 .don-flash { animation: donFlash 0.3s ease-out 7 alternate; }
+#app.shaking > main { animation: donShake 0.11s linear infinite; }
+@keyframes donIn { 0% { transform: translateY(-40px) scale(calc(var(--scale) * 0.4)); opacity: 0; } 6% { transform: translateY(0) scale(calc(var(--scale) * 1.08)); opacity: 1; } 10% { transform: scale(var(--scale)); } 90% { transform: scale(var(--scale)); opacity: 1; } 100% { transform: translateY(-20px) scale(calc(var(--scale) * 0.9)); opacity: 0; } }
+@keyframes donRocket { 0% { transform: translateY(80vh) scale(var(--scale)); opacity: 0; } 8% { transform: translateY(-14px) scale(var(--scale)); opacity: 1; } 12% { transform: translateY(0) scale(var(--scale)); } 90% { transform: translateY(0) scale(var(--scale)); opacity: 1; } 100% { transform: translateY(-90vh) scale(var(--scale)); opacity: 0; } }
+@keyframes donBounce { 50% { transform: translateY(-8px) rotate(-6deg) scale(1.08); } }
+@keyframes donFlicker { 50% { transform: scale(1.12) rotate(4deg); filter: brightness(1.4); } }
+@keyframes donFall { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(calc(100vh + 120px)) rotate(540deg); opacity: 0.9; } }
+@keyframes donFlash { 0% { opacity: 0.85; } 100% { opacity: 0; } }
+@keyframes donFade { 0%, 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes donSpin { to { transform: rotate(360deg); } }
+@keyframes donHue { to { filter: hue-rotate(360deg); } }
+@keyframes donShake { 0% { transform: translate(0, 0); } 25% { transform: translate(var(--shake), calc(var(--shake) * -0.5)); } 50% { transform: translate(calc(var(--shake) * -0.6), var(--shake)); } 75% { transform: translate(calc(var(--shake) * -1), calc(var(--shake) * -0.4)); } 100% { transform: translate(0, 0); } }
+
+/* ---------- emojis no chat ---------- */
+.feed .msg.big { font-size: 26px; line-height: 1.25; }
+.feed .msg.big .n { font-size: 14px; vertical-align: middle; }
+.feed .msg.donate { padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--coin) 14%, transparent); border: 1px solid color-mix(in srgb, var(--coin) 40%, transparent); }
+.feed .msg.donate .amt { display: block; font-family: var(--display); font-weight: 800; color: var(--coin); font-size: 15px; }
+.side .snd { border: 1px solid var(--line); background: var(--ground); border-radius: 8px; width: 32px; height: 28px; cursor: pointer; padding: 0; font-size: 14px; margin-left: auto; }
+.side .head .viewers + .snd { margin-left: 0; }
+.emoji-pick { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; margin: 8px 12px 0; padding: 6px; max-height: 150px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--ground); }
+.emoji-pick button { border: 0; background: none; border-radius: 8px; height: 32px; padding: 0; cursor: pointer; font-size: 19px; line-height: 1; }
+.emoji-pick button:hover { background: var(--raise); }
+.compose .emoji-btn { flex: none; width: 42px; border: 1px solid var(--line); background: var(--ground); border-radius: var(--r-sm); cursor: pointer; font-size: 18px; padding: 0; }
+.compose .emoji-btn[aria-expanded="true"] { border-color: var(--mint); }
+
 /* ---------- pôster ampliado ---------- */
 #zoomPop { position: fixed; z-index: 50; width: min(260px, 70vw); pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6); }
 #zoomPop .t { font-family: var(--display); font-size: 17px; font-weight: 700; line-height: 1.1; }
@@ -396,6 +462,9 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
   .onair::before { animation: none; }
   .fx-alert, .fx-stamp { animation: none; }
   .fx-react { display: none; }
+  .don-card, .don-emo, .don-dim { animation: none !important; }
+  .don-rays, .don-flash, .don-rain { display: none; }
+  #app.shaking > main { animation: none; }
   .btn, .zoom .poster, .switch .knob, .switch .knob::after { transition: none; }
 }
 </style></head><body>
@@ -473,7 +542,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
     return {
       phase: "lobby",          // lobby | playing | over
       settings: cleanSettings(settings),
-      players: [],             // {id, name, color, money, films[], connected, missions[]}
+      players: [],             // {id, name, color, money, donated, films[], connected, missions[]}
       lots: [], idx: 0, lot: null,
       results: [], log: [],
       seq: 0,                  // muda a cada alteração (para saber quando reenviar)
@@ -486,7 +555,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
     if (st.phase !== "lobby") return "O leilão já começou. Você pode assistir.";
     if (st.players.length >= MAX_PLAYERS) return `A sala está cheia (máximo de ${MAX_PLAYERS} jogadores).`;
     if (st.players.some((p) => p.name.toLowerCase() === name.toLowerCase())) return "Já tem alguém com esse nome na sala.";
-    st.players.push({ id, name, color: COLORS[st.nextColor++ % COLORS.length], money: 0, films: [], connected: true, missions: [] });
+    st.players.push({ id, name, color: COLORS[st.nextColor++ % COLORS.length], money: 0, donated: 0, films: [], connected: true, missions: [] });
     st.seq++;
     return null;
   }
@@ -500,6 +569,20 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
   function setConnected(st, id, on) {
     const p = st.players.find((x) => x.id === id);
     if (p && p.connected !== on) { p.connected = on; st.seq++; }
+  }
+  /* ---------- doação na sala (sai do dinheiro inicial; guarda R$ 1 para jogar) ---------- */
+  const donateLeft = (st, p) => Math.max(0, st.settings.money - (p.donated || 0) - 1);
+  function donate(st, id, amount) {
+    if (st.phase !== "lobby") return "Doações só valem na sala, antes do leilão começar.";
+    const p = st.players.find((x) => x.id === id);
+    if (!p) return "Só jogadores podem doar.";
+    const v = Math.floor(+amount);
+    if (!(v >= 1)) return "A doação mínima é R$ 1.";
+    const left = donateLeft(st, p);
+    if (v > left) return left > 0 ? `Você pode doar até R$ ${left} e ainda guardar R$ 1 para o leilão.` : "Você precisa guardar pelo menos R$ 1 para o leilão.";
+    p.donated = (p.donated || 0) + v;
+    st.seq++;
+    return null;
   }
   function updateSettings(st, patch) {
     if (st.phase !== "lobby") return "As regras não mudam com o leilão em andamento.";
@@ -571,7 +654,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
     if (!st.lots.length) return "Nenhum filme válido para leiloar.";
     const fm = st.settings.formats;
     st.lots.forEach((f, i) => (f.format = fm.length === 1 ? fm[0] : fm[Math.floor(rng() * fm.length)]));
-    st.players.forEach((p) => { p.money = st.settings.money; p.films = []; p.missions = []; });
+    st.players.forEach((p) => { p.money = Math.max(1, st.settings.money - (p.donated || 0)); p.films = []; p.missions = []; });
     if (st.settings.missions) {
       const pool = missionPool(st);
       const order = shuffle(pool, rng);
@@ -732,7 +815,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
   }
   function backToLobby(st) {
     st.phase = "lobby"; st.lots = []; st.idx = 0; st.lot = null; st.results = []; st.log = [];
-    st.players.forEach((p) => { p.money = 0; p.films = []; p.missions = []; });
+    st.players.forEach((p) => { p.money = 0; p.donated = 0; p.films = []; p.missions = []; });
     st.seq++;
   }
 
@@ -782,7 +865,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
       const mkt = st.settings.market ? p.films.reduce((a, f) => a + bonusOf(primaryGenre(f)), 0) : 0;
       const missions = (p.missions || []).map((m) => Object.assign({}, m, { ok: checkMission(st, p, m) }));
       const mis = missions.reduce((a, m) => a + (m.ok ? m.pts : 0), 0);
-      return { id: p.id, ratings, market: mkt, missions, missionPts: mis, total: Math.round((ratings + mkt + mis) * 10) / 10, money: p.money, spent: st.settings.money - p.money };
+      return { id: p.id, ratings, market: mkt, missions, missionPts: mis, total: Math.round((ratings + mkt + mis) * 10) / 10, money: p.money, spent: Math.max(1, st.settings.money - (p.donated || 0)) - p.money };
     });
     rows.sort((a, b) => b.total - a.total || b.money - a.money);
     return rows;
@@ -803,7 +886,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
     return v;
   }
 
-  return { COLORS, GROUP_TAG, FORMATS, DEFAULTS, MAX_PLAYERS, MARKET_BONUS, create, addPlayer, removePlayer, setConnected, updateSettings,
+  return { COLORS, GROUP_TAG, FORMATS, DEFAULTS, MAX_PLAYERS, MARKET_BONUS, create, addPlayer, removePlayer, setConnected, updateSettings, donate, donateLeft,
     start, act, next, tick, finish, backToLobby, scores, market, view, primaryGenre, canPlay, cleanSettings, missionPool };
 });
 </script>
@@ -1306,7 +1389,8 @@ const S = {
   local: store.get("ml-local") || null, history: [],
   rulesLocal: E.cleanSettings(store.get("ml-rules-local") || LOCAL_RULES),
   setup: Object.assign({ localPlayers: ["Cibele", "André", "Kirito", "Pinho"], lotMode: "random", genres: ["Ficção científica"], tier: "media", lots: 10, picked: [], custom: [], draw: [] }, store.get("ml-setup") || {}),
-  ui: { err: "", showDraw: false, drawing: false, drawMsg: "", search: [], searchMsg: "", preparing: false, sealedOpen: null, synOpen: false, modal: null, toast: null, joining: false },
+  ui: { err: "", showDraw: false, drawing: false, drawMsg: "", search: [], searchMsg: "", preparing: false, sealedOpen: null, synOpen: false, modal: null, toast: null, joining: false, donate: { v: 1, text: "" }, emojiOpen: false },
+  sound: store.get("ml-sound") !== false,
   lastTop: null, zoom: {}
 };
 const saveSetup = () => store.set("ml-setup", S.setup);
@@ -1457,6 +1541,7 @@ function playersPanel() {
   const st = S.st, link = location.origin + "/sala/" + S.code;
   const rows = st.players.map((p) => `<div class="prow"><span class="avatar sm" style="background:${p.color}">${initial(p.name)}</span>
     <span class="nm">${esc(p.name)}${p.id === S.you ? " (você)" : ""}</span>
+    ${p.donated ? `<span class="donated num" title="Doou na sala">${DON_TIERS[donTier(p.donated)][1]} ${brl(p.donated)}</span>` : ""}
     ${p.id === S.host ? `<span class="crown" title="Comanda a sala">♛</span>` : ""}
     <span class="conn ${p.connected ? "on" : ""}" title="${p.connected ? "Conectado" : "Desconectado"}"></span>
     ${isHost() && p.id !== S.you ? `<button class="x" data-kick="${p.id}" aria-label="Remover ${esc(p.name)}">×</button>` : ""}</div>`).join("");
@@ -1468,6 +1553,34 @@ function playersPanel() {
     <div class="plist">${rows}</div>
     ${S.you ? "" : `<p class="hint">Você está assistindo. Lances ficam com quem entrou como jogador.</p>`}
   </section>`;
+}
+/* ---------- doação na sala (estilo donate de live) ---------- */
+function donateMax() { const me = S.you && pl(S.you); return me ? E.donateLeft(S.st, me) : 0; }
+const donValue = () => Math.max(1, Math.min(donateMax(), Math.floor(+S.ui.donate.v) || 1));
+function donPreview(v) {
+  const P = donParams(v), [, emo, title] = DON_TIERS[P.k], nx = DON_TIERS[P.k + 1];
+  return `<span class="emo">${emo}</span><div><b>${esc(title)}</b><span class="hint num">${P.rain} itens caindo · ${Math.round(P.dur / 1000)} s na tela${P.shake ? " · tela tremendo" : ""}${nx ? ` · com mais ${brl(nx[0] - v)} vira ${nx[1]}` : ""}</span></div>`;
+}
+function donatePanel() {
+  if (S.mode !== "online" || !S.you || !pl(S.you)) return "";
+  const me = pl(S.you), max = donateMax(), v = donValue(), r = rules();
+  const quick = [1, 2, 5, 10].map((d) => `<button type="button" data-dquick="${d}" ${d > max ? "disabled" : ""}>${brl(d)}</button>`).join("") + `<button type="button" data-dquick="${max}" ${max < 1 ? "disabled" : ""}>Tudo</button>`;
+  return `<section class="panel donate-panel">
+    <div class="panel-head"><h2>Mandar um donate</h2><span class="hint num">Mínimo R$ 1</span></div>
+    <p class="hint">Aparece na tela de todo mundo, com som. Cada real a mais deixa o alerta mais exagerado. O valor sai do seu dinheiro inicial.</p>
+    <div class="bidrow"><div class="stepper"><button type="button" data-dstep="-1" aria-label="Diminuir">−</button>
+      <input id="donv" type="number" inputmode="numeric" min="1" max="${max}" value="${v}" aria-label="Valor da doação" ${max < 1 ? "disabled" : ""}><button type="button" data-dstep="1" aria-label="Aumentar">+</button></div></div>
+    <div class="quick">${quick}</div>
+    <div class="don-preview" id="donPreview">${donPreview(v)}</div>
+    <input class="input" id="donText" maxlength="80" placeholder="Mensagem do donate (opcional)" value="${esc(S.ui.donate.text)}" autocomplete="off">
+    <div class="actions"><button class="btn" data-act="donate-test">Testar só para mim</button><button class="btn coin big" id="donBtn" data-act="donate" ${max < 1 ? "disabled" : ""}>Doar ${brl(v)}</button></div>
+    <p class="hint num">${me.donated ? `Você já doou ${brl(me.donated)}. ` : ""}Você começa o leilão com ${brl(Math.max(1, r.money - (me.donated || 0)))}.</p>
+  </section>`;
+}
+function syncDonate() {
+  const v = donValue(), btn = document.getElementById("donBtn"), pv = document.getElementById("donPreview");
+  if (btn) btn.textContent = "Doar " + brl(v);
+  if (pv) pv.innerHTML = donPreview(v);
 }
 function lotsPanel() {
   const s = S.setup, u = S.ui;
@@ -1520,7 +1633,7 @@ function renderRoom() {
     bar = `<p class="hint">${S.you ? `Aguardando ${esc(nameOf(S.host))} começar o leilão.` : "Você entrou como espectador."}</p><button class="btn quiet" data-act="leave">Sair da sala</button>`;
   }
   return `<main class="wrap room ${S.mode === "local" ? "solo" : ""}">
-    <div class="col">${playersPanel()}</div>
+    <div class="col">${playersPanel()}${donatePanel()}</div>
     <div class="col">${lotsPanel()}${rulesPanel()}</div>
     ${S.mode === "online" ? sidePanel() : ""}
   </main>
@@ -1696,14 +1809,16 @@ function sidePanel() {
   const st = cur();
   const items = [];
   if (st) st.log.slice(0, 120).forEach((e) => { const [cls, html] = logText(e); if (html) items.push({ at: e.at || 0, html: `<div class="sys ${cls}"><span>${html}</span></div>` }); });
-  if (S.mode === "online") S.chat.forEach((m) => items.push({ at: m.at, html: m.from === null && !m.watcher ? `<div class="sys"><span>${esc(m.text)}</span></div>` : `<div class="msg ${m.watcher ? "watcher" : ""}"><span class="n" style="color:${m.from ? colorOf(m.from) : "var(--mute)"}">${esc(m.name)}</span>${esc(m.text)}</div>` }));
+  if (S.mode === "online") S.chat.forEach((m) => items.push({ at: m.at, html: m.donate ? `<div class="msg donate"><span class="amt num">${DON_TIERS[donTier(m.donate)][1]} ${brl(m.donate)}</span><span class="n" style="color:${colorOf(m.from)}">${esc(m.name)}</span>${m.text ? esc(m.text) : "mandou um donate"}</div>`
+    : m.from === null && !m.watcher ? `<div class="sys"><span>${esc(m.text)}</span></div>` : `<div class="msg ${m.watcher ? "watcher" : ""} ${onlyEmoji(m.text) ? "big" : ""}"><span class="n" style="color:${m.from ? colorOf(m.from) : "var(--mute)"}">${esc(m.name)}</span>${esc(m.text)}</div>` }));
   items.sort((a, b) => a.at - b.at);
   const reacts = ["🔥", "😱", "😂", "💸", "🍿", "👏", "🤡", "💀"].map((e) => `<button type="button" data-react="${e}" aria-label="Reagir com ${e}">${e}</button>`).join("");
   return `<aside class="side" aria-label="Chat ao vivo">
-    <div class="head"><b>Chat ao vivo</b>${S.mode === "online" ? `<span class="viewers num">${eye}${S.viewers}</span>` : ""}</div>
+    <div class="head"><b>Chat ao vivo</b>${S.mode === "online" ? `<span class="viewers num">${eye}${S.viewers}</span><button type="button" class="snd" data-act="sound" aria-pressed="${S.sound}" title="${S.sound ? "Som ligado" : "Som desligado"}">${S.sound ? "🔊" : "🔇"}</button>` : ""}</div>
     <div class="feed" id="feed">${items.map((i) => i.html).join("") || `<p class="hint">${S.mode === "online" ? "Mande um oi para a galera." : "Os lances aparecem aqui."}</p>`}</div>
     <div class="reacts">${reacts}</div>
-    ${S.mode === "online" ? `<form class="compose" id="chatForm" autocomplete="off"><input class="input" id="chatText" maxlength="140" placeholder="Escreva no chat"><button class="btn" type="submit">Enviar</button></form>` : `<div style="height:12px"></div>`}
+    ${S.mode === "online" && S.ui.emojiOpen ? `<div class="emoji-pick" role="group" aria-label="Emojis">${EMOJIS.map((e) => `<button type="button" data-emoji="${e}" aria-label="Inserir ${e}">${e}</button>`).join("")}</div>` : ""}
+    ${S.mode === "online" ? `<form class="compose" id="chatForm" autocomplete="off"><button type="button" class="emoji-btn" data-act="emoji" aria-expanded="${S.ui.emojiOpen}" aria-label="Escolher emoji">😀</button><input class="input" id="chatText" maxlength="140" placeholder="Escreva no chat"><button class="btn" type="submit">Enviar</button></form>` : `<div style="height:12px"></div>`}
   </aside>`;
 }
 function renderLive() {
@@ -1841,6 +1956,100 @@ function processFx() {
     else if (e.k === "unsold") fxStamp("Sem lances", e.title, true);
     else if (e.k === "lot") { S.ui.synOpen = false; S.ui.sealedOpen = null; S.ui.bidDraft = null; fx.querySelectorAll(".fx-stamp, .fx-alert").forEach((x) => x.remove()); }
   });
+}
+
+/* ---------- donate: cada real a mais muda o alerta; as faixas trocam o visual ---------- */
+const DON_TIERS = [
+  [1, "🪙", "Doação"], [2, "💵", "Doação em dobro"], [3, "💸", "Chuva de dinheiro"], [5, "🔥", "Doação pegando fogo"],
+  [8, "🚀", "Doação foguete"], [10, "💎", "Doação diamante"], [15, "👑", "Doação da realeza"], [20, "🌋", "Erupção de dinheiro"],
+  [30, "🤯", "Mega doação"], [50, "☄️", "Doação lendária"], [100, "🏦", "O magnata chegou"]
+];
+const donTier = (v) => DON_TIERS.reduce((k, t, i) => (v >= t[0] ? i : k), 0);
+const donParams = (v) => ({ k: donTier(v), dur: Math.min(4200 + v * 260, 15000), rain: Math.min(4 + (v - 1) * 4, 200), scale: 1 + Math.min(v, 60) * 0.012, shake: v >= 5 ? Math.min(2 + v / 3, 16) : 0 });
+const EMOJIS = ["😀", "😂", "🤣", "😍", "🥰", "😎", "🤩", "🥳", "😭", "😱", "😡", "🤯", "🤔", "🙄", "😴", "🤡", "💀", "👻", "🤖", "👍", "👎", "👏", "🙌", "🙏", "💪", "👀", "🔥", "💸", "💰", "💎", "🎬", "🍿", "🎥", "⭐", "🏆", "👑", "❤️", "💔", "🎉", "🚀"];
+const onlyEmoji = (t) => /^[\p{Extended_Pictographic}\p{Emoji_Modifier}\u200d\ufe0f\s]+$/u.test(t || "") && Array.from(t.replace(/\s/g, "")).length <= 10;
+
+// sons feitos na hora com Web Audio (sem arquivos); o navegador só libera depois do primeiro toque
+const Sound = (() => {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  let ctx = null, out = null, noiseBuf = null;
+  function unlock() {
+    if (!AC) return;
+    try {
+      if (!ctx) { ctx = new AC(); out = ctx.createGain(); out.gain.value = 0.5; out.connect(ctx.destination); }
+      if (ctx.state === "suspended") ctx.resume();
+    } catch (e) {}
+  }
+  function tone(f, t, len, type, vol, f2) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + len);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g).connect(out); o.start(t); o.stop(t + len + 0.05);
+  }
+  function noise(t, len, vol, hp) {
+    if (!noiseBuf) { noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = noiseBuf; s.loop = true; f.type = "highpass"; f.frequency.value = hp;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    s.connect(f).connect(g).connect(out); s.start(t); s.stop(t + len + 0.05);
+  }
+  function donation(v) {
+    if (!S.sound || !ctx || ctx.state !== "running") return;
+    const t = ctx.currentTime + 0.03, n = Math.min(v, 15), P = [0, 2, 4, 7, 9];
+    tone(988, t, 0.1, "square", 0.1); tone(1319, t + 0.08, 0.4, "square", 0.1);                   // moeda
+    for (let i = 0; i < n; i++) tone(392 * 2 ** ((P[i % 5] + 12 * Math.floor(i / 5)) / 12), t + 0.3 + i * 0.06, 0.18, "triangle", 0.1); // uma nota por real
+    let e = t + 0.3 + n * 0.06;
+    if (v >= 5) tone(180, t, 0.6, "sine", 0.5, 40);                                                  // grave
+    if (v >= 10) for (let k = 0; k < 3; k++) [349, 440, 523].forEach((f) => tone(f, e + k * 0.26, k === 2 ? 0.7 : 0.2, "sawtooth", 0.05)); // buzina
+    if (v >= 20) { e += 1; tone(600, e, 0.7, "sawtooth", 0.04, 1300); tone(1300, e + 0.7, 0.7, "sawtooth", 0.04, 600); } // sirene
+    if (v >= 30) { for (let k = 0; k < 20; k++) noise(t + 0.2 + k * 0.05, 0.05, 0.05 + k * 0.01, 800); noise(t + 1.25, 1.4, 0.35, 3000); } // rufar e prato
+    if (v >= 50) [523, 659, 784, 1047].forEach((f, i) => tone(f, e + 1.6 + i * 0.12, 0.9 - i * 0.1, "square", 0.06)); // fanfarra
+    if (v >= 100) [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, e + 2.3 + i * 0.1, 0.8, "square", 0.05));
+  }
+  return { unlock, donation };
+})();
+addEventListener("pointerdown", Sound.unlock, { passive: true });
+addEventListener("keydown", Sound.unlock);
+
+function speak(m) {
+  if (!S.sound || m.donate < 5 || !window.speechSynthesis) return;
+  try {
+    const u = new SpeechSynthesisUtterance(`${m.name} doou ${m.donate} ${m.donate === 1 ? "real" : "reais"}${m.text ? ". " + m.text : ""}`);
+    u.lang = "pt-BR"; u.rate = Math.min(1.6, 1 + m.donate / 100); u.pitch = Math.min(2, 1 + m.donate / 60);
+    speechSynthesis.cancel(); setTimeout(() => speechSynthesis.speak(u), 900);
+  } catch (e) {}
+}
+function playDonation(m, hurry) {
+  const v = m.donate, P = donParams(v), [, emo, title] = DON_TIERS[P.k], color = m.color || colorOf(m.from);
+  if (hurry) P.dur = Math.min(P.dur, 3500);
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const pool = DON_TIERS.slice(0, P.k + 1).map((t) => t[1]);
+  let rain = "";
+  if (!calm) for (let i = 0; i < P.rain; i++) rain += `<i style="left:${(Math.random() * 100).toFixed(1)}%;animation-delay:${Math.round(Math.random() * Math.max(400, P.dur - 2400))}ms;animation-duration:${Math.round(1600 + Math.random() * 1800)}ms;font-size:${Math.round(16 + Math.random() * Math.min(10 + v, 40))}px">${pool[Math.floor(Math.random() * pool.length)]}</i>`;
+  const d = document.createElement("div");
+  d.className = `don-layer k${P.k}`; d.setAttribute("aria-hidden", "true");
+  d.style.cssText = `--dur:${P.dur}ms;--scale:${P.scale.toFixed(3)};--lvl:${Math.min(v, 60)};--pc:${color}`;
+  d.innerHTML = `${P.k >= 8 ? `<div class="don-dim"></div>` : ""}${P.k >= 9 ? `<div class="don-rays"></div>` : ""}${P.k >= 6 ? `<div class="don-flash"></div>` : ""}<div class="don-rain">${rain}</div>
+    <div class="don-card"><div class="don-emo">${emo}</div><div class="don-title">${esc(title)}</div><div class="don-amount num">${brl(v)}</div>
+      <div class="don-who"><span class="avatar sm" style="background:${color}">${initial(m.name)}</span><span><b>${esc(m.name)}</b> doou</span></div>
+      ${m.text ? `<p class="don-msg">${esc(m.text)}</p>` : ""}</div>`;
+  document.body.appendChild(d); setTimeout(() => d.remove(), P.dur);
+  if (P.shake && !calm) {
+    $app.style.setProperty("--shake", P.shake + "px");
+    $app.classList.remove("shaking"); void $app.offsetWidth; $app.classList.add("shaking");
+    setTimeout(() => $app.classList.remove("shaking"), Math.min(500 + v * 60, 3000));
+  }
+  Sound.donation(v); speak(m);
+  return P.dur;
+}
+// um alerta por vez; com fila grande, cada um fica menos tempo na tela
+const donQueue = []; let donBusy = false;
+function queueDonation(m) { if (donQueue.length < 12) donQueue.push(m); if (!donBusy) nextDonation(); }
+function nextDonation() {
+  const m = donQueue.shift(); if (!m) { donBusy = false; return; }
+  donBusy = true;
+  setTimeout(nextDonation, playDonation(m, donQueue.length >= 2) + 250);
 }
 
 /* ---------- pôster ampliado ---------- */
@@ -2012,6 +2221,19 @@ $app.addEventListener("click", async (e) => {
   if (d.react) { if (S.mode === "online") N.send("react", { e: d.react }); else fxReact(d.react); return; }
   if (d.quick) { const i = document.getElementById("bidv"); if (i) { i.value = d.quick; S.ui.bidDraft = { lot: cur().idx, v: +d.quick }; i.focus(); } return; }
   if (d.step) { const i = document.getElementById("bidv"); if (!i) return; i.value = Math.min(+i.max, Math.max(+i.min, (+i.value || 0) + +d.step)); S.ui.bidDraft = { lot: cur().idx, v: +i.value }; return; }
+  if (d.dstep || d.dquick) {
+    S.ui.donate.v = d.dquick ? +d.dquick : donValue() + +d.dstep;
+    const i = document.getElementById("donv"); if (i) i.value = donValue();
+    return syncDonate();
+  }
+  if (d.emoji) {
+    const el = document.getElementById("chatText"); if (!el) return;
+    const a = el.selectionStart ?? el.value.length, z = el.selectionEnd ?? a;
+    const val = el.value.slice(0, a) + d.emoji + el.value.slice(z);
+    if (val.length > 140) return toast("A mensagem chegou no limite de 140 caracteres.", true);
+    el.value = val; el.focus(); el.setSelectionRange(a + d.emoji.length, a + d.emoji.length);
+    return;
+  }
   if (d.openSealed) { S.ui.sealedOpen = d.openSealed; render(); document.getElementById("bidv")?.focus(); return; }
   if (d.sealed || d.sealed0) { const pid = d.sealed || d.sealed0; const v = d.sealed0 ? 0 : +(document.getElementById("bidv") || {}).value || 0; S.ui.sealedOpen = null; return doAct("sealed", v, pid); }
   if (d.buy) return doAct("buy", 0, d.buy);
@@ -2047,6 +2269,18 @@ $app.addEventListener("click", async (e) => {
       return;
     case "undo": if (S.history.length) { S.local = JSON.parse(S.history.pop()); S.lastTop = null; saveLocal(); render(); } return;
     case "syn": S.ui.synOpen = !S.ui.synOpen; return render();
+    case "emoji": S.ui.emojiOpen = !S.ui.emojiOpen; return render();
+    case "sound":
+      S.sound = !S.sound; store.set("ml-sound", S.sound);
+      if (!S.sound && window.speechSynthesis) speechSynthesis.cancel();
+      return render();
+    case "donate-test": return queueDonation({ donate: donValue(), name: nameOf(S.you), from: S.you, text: S.ui.donate.text.trim() });
+    case "donate": {
+      if (donateMax() < 1) return toast("Você precisa guardar pelo menos R$ 1 para o leilão.", true);
+      const r = await N.call("room:donate", { amount: donValue(), text: S.ui.donate.text });
+      if (r.error) return toast(r.error, true);
+      S.ui.donate.text = ""; S.ui.donate.v = 1; return render();
+    }
     case "again":
       if (S.mode === "online") { const r = await N.call("game:lobby"); if (r.error) toast(r.error, true); else drawLots(); }
       else { S.local = null; store.del("ml-local"); render(); drawLots(); }
@@ -2077,6 +2311,8 @@ $app.addEventListener("input", (e) => {
   if (t.id === "nm") { S.name = t.value; return; }
   if (t.id === "code") { t.value = t.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); S.joinCode = t.value; return; }
   if (t.id === "bidv") { const st = cur(); if (st) S.ui.bidDraft = { lot: st.idx, v: +t.value }; }
+  if (t.id === "donv") { S.ui.donate.v = +t.value; return syncDonate(); }
+  if (t.id === "donText") { S.ui.donate.text = t.value; return; }
 });
 $app.addEventListener("change", (e) => {
   const t = e.target;
@@ -2101,7 +2337,7 @@ N.on("state", (d) => {
   processFx(); render(); ensureSynopsis();
 });
 N.on("chat:history", (list) => { S.chat = list || []; render(); });
-N.on("chat", (m) => { S.chat.push(m); if (S.chat.length > 120) S.chat.shift(); render(); });
+N.on("chat", (m) => { S.chat.push(m); if (S.chat.length > 120) S.chat.shift(); render(); if (m.donate) queueDonation(m); });
 N.on("react", (r) => fxReact(r.e));
 N.on("kicked", () => { store.del("ml-session"); S.mode = null; S.st = null; S.code = null; render(); toast("Você foi removido da sala.", true); });
 N.on("status", () => { if (S.mode === "online") { const el = document.querySelector(".topbar .conn"); if (el) el.className = "conn " + N.status; } if (!S.mode) render(); });

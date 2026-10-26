@@ -35,7 +35,8 @@ const S = {
   local: store.get("ml-local") || null, history: [],
   rulesLocal: E.cleanSettings(store.get("ml-rules-local") || LOCAL_RULES),
   setup: Object.assign({ localPlayers: ["Cibele", "André", "Kirito", "Pinho"], lotMode: "random", genres: ["Ficção científica"], tier: "media", lots: 10, picked: [], custom: [], draw: [] }, store.get("ml-setup") || {}),
-  ui: { err: "", showDraw: false, drawing: false, drawMsg: "", search: [], searchMsg: "", preparing: false, sealedOpen: null, synOpen: false, modal: null, toast: null, joining: false },
+  ui: { err: "", showDraw: false, drawing: false, drawMsg: "", search: [], searchMsg: "", preparing: false, sealedOpen: null, synOpen: false, modal: null, toast: null, joining: false, donate: { v: 1, text: "" }, emojiOpen: false },
+  sound: store.get("ml-sound") !== false,
   lastTop: null, zoom: {}
 };
 const saveSetup = () => store.set("ml-setup", S.setup);
@@ -186,6 +187,7 @@ function playersPanel() {
   const st = S.st, link = location.origin + "/sala/" + S.code;
   const rows = st.players.map((p) => `<div class="prow"><span class="avatar sm" style="background:${p.color}">${initial(p.name)}</span>
     <span class="nm">${esc(p.name)}${p.id === S.you ? " (você)" : ""}</span>
+    ${p.donated ? `<span class="donated num" title="Doou na sala">${DON_TIERS[donTier(p.donated)][1]} ${brl(p.donated)}</span>` : ""}
     ${p.id === S.host ? `<span class="crown" title="Comanda a sala">♛</span>` : ""}
     <span class="conn ${p.connected ? "on" : ""}" title="${p.connected ? "Conectado" : "Desconectado"}"></span>
     ${isHost() && p.id !== S.you ? `<button class="x" data-kick="${p.id}" aria-label="Remover ${esc(p.name)}">×</button>` : ""}</div>`).join("");
@@ -197,6 +199,34 @@ function playersPanel() {
     <div class="plist">${rows}</div>
     ${S.you ? "" : `<p class="hint">Você está assistindo. Lances ficam com quem entrou como jogador.</p>`}
   </section>`;
+}
+/* ---------- doação na sala (estilo donate de live) ---------- */
+function donateMax() { const me = S.you && pl(S.you); return me ? E.donateLeft(S.st, me) : 0; }
+const donValue = () => Math.max(1, Math.min(donateMax(), Math.floor(+S.ui.donate.v) || 1));
+function donPreview(v) {
+  const P = donParams(v), [, emo, title] = DON_TIERS[P.k], nx = DON_TIERS[P.k + 1];
+  return `<span class="emo">${emo}</span><div><b>${esc(title)}</b><span class="hint num">${P.rain} itens caindo · ${Math.round(P.dur / 1000)} s na tela${P.shake ? " · tela tremendo" : ""}${nx ? ` · com mais ${brl(nx[0] - v)} vira ${nx[1]}` : ""}</span></div>`;
+}
+function donatePanel() {
+  if (S.mode !== "online" || !S.you || !pl(S.you)) return "";
+  const me = pl(S.you), max = donateMax(), v = donValue(), r = rules();
+  const quick = [1, 2, 5, 10].map((d) => `<button type="button" data-dquick="${d}" ${d > max ? "disabled" : ""}>${brl(d)}</button>`).join("") + `<button type="button" data-dquick="${max}" ${max < 1 ? "disabled" : ""}>Tudo</button>`;
+  return `<section class="panel donate-panel">
+    <div class="panel-head"><h2>Mandar um donate</h2><span class="hint num">Mínimo R$ 1</span></div>
+    <p class="hint">Aparece na tela de todo mundo, com som. Cada real a mais deixa o alerta mais exagerado. O valor sai do seu dinheiro inicial.</p>
+    <div class="bidrow"><div class="stepper"><button type="button" data-dstep="-1" aria-label="Diminuir">−</button>
+      <input id="donv" type="number" inputmode="numeric" min="1" max="${max}" value="${v}" aria-label="Valor da doação" ${max < 1 ? "disabled" : ""}><button type="button" data-dstep="1" aria-label="Aumentar">+</button></div></div>
+    <div class="quick">${quick}</div>
+    <div class="don-preview" id="donPreview">${donPreview(v)}</div>
+    <input class="input" id="donText" maxlength="80" placeholder="Mensagem do donate (opcional)" value="${esc(S.ui.donate.text)}" autocomplete="off">
+    <div class="actions"><button class="btn" data-act="donate-test">Testar só para mim</button><button class="btn coin big" id="donBtn" data-act="donate" ${max < 1 ? "disabled" : ""}>Doar ${brl(v)}</button></div>
+    <p class="hint num">${me.donated ? `Você já doou ${brl(me.donated)}. ` : ""}Você começa o leilão com ${brl(Math.max(1, r.money - (me.donated || 0)))}.</p>
+  </section>`;
+}
+function syncDonate() {
+  const v = donValue(), btn = document.getElementById("donBtn"), pv = document.getElementById("donPreview");
+  if (btn) btn.textContent = "Doar " + brl(v);
+  if (pv) pv.innerHTML = donPreview(v);
 }
 function lotsPanel() {
   const s = S.setup, u = S.ui;
@@ -249,7 +279,7 @@ function renderRoom() {
     bar = `<p class="hint">${S.you ? `Aguardando ${esc(nameOf(S.host))} começar o leilão.` : "Você entrou como espectador."}</p><button class="btn quiet" data-act="leave">Sair da sala</button>`;
   }
   return `<main class="wrap room ${S.mode === "local" ? "solo" : ""}">
-    <div class="col">${playersPanel()}</div>
+    <div class="col">${playersPanel()}${donatePanel()}</div>
     <div class="col">${lotsPanel()}${rulesPanel()}</div>
     ${S.mode === "online" ? sidePanel() : ""}
   </main>
@@ -425,14 +455,16 @@ function sidePanel() {
   const st = cur();
   const items = [];
   if (st) st.log.slice(0, 120).forEach((e) => { const [cls, html] = logText(e); if (html) items.push({ at: e.at || 0, html: `<div class="sys ${cls}"><span>${html}</span></div>` }); });
-  if (S.mode === "online") S.chat.forEach((m) => items.push({ at: m.at, html: m.from === null && !m.watcher ? `<div class="sys"><span>${esc(m.text)}</span></div>` : `<div class="msg ${m.watcher ? "watcher" : ""}"><span class="n" style="color:${m.from ? colorOf(m.from) : "var(--mute)"}">${esc(m.name)}</span>${esc(m.text)}</div>` }));
+  if (S.mode === "online") S.chat.forEach((m) => items.push({ at: m.at, html: m.donate ? `<div class="msg donate"><span class="amt num">${DON_TIERS[donTier(m.donate)][1]} ${brl(m.donate)}</span><span class="n" style="color:${colorOf(m.from)}">${esc(m.name)}</span>${m.text ? esc(m.text) : "mandou um donate"}</div>`
+    : m.from === null && !m.watcher ? `<div class="sys"><span>${esc(m.text)}</span></div>` : `<div class="msg ${m.watcher ? "watcher" : ""} ${onlyEmoji(m.text) ? "big" : ""}"><span class="n" style="color:${m.from ? colorOf(m.from) : "var(--mute)"}">${esc(m.name)}</span>${esc(m.text)}</div>` }));
   items.sort((a, b) => a.at - b.at);
   const reacts = ["🔥", "😱", "😂", "💸", "🍿", "👏", "🤡", "💀"].map((e) => `<button type="button" data-react="${e}" aria-label="Reagir com ${e}">${e}</button>`).join("");
   return `<aside class="side" aria-label="Chat ao vivo">
-    <div class="head"><b>Chat ao vivo</b>${S.mode === "online" ? `<span class="viewers num">${eye}${S.viewers}</span>` : ""}</div>
+    <div class="head"><b>Chat ao vivo</b>${S.mode === "online" ? `<span class="viewers num">${eye}${S.viewers}</span><button type="button" class="snd" data-act="sound" aria-pressed="${S.sound}" title="${S.sound ? "Som ligado" : "Som desligado"}">${S.sound ? "🔊" : "🔇"}</button>` : ""}</div>
     <div class="feed" id="feed">${items.map((i) => i.html).join("") || `<p class="hint">${S.mode === "online" ? "Mande um oi para a galera." : "Os lances aparecem aqui."}</p>`}</div>
     <div class="reacts">${reacts}</div>
-    ${S.mode === "online" ? `<form class="compose" id="chatForm" autocomplete="off"><input class="input" id="chatText" maxlength="140" placeholder="Escreva no chat"><button class="btn" type="submit">Enviar</button></form>` : `<div style="height:12px"></div>`}
+    ${S.mode === "online" && S.ui.emojiOpen ? `<div class="emoji-pick" role="group" aria-label="Emojis">${EMOJIS.map((e) => `<button type="button" data-emoji="${e}" aria-label="Inserir ${e}">${e}</button>`).join("")}</div>` : ""}
+    ${S.mode === "online" ? `<form class="compose" id="chatForm" autocomplete="off"><button type="button" class="emoji-btn" data-act="emoji" aria-expanded="${S.ui.emojiOpen}" aria-label="Escolher emoji">😀</button><input class="input" id="chatText" maxlength="140" placeholder="Escreva no chat"><button class="btn" type="submit">Enviar</button></form>` : `<div style="height:12px"></div>`}
   </aside>`;
 }
 function renderLive() {
@@ -570,6 +602,100 @@ function processFx() {
     else if (e.k === "unsold") fxStamp("Sem lances", e.title, true);
     else if (e.k === "lot") { S.ui.synOpen = false; S.ui.sealedOpen = null; S.ui.bidDraft = null; fx.querySelectorAll(".fx-stamp, .fx-alert").forEach((x) => x.remove()); }
   });
+}
+
+/* ---------- donate: cada real a mais muda o alerta; as faixas trocam o visual ---------- */
+const DON_TIERS = [
+  [1, "🪙", "Doação"], [2, "💵", "Doação em dobro"], [3, "💸", "Chuva de dinheiro"], [5, "🔥", "Doação pegando fogo"],
+  [8, "🚀", "Doação foguete"], [10, "💎", "Doação diamante"], [15, "👑", "Doação da realeza"], [20, "🌋", "Erupção de dinheiro"],
+  [30, "🤯", "Mega doação"], [50, "☄️", "Doação lendária"], [100, "🏦", "O magnata chegou"]
+];
+const donTier = (v) => DON_TIERS.reduce((k, t, i) => (v >= t[0] ? i : k), 0);
+const donParams = (v) => ({ k: donTier(v), dur: Math.min(4200 + v * 260, 15000), rain: Math.min(4 + (v - 1) * 4, 200), scale: 1 + Math.min(v, 60) * 0.012, shake: v >= 5 ? Math.min(2 + v / 3, 16) : 0 });
+const EMOJIS = ["😀", "😂", "🤣", "😍", "🥰", "😎", "🤩", "🥳", "😭", "😱", "😡", "🤯", "🤔", "🙄", "😴", "🤡", "💀", "👻", "🤖", "👍", "👎", "👏", "🙌", "🙏", "💪", "👀", "🔥", "💸", "💰", "💎", "🎬", "🍿", "🎥", "⭐", "🏆", "👑", "❤️", "💔", "🎉", "🚀"];
+const onlyEmoji = (t) => /^[\p{Extended_Pictographic}\p{Emoji_Modifier}\u200d\ufe0f\s]+$/u.test(t || "") && Array.from(t.replace(/\s/g, "")).length <= 10;
+
+// sons feitos na hora com Web Audio (sem arquivos); o navegador só libera depois do primeiro toque
+const Sound = (() => {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  let ctx = null, out = null, noiseBuf = null;
+  function unlock() {
+    if (!AC) return;
+    try {
+      if (!ctx) { ctx = new AC(); out = ctx.createGain(); out.gain.value = 0.5; out.connect(ctx.destination); }
+      if (ctx.state === "suspended") ctx.resume();
+    } catch (e) {}
+  }
+  function tone(f, t, len, type, vol, f2) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + len);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g).connect(out); o.start(t); o.stop(t + len + 0.05);
+  }
+  function noise(t, len, vol, hp) {
+    if (!noiseBuf) { noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = noiseBuf; s.loop = true; f.type = "highpass"; f.frequency.value = hp;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    s.connect(f).connect(g).connect(out); s.start(t); s.stop(t + len + 0.05);
+  }
+  function donation(v) {
+    if (!S.sound || !ctx || ctx.state !== "running") return;
+    const t = ctx.currentTime + 0.03, n = Math.min(v, 15), P = [0, 2, 4, 7, 9];
+    tone(988, t, 0.1, "square", 0.1); tone(1319, t + 0.08, 0.4, "square", 0.1);                   // moeda
+    for (let i = 0; i < n; i++) tone(392 * 2 ** ((P[i % 5] + 12 * Math.floor(i / 5)) / 12), t + 0.3 + i * 0.06, 0.18, "triangle", 0.1); // uma nota por real
+    let e = t + 0.3 + n * 0.06;
+    if (v >= 5) tone(180, t, 0.6, "sine", 0.5, 40);                                                  // grave
+    if (v >= 10) for (let k = 0; k < 3; k++) [349, 440, 523].forEach((f) => tone(f, e + k * 0.26, k === 2 ? 0.7 : 0.2, "sawtooth", 0.05)); // buzina
+    if (v >= 20) { e += 1; tone(600, e, 0.7, "sawtooth", 0.04, 1300); tone(1300, e + 0.7, 0.7, "sawtooth", 0.04, 600); } // sirene
+    if (v >= 30) { for (let k = 0; k < 20; k++) noise(t + 0.2 + k * 0.05, 0.05, 0.05 + k * 0.01, 800); noise(t + 1.25, 1.4, 0.35, 3000); } // rufar e prato
+    if (v >= 50) [523, 659, 784, 1047].forEach((f, i) => tone(f, e + 1.6 + i * 0.12, 0.9 - i * 0.1, "square", 0.06)); // fanfarra
+    if (v >= 100) [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, e + 2.3 + i * 0.1, 0.8, "square", 0.05));
+  }
+  return { unlock, donation };
+})();
+addEventListener("pointerdown", Sound.unlock, { passive: true });
+addEventListener("keydown", Sound.unlock);
+
+function speak(m) {
+  if (!S.sound || m.donate < 5 || !window.speechSynthesis) return;
+  try {
+    const u = new SpeechSynthesisUtterance(`${m.name} doou ${m.donate} ${m.donate === 1 ? "real" : "reais"}${m.text ? ". " + m.text : ""}`);
+    u.lang = "pt-BR"; u.rate = Math.min(1.6, 1 + m.donate / 100); u.pitch = Math.min(2, 1 + m.donate / 60);
+    speechSynthesis.cancel(); setTimeout(() => speechSynthesis.speak(u), 900);
+  } catch (e) {}
+}
+function playDonation(m, hurry) {
+  const v = m.donate, P = donParams(v), [, emo, title] = DON_TIERS[P.k], color = m.color || colorOf(m.from);
+  if (hurry) P.dur = Math.min(P.dur, 3500);
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const pool = DON_TIERS.slice(0, P.k + 1).map((t) => t[1]);
+  let rain = "";
+  if (!calm) for (let i = 0; i < P.rain; i++) rain += `<i style="left:${(Math.random() * 100).toFixed(1)}%;animation-delay:${Math.round(Math.random() * Math.max(400, P.dur - 2400))}ms;animation-duration:${Math.round(1600 + Math.random() * 1800)}ms;font-size:${Math.round(16 + Math.random() * Math.min(10 + v, 40))}px">${pool[Math.floor(Math.random() * pool.length)]}</i>`;
+  const d = document.createElement("div");
+  d.className = `don-layer k${P.k}`; d.setAttribute("aria-hidden", "true");
+  d.style.cssText = `--dur:${P.dur}ms;--scale:${P.scale.toFixed(3)};--lvl:${Math.min(v, 60)};--pc:${color}`;
+  d.innerHTML = `${P.k >= 8 ? `<div class="don-dim"></div>` : ""}${P.k >= 9 ? `<div class="don-rays"></div>` : ""}${P.k >= 6 ? `<div class="don-flash"></div>` : ""}<div class="don-rain">${rain}</div>
+    <div class="don-card"><div class="don-emo">${emo}</div><div class="don-title">${esc(title)}</div><div class="don-amount num">${brl(v)}</div>
+      <div class="don-who"><span class="avatar sm" style="background:${color}">${initial(m.name)}</span><span><b>${esc(m.name)}</b> doou</span></div>
+      ${m.text ? `<p class="don-msg">${esc(m.text)}</p>` : ""}</div>`;
+  document.body.appendChild(d); setTimeout(() => d.remove(), P.dur);
+  if (P.shake && !calm) {
+    $app.style.setProperty("--shake", P.shake + "px");
+    $app.classList.remove("shaking"); void $app.offsetWidth; $app.classList.add("shaking");
+    setTimeout(() => $app.classList.remove("shaking"), Math.min(500 + v * 60, 3000));
+  }
+  Sound.donation(v); speak(m);
+  return P.dur;
+}
+// um alerta por vez; com fila grande, cada um fica menos tempo na tela
+const donQueue = []; let donBusy = false;
+function queueDonation(m) { if (donQueue.length < 12) donQueue.push(m); if (!donBusy) nextDonation(); }
+function nextDonation() {
+  const m = donQueue.shift(); if (!m) { donBusy = false; return; }
+  donBusy = true;
+  setTimeout(nextDonation, playDonation(m, donQueue.length >= 2) + 250);
 }
 
 /* ---------- pôster ampliado ---------- */
@@ -741,6 +867,19 @@ $app.addEventListener("click", async (e) => {
   if (d.react) { if (S.mode === "online") N.send("react", { e: d.react }); else fxReact(d.react); return; }
   if (d.quick) { const i = document.getElementById("bidv"); if (i) { i.value = d.quick; S.ui.bidDraft = { lot: cur().idx, v: +d.quick }; i.focus(); } return; }
   if (d.step) { const i = document.getElementById("bidv"); if (!i) return; i.value = Math.min(+i.max, Math.max(+i.min, (+i.value || 0) + +d.step)); S.ui.bidDraft = { lot: cur().idx, v: +i.value }; return; }
+  if (d.dstep || d.dquick) {
+    S.ui.donate.v = d.dquick ? +d.dquick : donValue() + +d.dstep;
+    const i = document.getElementById("donv"); if (i) i.value = donValue();
+    return syncDonate();
+  }
+  if (d.emoji) {
+    const el = document.getElementById("chatText"); if (!el) return;
+    const a = el.selectionStart ?? el.value.length, z = el.selectionEnd ?? a;
+    const val = el.value.slice(0, a) + d.emoji + el.value.slice(z);
+    if (val.length > 140) return toast("A mensagem chegou no limite de 140 caracteres.", true);
+    el.value = val; el.focus(); el.setSelectionRange(a + d.emoji.length, a + d.emoji.length);
+    return;
+  }
   if (d.openSealed) { S.ui.sealedOpen = d.openSealed; render(); document.getElementById("bidv")?.focus(); return; }
   if (d.sealed || d.sealed0) { const pid = d.sealed || d.sealed0; const v = d.sealed0 ? 0 : +(document.getElementById("bidv") || {}).value || 0; S.ui.sealedOpen = null; return doAct("sealed", v, pid); }
   if (d.buy) return doAct("buy", 0, d.buy);
@@ -776,6 +915,18 @@ $app.addEventListener("click", async (e) => {
       return;
     case "undo": if (S.history.length) { S.local = JSON.parse(S.history.pop()); S.lastTop = null; saveLocal(); render(); } return;
     case "syn": S.ui.synOpen = !S.ui.synOpen; return render();
+    case "emoji": S.ui.emojiOpen = !S.ui.emojiOpen; return render();
+    case "sound":
+      S.sound = !S.sound; store.set("ml-sound", S.sound);
+      if (!S.sound && window.speechSynthesis) speechSynthesis.cancel();
+      return render();
+    case "donate-test": return queueDonation({ donate: donValue(), name: nameOf(S.you), from: S.you, text: S.ui.donate.text.trim() });
+    case "donate": {
+      if (donateMax() < 1) return toast("Você precisa guardar pelo menos R$ 1 para o leilão.", true);
+      const r = await N.call("room:donate", { amount: donValue(), text: S.ui.donate.text });
+      if (r.error) return toast(r.error, true);
+      S.ui.donate.text = ""; S.ui.donate.v = 1; return render();
+    }
     case "again":
       if (S.mode === "online") { const r = await N.call("game:lobby"); if (r.error) toast(r.error, true); else drawLots(); }
       else { S.local = null; store.del("ml-local"); render(); drawLots(); }
@@ -806,6 +957,8 @@ $app.addEventListener("input", (e) => {
   if (t.id === "nm") { S.name = t.value; return; }
   if (t.id === "code") { t.value = t.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); S.joinCode = t.value; return; }
   if (t.id === "bidv") { const st = cur(); if (st) S.ui.bidDraft = { lot: st.idx, v: +t.value }; }
+  if (t.id === "donv") { S.ui.donate.v = +t.value; return syncDonate(); }
+  if (t.id === "donText") { S.ui.donate.text = t.value; return; }
 });
 $app.addEventListener("change", (e) => {
   const t = e.target;
@@ -830,7 +983,7 @@ N.on("state", (d) => {
   processFx(); render(); ensureSynopsis();
 });
 N.on("chat:history", (list) => { S.chat = list || []; render(); });
-N.on("chat", (m) => { S.chat.push(m); if (S.chat.length > 120) S.chat.shift(); render(); });
+N.on("chat", (m) => { S.chat.push(m); if (S.chat.length > 120) S.chat.shift(); render(); if (m.donate) queueDonation(m); });
 N.on("react", (r) => fxReact(r.e));
 N.on("kicked", () => { store.del("ml-session"); S.mode = null; S.st = null; S.code = null; render(); toast("Você foi removido da sala.", true); });
 N.on("status", () => { if (S.mode === "online") { const el = document.querySelector(".topbar .conn"); if (el) el.className = "conn " + N.status; } if (!S.mode) render(); });

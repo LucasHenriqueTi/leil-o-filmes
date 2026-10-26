@@ -70,7 +70,7 @@
     return {
       phase: "lobby",          // lobby | playing | over
       settings: cleanSettings(settings),
-      players: [],             // {id, name, color, money, films[], connected, missions[]}
+      players: [],             // {id, name, color, money, donated, films[], connected, missions[]}
       lots: [], idx: 0, lot: null,
       results: [], log: [],
       seq: 0,                  // muda a cada alteração (para saber quando reenviar)
@@ -83,7 +83,7 @@
     if (st.phase !== "lobby") return "O leilão já começou. Você pode assistir.";
     if (st.players.length >= MAX_PLAYERS) return `A sala está cheia (máximo de ${MAX_PLAYERS} jogadores).`;
     if (st.players.some((p) => p.name.toLowerCase() === name.toLowerCase())) return "Já tem alguém com esse nome na sala.";
-    st.players.push({ id, name, color: COLORS[st.nextColor++ % COLORS.length], money: 0, films: [], connected: true, missions: [] });
+    st.players.push({ id, name, color: COLORS[st.nextColor++ % COLORS.length], money: 0, donated: 0, films: [], connected: true, missions: [] });
     st.seq++;
     return null;
   }
@@ -97,6 +97,20 @@
   function setConnected(st, id, on) {
     const p = st.players.find((x) => x.id === id);
     if (p && p.connected !== on) { p.connected = on; st.seq++; }
+  }
+  /* ---------- doação na sala (sai do dinheiro inicial; guarda R$ 1 para jogar) ---------- */
+  const donateLeft = (st, p) => Math.max(0, st.settings.money - (p.donated || 0) - 1);
+  function donate(st, id, amount) {
+    if (st.phase !== "lobby") return "Doações só valem na sala, antes do leilão começar.";
+    const p = st.players.find((x) => x.id === id);
+    if (!p) return "Só jogadores podem doar.";
+    const v = Math.floor(+amount);
+    if (!(v >= 1)) return "A doação mínima é R$ 1.";
+    const left = donateLeft(st, p);
+    if (v > left) return left > 0 ? `Você pode doar até R$ ${left} e ainda guardar R$ 1 para o leilão.` : "Você precisa guardar pelo menos R$ 1 para o leilão.";
+    p.donated = (p.donated || 0) + v;
+    st.seq++;
+    return null;
   }
   function updateSettings(st, patch) {
     if (st.phase !== "lobby") return "As regras não mudam com o leilão em andamento.";
@@ -168,7 +182,7 @@
     if (!st.lots.length) return "Nenhum filme válido para leiloar.";
     const fm = st.settings.formats;
     st.lots.forEach((f, i) => (f.format = fm.length === 1 ? fm[0] : fm[Math.floor(rng() * fm.length)]));
-    st.players.forEach((p) => { p.money = st.settings.money; p.films = []; p.missions = []; });
+    st.players.forEach((p) => { p.money = Math.max(1, st.settings.money - (p.donated || 0)); p.films = []; p.missions = []; });
     if (st.settings.missions) {
       const pool = missionPool(st);
       const order = shuffle(pool, rng);
@@ -329,7 +343,7 @@
   }
   function backToLobby(st) {
     st.phase = "lobby"; st.lots = []; st.idx = 0; st.lot = null; st.results = []; st.log = [];
-    st.players.forEach((p) => { p.money = 0; p.films = []; p.missions = []; });
+    st.players.forEach((p) => { p.money = 0; p.donated = 0; p.films = []; p.missions = []; });
     st.seq++;
   }
 
@@ -379,7 +393,7 @@
       const mkt = st.settings.market ? p.films.reduce((a, f) => a + bonusOf(primaryGenre(f)), 0) : 0;
       const missions = (p.missions || []).map((m) => Object.assign({}, m, { ok: checkMission(st, p, m) }));
       const mis = missions.reduce((a, m) => a + (m.ok ? m.pts : 0), 0);
-      return { id: p.id, ratings, market: mkt, missions, missionPts: mis, total: Math.round((ratings + mkt + mis) * 10) / 10, money: p.money, spent: st.settings.money - p.money };
+      return { id: p.id, ratings, market: mkt, missions, missionPts: mis, total: Math.round((ratings + mkt + mis) * 10) / 10, money: p.money, spent: Math.max(1, st.settings.money - (p.donated || 0)) - p.money };
     });
     rows.sort((a, b) => b.total - a.total || b.money - a.money);
     return rows;
@@ -400,6 +414,6 @@
     return v;
   }
 
-  return { COLORS, GROUP_TAG, FORMATS, DEFAULTS, MAX_PLAYERS, MARKET_BONUS, create, addPlayer, removePlayer, setConnected, updateSettings,
+  return { COLORS, GROUP_TAG, FORMATS, DEFAULTS, MAX_PLAYERS, MARKET_BONUS, create, addPlayer, removePlayer, setConnected, updateSettings, donate, donateLeft,
     start, act, next, tick, finish, backToLobby, scores, market, view, primaryGenre, canPlay, cleanSettings, missionPool };
 });

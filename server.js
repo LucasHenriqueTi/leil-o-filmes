@@ -61,6 +61,8 @@ function makeRoom() {
   rooms.set(room.code, room);
   return room;
 }
+// corta por caractere (e não por unidade UTF-16) para não partir emoji no meio
+const clip = (s, n) => Array.from(String(s || "").replace(/\s+/g, " ").trim()).slice(0, n).join("").trim();
 const validToken = (t) => typeof t === "string" && /^[a-zA-Z0-9_-]{16,64}$/.test(t);
 const seatOnline = (room, seat) => [...room.sockets.values()].includes(seat);
 
@@ -129,7 +131,7 @@ attachWebSocket(server, "/ws", (socket) => {
     catch (e) { console.error("erro em", m.t, e); if (cb) cb({ error: "Algo deu errado no servidor. Tente de novo." }); }
   });
   socket.on("close", () => { detach(socket); conns.delete(socket.id); });
-  socket.data.lastChat = 0; socket.data.reacts = [];
+  socket.data.lastChat = 0; socket.data.lastDonate = 0; socket.data.reacts = [];
   const reply = (cb, payload) => { if (typeof cb === "function") cb(payload); };
   const roomOf = () => rooms.get(socket.data.code);
   const guardHost = (cb) => {
@@ -253,7 +255,7 @@ attachWebSocket(server, "/ws", (socket) => {
     const room = roomOf(); if (!room) return reply(cb, { error: "Entre em uma sala para conversar." });
     const now = Date.now();
     if (now - socket.data.lastChat < 700) return reply(cb, { error: "Calma, uma mensagem por vez." });
-    const text = String(data.text || "").replace(/\s+/g, " ").trim().slice(0, 140);
+    const text = clip(data.text, 140);
     if (!text) return reply(cb, { ok: true });
     socket.data.lastChat = now;
     const seat = socket.data.seat;
@@ -263,6 +265,23 @@ attachWebSocket(server, "/ws", (socket) => {
     room.chat.push(msg); if (room.chat.length > 80) room.chat.shift();
     emitRoom(room, "chat", msg);
     reply(cb, { ok: true });
+  });
+
+  // doação na sala: vai para o chat com o campo `donate` e cada cliente toca o alerta
+  socket.on("room:donate", (data = {}, cb) => {
+    const room = roomOf();
+    if (!room || !socket.data.seat) return reply(cb, { error: "Só jogadores podem doar." });
+    const now = Date.now();
+    if (now - socket.data.lastDonate < 1500) return reply(cb, { error: "Calma, uma doação por vez." });
+    const seat = socket.data.seat, v = Math.floor(+data.amount);
+    const err = Engine.donate(room.st, seat, v);
+    if (err) return reply(cb, { error: err });
+    socket.data.lastDonate = now;
+    const p = room.st.players.find((x) => x.id === seat);
+    const msg = { id: crypto.randomUUID(), at: now, from: seat, name: p.name, text: clip(data.text, 80), donate: v };
+    room.chat.push(msg); if (room.chat.length > 80) room.chat.shift();
+    emitRoom(room, "chat", msg);
+    done(room, cb, null);
   });
 
   socket.on("react", (data = {}) => {

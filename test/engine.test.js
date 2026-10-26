@@ -74,4 +74,24 @@ for (const f of [["classic"], ["sealed"], ["dutch"], ["classic", "sealed", "dutc
   assert.strictEqual(st.lot.result.by, "b"); assert.strictEqual(st.lot.result.price, 7);
   console.log("ok empate no lance secreto");
 }
+// Doação na sala: sai do dinheiro inicial e sempre sobra R$ 1 para jogar
+{
+  const st = E.create({ money: 10 });
+  E.addPlayer(st, "a", "A"); E.addPlayer(st, "b", "B");
+  assert.ok(E.donate(st, "a", 0), "doação mínima é R$ 1");
+  assert.ok(E.donate(st, "zz", 1), "só jogador doa");
+  assert.strictEqual(E.donate(st, "a", 3), null);
+  assert.strictEqual(E.donate(st, "a", 6), null);
+  assert.ok(E.donate(st, "a", 1), "precisa guardar R$ 1");
+  assert.strictEqual(E.donateLeft(st, st.players[0]), 0);
+  E.start(st, films(2), 0, rng);
+  assert.strictEqual(st.players[0].money, 1, "começa com o que sobrou");
+  assert.strictEqual(st.players[1].money, 10);
+  assert.ok(E.donate(st, "b", 1), "não doa com o leilão em andamento");
+  E.finish(st);
+  assert.strictEqual(E.scores(st).find((r) => r.id === "a").spent, 0, "doação não conta como gasto em lances");
+  E.backToLobby(st);
+  assert.strictEqual(st.players[0].donated, 0, "nova rodada zera as doações");
+  console.log("ok doação na sala");
+}
 console.log("Todos os testes do motor passaram.");
