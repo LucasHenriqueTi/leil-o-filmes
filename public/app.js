@@ -5,7 +5,7 @@
    ============================================================ */
 (function () {
 "use strict";
-const E = window.Engine, C = window.Catalog, N = window.Net;
+const E = window.Engine, C = window.Catalog, N = window.Net, MK = window.Market, MC = window.MarketConfig;
 const $app = document.getElementById("app");
 const store = C.store;
 const GROUP_TAG = E.GROUP_TAG;
@@ -37,6 +37,8 @@ const S = {
   setup: Object.assign({ localPlayers: ["Cibele", "André", "Kirito", "Pinho"], lotMode: "random", genres: ["Ficção científica"], tier: "media", lots: 10, picked: [], custom: [], draw: [] }, store.get("ml-setup") || {}),
   ui: { err: "", showDraw: false, drawing: false, drawMsg: "", search: [], searchMsg: "", preparing: false, sealedOpen: null, synOpen: false, modal: null, toast: null, joining: false, donate: { v: 1, text: "" }, emojiOpen: false },
   sound: store.get("ml-sound") !== false,
+  auth: store.get("ml-auth") || null, me: null, market: null,   // Mercado: token da conta, conta e carteira
+  acct: { tab: "login", name: "", pass: "", busy: false, pwOld: "", pwNew: "" },
   lastTop: null, zoom: {}
 };
 const saveSetup = () => store.set("ml-setup", S.setup);
@@ -81,13 +83,14 @@ const FMT_ICON = { classic: "🔨", sealed: "✉️", dutch: "⏱️" };
 function topbar() {
   const st = cur();
   const live = st && st.phase === "playing";
-  const online = S.mode === "online";
+  const online = S.mode === "online" || S.mode === "market";
   return `<header class="topbar"><div class="wrap">
     <button class="brand" data-act="home" aria-label="Martelo Live, voltar ao início"><span class="word">martelo</span><span class="onair ${live ? "" : "idle"}">${live ? "AO VIVO" : "live"}</span></button>
     <span class="spacer"></span>
     ${online && S.code ? `<span class="chip-code">Sala <b>${esc(S.code)}</b><button data-act="copy-link">Copiar convite</button></span>
       <span class="viewers num" title="Pessoas conectadas na sala">${eye}${S.viewers}</span>` : ""}
     ${S.mode === "local" ? `<span class="hint">Mesmo aparelho</span>` : ""}
+    ${S.me && S.mode !== "market" ? `<button class="chip-acct num" data-act="market" title="Abrir o Mercado"><span class="avatar sm">${initial(S.me.name)}</span><span class="nm">${esc(S.me.name)} · ${brl(S.me.wallet.free)}</span></button>` : ""}
     ${online ? `<span class="conn ${N.status}" title="${{ on: "Conectado", connecting: "Reconectando…", unavailable: "Servidor indisponível", off: "Desconectado" }[N.status]}"></span>` : ""}
   </div></header>`;
 }
@@ -114,6 +117,8 @@ function renderHome() {
           ${onlineOk ? "" : `<p class="hint">As salas online funcionam quando o site está publicado no servidor do Martelo Live. Aqui você pode jogar no mesmo aparelho.</p>`}
           <div class="divider">sem internet ou todos juntos na sala</div>
           <button class="btn ghost" type="button" data-act="local">Jogar no mesmo aparelho</button>
+          ${N.available ? `<div class="divider">carteira e coleção que ficam salvas</div>
+          <button class="btn coin" type="button" data-act="market" ${onlineOk ? "" : "disabled"}>${S.me ? `Abrir o Mercado (${esc(S.me.name)})` : "Mercado: entrar ou criar conta"}</button>` : ""}
         </form>
       </div>
       <div class="stage demo" aria-label="Prévia de um lote ao vivo">
@@ -508,10 +513,76 @@ function renderFinal() {
 }
 
 /* ============================================================
+   MERCADO: conta, carteira e coleção que ficam salvas
+   ============================================================ */
+const fmtWhen = (t) => new Date(t).toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+function renderMarket() {
+  const a = S.acct;
+  if (!S.me) {
+    const reg = a.tab === "register";
+    return `<main class="wrap market"><section class="panel auth-panel">
+      <div><h1 class="market-title">Mercado</h1><p class="hint">Sua carteira e sua coleção de filmes ficam salvas entre as partidas.</p></div>
+      <div class="seg" role="group" aria-label="Entrar ou criar conta">
+        <button type="button" data-acct-tab="login" aria-pressed="${!reg}">Entrar</button>
+        <button type="button" data-acct-tab="register" aria-pressed="${reg}">Criar conta</button></div>
+      <form class="entry" id="authForm">
+        <div class="field"><label for="au-name">Nome</label><input class="input" id="au-name" maxlength="18" autocomplete="username" value="${esc(a.name)}"></div>
+        <div class="field"><label for="au-pass">Senha</label><input class="input" id="au-pass" type="password" maxlength="200" autocomplete="${reg ? "new-password" : "current-password"}" value="${esc(a.pass)}"></div>
+        ${reg ? `<p class="hint">Pelo menos ${MC.passwordMin} caracteres. Se esquecer, um admin gera uma senha temporária para você.</p>` : ""}
+        ${S.ui.err ? `<p class="err">${esc(S.ui.err)}</p>` : ""}
+        <button class="btn go big" type="submit" ${a.busy ? "disabled" : ""}>${a.busy ? "Um momento…" : reg ? "Criar conta" : "Entrar"}</button>
+      </form>
+      <button class="btn quiet" data-act="home">Voltar ao início</button>
+    </section></main>`;
+  }
+  const m = S.market || { me: S.me, ledger: [], collection: [] }, me = m.me, w = me.wallet;
+  const rows = m.ledger.map((e) => `<div class="lrow"><span>${esc(MK.KINDS[e.kind] || e.kind)}${e.ref ? ` <small>${esc(e.ref)}</small>` : ""}</span><span class="when">${esc(new Date(e.at).toLocaleDateString("pt-BR"))}</span><b class="num ${e.delta < 0 ? "out" : "in"}">${e.delta < 0 ? "−" : "+"}${brl(Math.abs(e.delta))}</b></div>`).join("");
+  return `<main class="wrap market">
+    <div class="col">
+      <section class="panel wallet">
+        <div class="panel-head"><h2>Carteira de ${esc(me.name)}${me.admin ? ` <span class="pill top">admin</span>` : ""}</h2><button class="btn quiet" data-act="logout">Sair da conta</button></div>
+        <div class="bal"><span class="label">Saldo livre</span><b class="num">${brl(w.free)}</b>${w.reserved ? `<span class="hint num">Mais ${brl(w.reserved)} reservados em lances</span>` : ""}</div>
+        <p class="hint">Próxima mesada de ${brl(MC.allowance)}: ${esc(fmtWhen(me.nextAllowanceAt))}.</p>
+      </section>
+      <section class="panel"><h2>Coleção</h2>${m.collection.length ? "" : `<div class="curtain"><div><b>Nenhum filme ainda</b><p>Seus filmes chegam pelos leilões do Mercado.</p></div></div>`}</section>
+    </div>
+    <div class="col">
+      <section class="panel"><h2>Extrato</h2><div class="ledger">${rows || `<p class="hint">Nenhuma movimentação ainda.</p>`}</div></section>
+      <section class="panel"><h2>Conta</h2>
+        <form class="acct-form" id="pwForm">
+          <input class="input" id="pw-old" type="password" placeholder="Senha atual" autocomplete="current-password" value="${esc(a.pwOld)}">
+          <input class="input" id="pw-new" type="password" placeholder="Senha nova" autocomplete="new-password" value="${esc(a.pwNew)}">
+          <button class="btn" type="submit">Trocar senha</button></form>
+        ${me.admin ? `<form class="acct-form" id="resetForm" autocomplete="off"><input class="input" id="rs-name" maxlength="18" placeholder="Nome da conta"><button class="btn" type="submit">Gerar senha temporária</button></form>
+          <p class="hint">A pessoa sai da conta em todos os aparelhos e entra com a senha temporária.</p>` : ""}
+      </section>
+    </div>
+  </main>`;
+}
+async function openMarket() {
+  S.mode = "market"; S.ui.err = ""; render();
+  N.connect(); await waitOpen();
+  if (S.auth && !S.me) await resumeAuth();
+  if (S.me) refreshMarket();
+}
+async function resumeAuth() {
+  const r = await N.call("auth:resume", { session: S.auth });
+  if (r.error) { if (r.expired) signedOut(); }   // sem conexão: mantém o token e tenta na próxima
+  else S.me = r.me;
+  render();
+}
+async function refreshMarket() {
+  const r = await N.call("market:me");
+  if (!r.error) { S.market = r; S.me = r.me; render(); }
+}
+function signedOut() { S.auth = null; S.me = null; S.market = null; store.del("ml-auth"); }
+
+/* ============================================================
    RENDER
    ============================================================ */
 function screen() {
   if (!S.mode) return "home";
+  if (S.mode === "market") return "market";
   const st = cur();
   if (S.mode === "online" && !st) return "connecting";
   if (S.mode === "local" && !st) return "room";
@@ -527,6 +598,7 @@ function render() {
   let body;
   if (sc === "home") body = renderHome();
   else if (sc === "connecting") body = `<main class="wrap home"><section class="panel"><h2>Conectando à sala ${esc(S.code || S.joinCode)}…</h2><p class="hint">Se demorar, confira sua internet.</p><button class="btn" data-act="leave">Voltar</button></section></main>`;
+  else if (sc === "market") body = renderMarket();
   else if (sc === "room") body = renderRoom();
   else if (sc === "live") body = renderLive();
   else body = renderFinal();
@@ -872,6 +944,7 @@ $app.addEventListener("click", async (e) => {
     const i = document.getElementById("donv"); if (i) i.value = donValue();
     return syncDonate();
   }
+  if (d.acctTab) { S.acct.tab = d.acctTab; S.ui.err = ""; render(); document.getElementById("au-name")?.focus(); return; }
   if (d.emoji) {
     const el = document.getElementById("chatText"); if (!el) return;
     const a = el.selectionStart ?? el.value.length, z = el.selectionEnd ?? a;
@@ -891,8 +964,13 @@ $app.addEventListener("click", async (e) => {
     case "home":
       if (screen() === "live") return modal("Sair da transmissão?", `<p class="hint">${S.mode === "online" ? "Você pode voltar depois com o mesmo código, no mesmo lugar." : "O leilão local fica salvo neste aparelho."}</p>`, [{ label: "Continuar aqui" }, { label: "Sair", cls: "go", run: () => { if (S.mode === "local") { S.mode = null; render(); } else leave(); } }]);
       if (S.mode === "local" && !S.local) { S.mode = null; return render(); }
+      if (S.mode === "market") { S.mode = null; S.ui.err = ""; return render(); }
       return;
     case "create": return createRoom();
+    case "market": return openMarket();
+    case "logout":
+      await N.call("auth:logout");
+      signedOut(); return render();
     case "watch": return joinRoom(true);
     case "local":
       S.ui.err = "";
@@ -944,6 +1022,29 @@ $app.addEventListener("submit", async (e) => {
     catch (err) { S.ui.searchMsg = "A busca do IMDb não respondeu. Tente de novo ou escolha do catálogo."; }
     return render();
   }
+  if (id === "authForm") {
+    const a = S.acct, reg = a.tab === "register";
+    a.busy = true; S.ui.err = ""; render();
+    const r = await N.call(reg ? "auth:register" : "auth:login", { name: a.name, password: a.pass });
+    a.busy = false;
+    if (r.error) { S.ui.err = r.error; return render(); }
+    a.pass = ""; S.auth = r.session; store.set("ml-auth", r.session); S.me = r.me;
+    if (!S.name) { S.name = r.me.name; store.set("ml-name", S.name); }
+    render(); return refreshMarket();
+  }
+  if (id === "pwForm") {
+    const a = S.acct;
+    const r = await N.call("auth:password", { old: a.pwOld, new: a.pwNew });
+    if (r.error) return toast(r.error, true);
+    a.pwOld = a.pwNew = ""; render(); return toast("Senha trocada. Os outros aparelhos saíram da conta.");
+  }
+  if (id === "resetForm") {
+    const nm = document.getElementById("rs-name").value.trim(); if (!nm) return;
+    const r = await N.call("admin:reset", { name: nm });
+    if (r.error) return toast(r.error, true);
+    return modal(`Senha temporária de ${r.name}`, `<p class="temp-pass num">${esc(r.temp)}</p><p class="hint">Mande para ${esc(r.name)}. Depois de entrar, dá para trocar em "Conta".</p>`,
+      [{ label: "Copiar", run: () => copyText(r.temp, "Senha copiada.") }, { label: "Fechar", cls: "go" }]);
+  }
   if (id === "chatForm") {
     const el = document.getElementById("chatText"); const text = el.value.trim(); if (!text) return;
     el.value = "";
@@ -955,6 +1056,8 @@ $app.addEventListener("input", (e) => {
   const t = e.target;
   if (t.dataset.lp != null) { S.setup.localPlayers[+t.dataset.lp] = t.value; saveSetup(); return; }
   if (t.id === "nm") { S.name = t.value; return; }
+  const acctField = { "au-name": "name", "au-pass": "pass", "pw-old": "pwOld", "pw-new": "pwNew" }[t.id];
+  if (acctField) { S.acct[acctField] = t.value; return; }
   if (t.id === "code") { t.value = t.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); S.joinCode = t.value; return; }
   if (t.id === "bidv") { const st = cur(); if (st) S.ui.bidDraft = { lot: st.idx, v: +t.value }; }
   if (t.id === "donv") { S.ui.donate.v = +t.value; return syncDonate(); }
@@ -986,8 +1089,11 @@ N.on("chat:history", (list) => { S.chat = list || []; render(); });
 N.on("chat", (m) => { S.chat.push(m); if (S.chat.length > 120) S.chat.shift(); render(); if (m.donate) queueDonation(m); });
 N.on("react", (r) => fxReact(r.e));
 N.on("kicked", () => { store.del("ml-session"); S.mode = null; S.st = null; S.code = null; render(); toast("Você foi removido da sala.", true); });
-N.on("status", () => { if (S.mode === "online") { const el = document.querySelector(".topbar .conn"); if (el) el.className = "conn " + N.status; } if (!S.mode) render(); });
+N.on("market:me", (d) => { S.market = d; S.me = d.me; render(); });
+N.on("auth:out", () => { signedOut(); render(); toast("Sua conta saiu deste aparelho. Entre de novo.", true); });
+N.on("status", () => { if (S.mode === "online" || S.mode === "market") { const el = document.querySelector(".topbar .conn"); if (el) el.className = "conn " + N.status; } if (!S.mode) render(); });
 N.on("open", async () => {
+  if (S.auth) { await resumeAuth(); if (S.mode === "market" && S.me) refreshMarket(); }
   if (S.mode === "online" && S.code && S.st) {
     const r = await N.call("room:join", { code: S.code, name: S.name || "Espectador", token });
     if (r.error) { store.del("ml-session"); S.mode = null; S.st = null; render(); toast("A sala não existe mais.", true); }

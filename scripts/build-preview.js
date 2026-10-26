@@ -13,6 +13,8 @@ let html = `<!doctype html>
 <div id="app"></div>
 <script>window.ML_OFFLINE = true;</script>
 <script>${read("engine.js")}</script>
+<script>${read("market-config.js")}</script>
+<script>${read("market.js")}</script>
 <script>${read("catalog.js")}</script>
 <script>${read("net.js")}</script>
 <script>${read("app.js")}</script>

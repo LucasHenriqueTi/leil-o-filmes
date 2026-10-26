@@ -68,6 +68,22 @@ Antes do leilão começar, cada jogador pode mandar um donate a partir de R$ 1, 
 
 O chat também tem um seletor de emoji (botão 😀 ao lado do campo), e mensagens só com emoji aparecem em tamanho grande.
 
+## Mercado (em construção)
+
+O Mercado é um modo separado, com economia que fica salva entre as partidas. A partida rápida e o modo mesmo aparelho continuam iguais e não mexem no Mercado.
+
+O que já funciona:
+
+- **Conta**: nome e senha. A primeira conta criada vira admin. Se alguém esquecer a senha, um admin gera uma senha temporária pela tela do Mercado.
+- **Carteira**: R$ 30 de boas-vindas e uma mesada de R$ 30 toda segunda às 00:00 (horário de Brasília), igual para todos. Semanas em que o servidor ficou desligado não acumulam.
+- **Extrato**: cada entrada e saída de dinheiro aparece com o motivo e a data.
+
+Ainda vão chegar: raridade com cópias numeradas, o Leilão da Casa, leilões entre jogadores e coleções.
+
+Os números (valor da mesada, dia, horário etc.) ficam em `public/market-config.js`. Os dados ficam em `data/market.json`; dá para mudar o caminho com a variável `ML_DATA`.
+
+**Atenção:** no Render gratuito, o disco é apagado a cada deploy. O Mercado ainda não está pronto para produção. Antes de publicar, é preciso escolher onde os dados vão ficar.
+
 ## De onde vêm os filmes
 
 Todas as fontes são gratuitas e não precisam de chave:
@@ -81,14 +97,18 @@ Sem acesso a essas fontes, o jogo usa os 77 filmes embutidos em `public/catalog.
 ## Estrutura
 
 ```
-server.js            servidor: site + salas online (WebSocket)
+server.js            servidor: site + salas online (WebSocket) + Mercado
 lib/websocket.js     WebSocket sem dependências
+lib/store.js         onde o Mercado é salvo (arquivo JSON; trocável por um banco)
+lib/auth.js          senhas e sessões do Mercado
 public/engine.js     regras do jogo (roda igual no servidor e no navegador)
+public/market.js     regras do Mercado: contas, carteira, extrato, mesada
+public/market-config.js  números do Mercado para calibrar
 public/catalog.js    filmes, pôsteres, notas e sinopses
 public/net.js        conexão com o servidor e reconexão automática
 public/app.js        interface
 public/styles.css    visual
-test/                testes do motor e de uma partida online completa
+test/                testes do motor, do Mercado, do armazenamento e de uma partida online completa
 ```
 
 ## Segurança e limites
@@ -97,6 +117,7 @@ test/                testes do motor e de uma partida online completa
 - Cada jogador tem um token guardado no navegador. Se a conexão cair ou a página recarregar, ele volta para o mesmo lugar.
 - Se o host cair por mais de 20 segundos, outro jogador conectado assume a sala.
 - As salas ficam na memória do servidor. Se o servidor reiniciar, as salas em andamento acabam. Salas vazias somem depois de 30 minutos.
+- Senhas do Mercado nunca são guardadas, só um hash (scrypt com sal). O token de login fica no navegador, e o servidor guarda só o hash dele. Depois de 5 senhas erradas, o login daquele nome fica bloqueado por 5 minutos.
 - Limites: 10 jogadores e até 80 conexões por sala, 200 lotes, mensagens de chat com até 140 caracteres.
 
 ## Testes
@@ -105,4 +126,4 @@ test/                testes do motor e de uma partida online completa
 npm test
 ```
 
-Roda centenas de partidas simuladas no motor (todos os formatos, conferindo saldo, limites, sigilo do lance secreto e das missões) e uma partida online completa com 3 jogadores, 1 espectador e uma reconexão. O teste online precisa do Node 22 ou mais novo.
+Roda centenas de partidas simuladas no motor (todos os formatos, conferindo saldo, limites, sigilo do lance secreto e das missões) e uma partida online completa com 3 jogadores, 1 espectador e uma reconexão. Testa também as regras do Mercado (carteira, extrato, mesada, sessões), o arquivo de dados (inclusive a recuperação de um arquivo corrompido) e o fluxo de contas online, com um reinício do servidor no meio para conferir que nada se perde. O teste online precisa do Node 22 ou mais novo.

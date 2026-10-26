@@ -1,18 +1,26 @@
 /* ============================================================
    Martelo Live — servidor
    - Serve o site (pasta public/)
-   - Mantém as salas online com Socket.IO
+   - Mantém as salas online por WebSocket
    - O servidor é a autoridade: valida lances, roda os relógios,
      esconde lances secretos e missões de quem não deve ver.
+   - Mercado: contas, carteira e mesada, salvos pela camada de armazenamento (lib/store.js).
    ============================================================ */
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
 const crypto = require("crypto");
 const Engine = require("./public/engine.js");
+const Market = require("./public/market.js");
+const Auth = require("./lib/auth.js");
+const { openStore } = require("./lib/store.js");
 const { attachWebSocket } = require("./lib/websocket.js");
 
 const PORT = process.env.PORT || 3000;
+const MC = Market.CONFIG;
+const store = openStore(process.env.ML_DATA);
+const ADMINS = new Set(String(process.env.ML_ADMINS || "").split(",").map(Market.nameKey).filter(Boolean));
+const tries = Auth.limiter(MC.loginTries, MC.loginWindowMin * 60e3);
 const PUBLIC = path.join(__dirname, "public");
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
   ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".txt": "text/plain; charset=utf-8" };
@@ -127,8 +135,9 @@ attachWebSocket(server, "/ws", (socket) => {
     let m; try { m = JSON.parse(raw); } catch (e) { return; }
     if (!m || typeof m.t !== "string" || !handlers[m.t]) return;
     const cb = m.id != null ? (payload) => socket.send({ t: "ack", id: m.id, d: payload }) : null;
-    try { handlers[m.t](m.d && typeof m.d === "object" ? m.d : {}, cb); }
-    catch (e) { console.error("erro em", m.t, e); if (cb) cb({ error: "Algo deu errado no servidor. Tente de novo." }); }
+    const fail = (e) => { console.error("erro em", m.t, e); if (cb) cb({ error: "Algo deu errado no servidor. Tente de novo." }); };
+    try { const r = handlers[m.t](m.d && typeof m.d === "object" ? m.d : {}, cb); if (r && typeof r.then === "function") r.catch(fail); }
+    catch (e) { fail(e); }
   });
   socket.on("close", () => { detach(socket); conns.delete(socket.id); });
   socket.data.lastChat = 0; socket.data.lastDonate = 0; socket.data.reacts = [];
@@ -295,7 +304,114 @@ attachWebSocket(server, "/ws", (socket) => {
   });
 
   socket.on("time", (d, cb) => reply(cb, { now: Date.now() }));
+
+  /* ---------- Mercado: contas e carteira ---------- */
+  const login = (uid, hash) => { socket.data.uid = uid; socket.data.session = hash; };
+  const meOf = (cb) => { const uid = socket.data.uid; if (!uid || !eco.users[uid]) { reply(cb, { error: "Entre na sua conta primeiro." }); return null; } return uid; };
+  const password = (d, key) => String(d[key] || "").slice(0, 200);
+
+  socket.on("auth:register", async (d = {}, cb) => {
+    const now = Date.now();
+    if (now - (socket.data.lastRegister || 0) < 5000) return reply(cb, { error: "Calma, espere uns segundos." });
+    const pw = password(d, "password");
+    if (pw.length < MC.passwordMin) return reply(cb, { error: `A senha precisa de pelo menos ${MC.passwordMin} caracteres.` });
+    const pre = Market.checkName(eco, d.name); if (pre) return reply(cb, { error: pre });
+    socket.data.lastRegister = now;
+    const auth = await Auth.hashPassword(pw), token = Auth.newToken(), hash = Auth.tokenHash(token), id = Auth.newUserId();
+    const r = await mutate((e, t) => {
+      const admin = !Object.keys(e.users).length || ADMINS.has(Market.nameKey(d.name));
+      const err = Market.addUser(e, { id, name: d.name, auth, admin }, t);
+      if (err) return { error: err };
+      Market.addSession(e, hash, id, t);
+    });
+    if (r.error) return reply(cb, r);
+    login(id, hash);
+    reply(cb, { ok: true, session: token, me: Market.view(eco, id) });
+  });
+
+  socket.on("auth:login", async (d = {}, cb) => {
+    const now = Date.now(), byName = "n:" + Market.nameKey(d.name), bySock = "s:" + socket.id;
+    if (tries.blocked(byName, now) || tries.blocked(bySock, now)) return reply(cb, { error: `Muitas tentativas erradas. Espere ${MC.loginWindowMin} minutos e tente de novo.` });
+    const u = Market.findByName(eco, d.name);
+    const ok = await Auth.verifyPassword(password(d, "password"), u && u.auth);
+    if (!ok) { tries.fail(byName, now); tries.fail(bySock, now); return reply(cb, { error: "Nome ou senha incorretos." }); }
+    tries.clear(byName);
+    const token = Auth.newToken(), hash = Auth.tokenHash(token);
+    await mutate((e, t) => { Market.addSession(e, hash, u.id, t); });
+    login(u.id, hash);
+    reply(cb, { ok: true, session: token, me: Market.view(eco, u.id) });
+  });
+
+  socket.on("auth:resume", (d = {}, cb) => {
+    const hash = Auth.tokenHash(d.session), uid = Market.sessionUser(eco, hash, Date.now());
+    if (!uid) return reply(cb, { error: "Sua sessão expirou. Entre de novo.", expired: true });
+    login(uid, hash);
+    reply(cb, { ok: true, me: Market.view(eco, uid) });
+  });
+
+  socket.on("auth:logout", async (d, cb) => {
+    const hash = socket.data.session;
+    login(null, null);
+    if (hash) await mutate((e) => { Market.revokeSession(e, hash); });
+    reply(cb, { ok: true });
+  });
+
+  socket.on("auth:password", async (d = {}, cb) => {
+    const uid = meOf(cb); if (!uid) return;
+    const next = password(d, "new");
+    if (next.length < MC.passwordMin) return reply(cb, { error: `A senha nova precisa de pelo menos ${MC.passwordMin} caracteres.` });
+    if (!(await Auth.verifyPassword(password(d, "old"), eco.users[uid].auth))) return reply(cb, { error: "A senha atual não confere." });
+    const auth = await Auth.hashPassword(next), keep = socket.data.session;
+    await mutate((e) => { Market.setAuth(e, uid, auth); Market.revokeSessions(e, uid, keep); });
+    signOut(uid);
+    reply(cb, { ok: true });
+  });
+
+  socket.on("admin:reset", async (d = {}, cb) => {
+    const uid = meOf(cb); if (!uid) return;
+    if (!eco.users[uid].admin) return reply(cb, { error: "Só admins podem fazer isso." });
+    const target = Market.findByName(eco, d.name);
+    if (!target) return reply(cb, { error: "Não achei uma conta com esse nome." });
+    const temp = Auth.tempPassword(), auth = await Auth.hashPassword(temp);
+    await mutate((e) => { Market.setAuth(e, target.id, auth); Market.revokeSessions(e, target.id); });
+    signOut(target.id);
+    reply(cb, { ok: true, name: target.name, temp });
+  });
+
+  socket.on("market:me", (d, cb) => {
+    const uid = meOf(cb); if (!uid) return;
+    reply(cb, Object.assign({ ok: true }, marketPayload(uid)));
+  });
 });
+
+/* ---------- Mercado: estado persistente ---------- */
+// Cada mutação roda sozinha na fila: aplica numa cópia, salva e só então troca o estado.
+// Se a regra devolver {error} (ou {skip}), ou se o save falhar, nada muda.
+let eco = null, queue = Promise.resolve();
+function mutate(fn) {
+  const run = queue.then(async () => {
+    const draft = structuredClone(eco);
+    const out = fn(draft, Date.now()) || {};
+    if (out.error || out.skip) return out;
+    await store.save(draft);
+    eco = draft;
+    return out;
+  });
+  queue = run.catch(() => {});
+  return run;
+}
+const marketPayload = (uid) => ({ me: Market.view(eco, uid), ledger: Market.ledgerOf(eco, uid, MC.ledgerView), collection: [] });
+const socketsOf = (uid) => [...conns.values()].filter((c) => c.data && c.data.uid === uid);
+function pushMe(uid) { const d = marketPayload(uid); socketsOf(uid).forEach((c) => c.send({ t: "market:me", d })); }
+// desconecta da conta as conexões cuja sessão foi revogada (senha trocada ou resetada)
+function signOut(uid) {
+  socketsOf(uid).forEach((c) => { if (!eco.sessions[c.data.session]) { c.data.uid = null; c.data.session = null; c.send({ t: "auth:out" }); } });
+}
+// mesada: o horário vem do documento salvo, então sobrevive a reinícios
+async function marketTick() {
+  const r = await mutate((e, now) => { const paid = Market.tick(e, now); return paid.length ? { paid } : { skip: true }; });
+  (r.paid || []).forEach(pushMe);
+}
 
 /* ---------- relógio central: timers dos lotes ---------- */
 setInterval(() => {
@@ -318,5 +434,11 @@ setInterval(() => {
   }
 }, 60e3);
 
-server.listen(PORT, () => console.log(`Martelo Live rodando em http://localhost:${PORT}`));
+/* ---------- início: carrega o Mercado antes de aceitar conexões ---------- */
+(async () => {
+  eco = (await store.load()) || Market.create();
+  await marketTick();
+  setInterval(() => marketTick().catch((e) => console.error("erro na mesada", e)), 60e3);
+  server.listen(PORT, () => console.log(`Martelo Live rodando em http://localhost:${PORT}`));
+})().catch((e) => { console.error("Não deu para abrir o Mercado:", e); process.exit(1); });
 module.exports = { server, rooms };

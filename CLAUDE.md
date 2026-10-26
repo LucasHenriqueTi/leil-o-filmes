@@ -4,7 +4,8 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
 
 ## Como rodar
 - `npm start` sobe em http://localhost:3000. Não há dependências: é Node puro, sem `npm install`.
-- `npm test` roda os testes do motor e uma partida online completa (o teste online precisa do Node 22 ou mais novo).
+- `npm test` roda os testes do motor, do Mercado, do armazenamento e uma partida online completa com contas e reinício do servidor (o teste online precisa do Node 22 ou mais novo).
+- Variáveis de ambiente: `PORT`; `ML_DATA` (arquivo do Mercado, padrão `data/market.json`, fora do git; `:memory:` não salva nada); `ML_ADMINS` (nomes separados por vírgula que viram admin ao criar a conta; a primeira conta criada sempre vira admin).
 - `node scripts/build-preview.js` gera `dist/martelo-live-offline.html`, um arquivo único que roda só no modo mesmo aparelho.
 - Deploy: Render, via `render.yaml`. Os passos estão no README.
 
@@ -14,6 +15,29 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
 - `lib/websocket.js`: WebSocket próprio (RFC 6455), feito à mão porque o npm não estava disponível no ambiente original. Pode trocar por `ws` ou Socket.IO se quiser.
 - Protocolo: o cliente envia `{t, id, d}` e o servidor responde com `{t:"ack", id, d}`. Mensagens empurradas pelo servidor: `state`, `chat`, `chat:history`, `react`, `kicked`.
 - Ações aceitas: `room:create`, `room:join` (com token para reconexão e `watch` para espectador), `room:leave`, `room:settings`, `room:kick`, `game:start`, `game:act` (`bid`, `pass`, `sealed` ou `buy`), `game:next`, `game:lobby`, `room:donate` (`amount`, `text`), `chat:send`, `react` e `time`. A doação chega aos clientes como uma mensagem `chat` com o campo `donate` (o valor), e cada cliente toca o alerta.
+- Ações do Mercado:
+
+  | Ação | Envia | Responde |
+  |---|---|---|
+  | `auth:register` | `{name, password}` | `{session, me}`. A primeira conta e as de `ML_ADMINS` viram admin. |
+  | `auth:login` | `{name, password}` | `{session, me}`. Erro genérico "Nome ou senha incorretos.". Bloqueia por nome e por conexão depois de `loginTries` erros. |
+  | `auth:resume` | `{session}` | `{me}`, ou `{error, expired: true}` (aí o cliente apaga `ml-auth`). |
+  | `auth:logout` | — | Revoga a sessão. |
+  | `auth:password` | `{old, new}` | Troca a senha e revoga as outras sessões. |
+  | `admin:reset` | `{name}` | `{name, temp}`. Só admin. Gera uma senha temporária e revoga as sessões da conta. |
+  | `market:me` | — | `{me, ledger, collection}` |
+
+  Mensagens empurradas: `market:me` para o dono quando a carteira muda, e `auth:out` quando a sessão daquela conexão foi revogada.
+- `public/market.js` e `public/market-config.js`: regras puras do Mercado (UMD, recebem `now`) e todos os números calibráveis. A economia inteira é um documento JSON (`eco`):
+  - `users`: conta e carteira `{free, reserved}`;
+  - `sessions`: só o sha256 do token;
+  - `ledger`: extrato, com um lançamento para cada movimentação;
+  - `films`, `copies`, `auctions` e `house`: reservados para as próximas fases.
+
+  Saldo só muda por `credit`, `debit`, `reserve`, `release` e `capture`. A invariante (`free + reserved` igual à soma do extrato) é testada.
+- `lib/store.js`: a interface de armazenamento é `load()`/`save(doc)`. `JsonFileStore` grava num `.tmp` e troca pelo `rename`, guardando um `.bak`; `MemoryStore` é para os testes. Para usar SQLite ou Postgres, basta outra classe com os mesmos métodos.
+- `lib/auth.js`: senha com scrypt (sal aleatório, `timingSafeEqual`), tokens aleatórios, senha temporária e limitador de tentativas (na memória).
+- No servidor, toda mudança no Mercado passa por `mutate(fn)`: uma fila que aplica a regra numa cópia (`structuredClone`), salva e só então troca o estado. Se der `{error}` ou falhar ao salvar, nada muda. O servidor só aceita conexões depois de carregar o arquivo. A mesada roda em `marketTick` no início e a cada 60 s; a data dela fica salva, então sobrevive a reinícios.
 - `public/catalog.js`: fontes de dados gratuitas e sem chave, chamadas pelo navegador.
   - Wikidata (SPARQL): sorteio de filmes, gêneros e notas (propriedade P444).
   - Wikipédia: pôsteres e sinopses, buscando primeiro em português, depois em inglês e por último no IMDb.
@@ -34,6 +58,12 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   - Mercado de gêneros: o gênero principal de cada compra conta; o top 3 dá +3, +2 e +1 ponto por filme.
   - Missões secretas: uma por jogador, sorteada a partir dos lotes, valendo de 3 a 5 pontos.
 - Donate (só online, só na sala antes de começar): cada jogador pode doar a partir de R$ 1, quantas vezes quiser. O valor sai do dinheiro inicial (`p.donated`) e sempre sobra pelo menos R$ 1 para o leilão. `backToLobby` zera as doações.
+- Mercado (modo separado, só online; fase 1 de 5):
+  - Conta com nome e senha.
+  - Carteira persistente: R$ 30 de boas-vindas e mesada de R$ 30 toda segunda às 00:00 de Brasília, igual para todos.
+  - Semanas em que o servidor ficou fora não acumulam (`allowanceCatchUp`).
+  - A partida rápida não mexe na carteira.
+  - Próximas fases: raridade com cópias numeradas, Leilão da Casa, leilões de usuários, coleções e simulação de economia.
 - Pontuação: soma das notas (0 a 10, IMDb; se não houver, Metacritic ou Rotten Tomatoes) mais os bônus. Empate vai para quem tem mais saldo.
 - Lotes: aleatório (Wikidata, com faixas de popularidade Famosos, Conhecidos e Garimpo), por categoria ou escolhidos a dedo. A prévia dos lotes fica escondida até alguém pedir para ver.
 
@@ -41,6 +71,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
 Tema de live stream. A base é ameixa escura (`--ground #150f1f`), o vermelho "no ar" é `--live #ff4f6d`, o dourado do dinheiro é `--coin #ffd166` e a menta da "sua vez" é `--mint #4be3b0`. Fontes: Unbounded nos títulos e Onest no texto. O lote aparece num "palco" 16:9 com o pôster desfocado ao fundo; os lances viram alertas, a venda vira o carimbo "Vendido!" e há chat com reações. O donate vira um alerta no topo da tela: `--lvl` cresce a cada real (tamanho, brilho, itens caindo, tempo na tela, notas do som) e as faixas `DON_TIERS` (1, 2, 3, 5, 8, 10, 15, 20, 30, 50 e 100 reais) trocam o visual e somam efeitos: tela tremendo, buzina, sirene, clarão, raios e voz lendo a mensagem. Os sons são gerados com Web Audio, sem arquivos, e o botão 🔊 do chat liga ou desliga (`ml-sound`). O chat tem seletor de emoji, e mensagens só de emoji aparecem grandes. O pôster ampliado abre ao passar o mouse em qualquer `[data-zoom]` e fecha ao tirar o mouse, clicar fora ou apertar Esc.
 
 ## Cuidados
-- O estado do cliente é salvo no `localStorage` com o prefixo `ml-` (token, nome, configuração, partida local e cache de metadados).
-- As salas se perdem quando o servidor reinicia. No plano gratuito do Render, o servidor dorme depois de uns 15 minutos sem uso.
+- O estado do cliente é salvo no `localStorage` com o prefixo `ml-` (token, nome, configuração, partida local, cache de metadados, `ml-sound` e `ml-auth`, que é o token da conta do Mercado).
+- As salas se perdem quando o servidor reinicia. O Mercado não se perde, porque fica em `ML_DATA`. Mas o disco do Render gratuito é apagado a cada deploy, então o banco de produção do Mercado ainda precisa ser escolhido antes de publicar.
+- Ao mudar o Mercado, atualize `market.js`, `market-config.js` e `test/market.test.js` juntos. No plano gratuito do Render, o servidor dorme depois de uns 15 minutos sem uso.
 - Ao mudar as regras, atualize `engine.js` e `test/engine.test.js` juntos e rode `npm test`.
