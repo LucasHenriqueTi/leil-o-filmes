@@ -1,0 +1,15 @@
+{
+  "name": "martelo-live",
+  "version": "1.0.0",
+  "description": "Leilão de filmes ao vivo para jogar com amigos, online ou no mesmo aparelho. Sem dependências externas.",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test/engine.test.js && node test/online.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
