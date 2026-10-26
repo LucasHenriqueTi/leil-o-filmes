@@ -46,7 +46,9 @@ Se preferir configurar na mão: **New → Web Service**, ambiente **Node**, coma
 1. Quem cria a sala vira o host: define o dinheiro inicial, quantos filmes cada um pode comprar, os formatos e as regras extras, e sorteia os lotes.
 2. A galera entra pelo link `/sala/CODIGO` ou digitando o código. Quem chega depois que o leilão começou entra como espectador e pode usar o chat e as reações.
 3. Quem fica sem dinheiro ou bate o limite de filmes aguarda o fim.
-4. No fim, cada filme vale a nota dele (IMDb; se não houver, Metacritic ou Rotten Tomatoes convertidos para 0 a 10). Somam-se os bônus das regras extras. Empate vai para quem guardou mais dinheiro.
+4. As notas dos filmes ficam escondidas durante a live. No fim, há dois jeitos de ganhar:
+   - **Soma das notas**: cada filme vale a nota dele (IMDb; se não houver, Metacritic ou Rotten Tomatoes convertidos para 0 a 10). Somam-se os bônus das regras extras. Empate vai para quem guardou mais dinheiro.
+   - **Voto da galera**: jogadores e espectadores votam na melhor coleção (ninguém vota na própria). O voto é secreto até o host encerrar a votação. Empate fica com quem somou mais nota.
 
 ### Formatos de leilão
 

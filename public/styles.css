@@ -338,6 +338,23 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .champion .avatar { width: 84px; height: 84px; font-size: 34px; }
 .champion h1 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 4.6vw, 52px); letter-spacing: -0.03em; line-height: 1.02; }
 .champion p { margin: 6px 0 0; color: var(--mute); }
+/* dois jeitos de ganhar: soma das notas e voto da galera */
+.champs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.champs .champion h1 { font-size: clamp(24px, 3vw, 36px); }
+.champs .champion .label { display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; font-weight: 700; color: var(--coin); }
+.champion.crowd { border-color: color-mix(in srgb, var(--mint) 45%, var(--line)); background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--mint) 18%, var(--surface)), var(--surface) 60%); }
+.champion.crowd .label { color: var(--mint); }
+.champion.crowd .avatar:not([style]) { background: var(--ground); font-size: 38px; }
+.champion .toolbar { margin-top: 12px; }
+.stand.fav { border-color: var(--mint); box-shadow: 0 0 0 1px var(--mint) inset; }
+.vote-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--ground); font-size: 13px; color: var(--mute); }
+.vote-line b { font-family: var(--display); font-size: 15px; color: var(--ink); }
+.vote-line.fav { background: color-mix(in srgb, var(--mint) 18%, var(--ground)); }
+.vote-line.fav b { color: var(--mint); }
+.voters { display: flex; flex-direction: column; gap: 8px; }
+.voter { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--ground); border: 1px solid var(--line); }
+.voter .nm { font-weight: 600; min-width: 80px; }
+.voter .seg { flex: 1; }
 .standings { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
 .stand { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .stand .head { display: flex; align-items: center; gap: 12px; }

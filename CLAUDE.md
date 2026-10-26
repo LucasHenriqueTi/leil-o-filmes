@@ -9,11 +9,11 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
 - Deploy: Render, via `render.yaml`. Os passos estão no README.
 
 ## Arquitetura
-- `public/engine.js`: regras puras do jogo, compartilhadas entre servidor e navegador (formato UMD). O estado é JSON simples. O tempo entra sempre como parâmetro `now` e nunca é lido de dentro do motor. `view(st, viewerId)` esconde os lances secretos e as missões dos outros jogadores.
+- `public/engine.js`: regras puras do jogo, compartilhadas entre servidor e navegador (formato UMD). O estado é JSON simples. O tempo entra sempre como parâmetro `now` e nunca é lido de dentro do motor. `view(st, viewerId)` esconde os lances secretos, as missões dos outros jogadores, as notas dos filmes durante a live e os votos da melhor coleção (cada um vê o seu; depois de fechar, só a contagem, sem nomes).
 - `server.js`: serve a pasta `public/` e a rota `/sala/:code`. As salas ficam em memória e o servidor é a autoridade: valida as ações e roda `Engine.tick` a cada 200 ms.
 - `lib/websocket.js`: WebSocket próprio (RFC 6455), feito à mão porque o npm não estava disponível no ambiente original. Pode trocar por `ws` ou Socket.IO se quiser.
 - Protocolo: o cliente envia `{t, id, d}` e o servidor responde com `{t:"ack", id, d}`. Mensagens empurradas pelo servidor: `state`, `chat`, `chat:history`, `react`, `kicked`.
-- Ações aceitas: `room:create`, `room:join` (com token para reconexão e `watch` para espectador), `room:leave`, `room:settings`, `room:kick`, `game:start`, `game:act` (`bid`, `pass`, `sealed` ou `buy`), `game:next`, `game:lobby`, `room:donate` (`amount`, `text`), `chat:send`, `react` e `time`. A doação chega aos clientes como uma mensagem `chat` com o campo `donate` (o valor), e cada cliente toca o alerta.
+- Ações aceitas: `room:create`, `room:join` (com token para reconexão e `watch` para espectador), `room:leave`, `room:settings`, `room:kick`, `game:start`, `game:act` (`bid`, `pass`, `sealed` ou `buy`), `game:next`, `game:lobby`, `game:vote` (`target`, jogadores e espectadores), `game:closeVote` (host), `room:donate` (`amount`, `text`), `chat:send`, `react` e `time`. A doação chega aos clientes como uma mensagem `chat` com o campo `donate` (o valor), e cada cliente toca o alerta.
 - `public/catalog.js`: fontes de dados gratuitas e sem chave, chamadas pelo navegador.
   - Wikidata (SPARQL): sorteio de filmes, gêneros e notas (propriedade P444).
   - Wikipédia: pôsteres e sinopses, buscando primeiro em português, depois em inglês e por último no IMDb.
@@ -34,7 +34,10 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   - Mercado de gêneros: o gênero principal de cada compra conta; o top 3 dá +3, +2 e +1 ponto por filme.
   - Missões secretas: uma por jogador, sorteada a partir dos lotes, valendo de 3 a 5 pontos.
 - Donate (só online, só na sala antes de começar): cada jogador pode doar a partir de R$ 1, quantas vezes quiser. O valor sai do dinheiro inicial (`p.donated`) e sempre sobra pelo menos R$ 1 para o leilão. `backToLobby` zera as doações.
-- Pontuação: soma das notas (0 a 10, IMDb; se não houver, Metacritic ou Rotten Tomatoes) mais os bônus. Empate vai para quem tem mais saldo.
+- As notas não aparecem na live (palco, pôster ampliado e estado enviado aos clientes); só no fim.
+- Dois jeitos de ganhar:
+  - Soma das notas (0 a 10, IMDb; se não houver, Metacritic ou Rotten Tomatoes) mais os bônus. Empate vai para quem tem mais saldo.
+  - Voto da galera: `finish()` abre a votação (`st.voting = "open"`, `st.votes = {quem vota: em quem}`). Jogadores e espectadores votam na melhor coleção, ninguém na própria, e dá para trocar até o host encerrar (`closeVote`). Espectadores votam com um id `w1`, `w2`... que o servidor guarda por token (`room.voters`). Empate nos votos fica com quem está na frente na soma das notas. No modo local, cada jogador escolhe o voto num painel da tela final.
 - Lotes: aleatório (Wikidata, com faixas de popularidade Famosos, Conhecidos e Garimpo), por categoria ou escolhidos a dedo. A prévia dos lotes fica escondida até alguém pedir para ver.
 
 ## Visual

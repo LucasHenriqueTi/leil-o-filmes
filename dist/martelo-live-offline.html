@@ -342,6 +342,23 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .champion .avatar { width: 84px; height: 84px; font-size: 34px; }
 .champion h1 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 4.6vw, 52px); letter-spacing: -0.03em; line-height: 1.02; }
 .champion p { margin: 6px 0 0; color: var(--mute); }
+/* dois jeitos de ganhar: soma das notas e voto da galera */
+.champs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.champs .champion h1 { font-size: clamp(24px, 3vw, 36px); }
+.champs .champion .label { display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; font-weight: 700; color: var(--coin); }
+.champion.crowd { border-color: color-mix(in srgb, var(--mint) 45%, var(--line)); background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--mint) 18%, var(--surface)), var(--surface) 60%); }
+.champion.crowd .label { color: var(--mint); }
+.champion.crowd .avatar:not([style]) { background: var(--ground); font-size: 38px; }
+.champion .toolbar { margin-top: 12px; }
+.stand.fav { border-color: var(--mint); box-shadow: 0 0 0 1px var(--mint) inset; }
+.vote-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--ground); font-size: 13px; color: var(--mute); }
+.vote-line b { font-family: var(--display); font-size: 15px; color: var(--ink); }
+.vote-line.fav { background: color-mix(in srgb, var(--mint) 18%, var(--ground)); }
+.vote-line.fav b { color: var(--mint); }
+.voters { display: flex; flex-direction: column; gap: 8px; }
+.voter { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--ground); border: 1px solid var(--line); }
+.voter .nm { font-weight: 600; min-width: 80px; }
+.voter .seg { flex: 1; }
 .standings { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
 .stand { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .stand .head { display: flex; align-items: center; gap: 12px; }
@@ -545,6 +562,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
       players: [],             // {id, name, color, money, donated, films[], connected, missions[]}
       lots: [], idx: 0, lot: null,
       results: [], log: [],
+      voting: null, votes: {}, // votação da melhor coleção: null | "open" | "closed"; votes = {quem vota: em quem}
       seq: 0,                  // muda a cada alteração (para saber quando reenviar)
       nextColor: 0
     };
@@ -660,7 +678,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
       const order = shuffle(pool, rng);
       st.players.forEach((p, i) => { p.missions = [clone(order[i % order.length])]; });
     }
-    st.phase = "playing"; st.idx = 0; st.results = []; st.log = []; st.starter = 0;
+    st.phase = "playing"; st.idx = 0; st.results = []; st.log = []; st.starter = 0; st.voting = null; st.votes = {};
     startLot(st, now);
     st.seq++;
     return null;
@@ -811,12 +829,40 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
     }
     if (st.idx < st.lots.length) log(st, { k: "nobody" });
     log(st, { k: "end" });
-    st.phase = "over"; st.lot = null; st.seq++;
+    st.phase = "over"; st.lot = null; st.voting = "open"; st.votes = {}; st.seq++;
   }
   function backToLobby(st) {
-    st.phase = "lobby"; st.lots = []; st.idx = 0; st.lot = null; st.results = []; st.log = [];
+    st.phase = "lobby"; st.lots = []; st.idx = 0; st.lot = null; st.results = []; st.log = []; st.voting = null; st.votes = {};
     st.players.forEach((p) => { p.money = 0; p.donated = 0; p.films = []; p.missions = []; });
     st.seq++;
+  }
+
+  /* ---------- votação da melhor coleção (jogadores e espectadores, depois do leilão) ---------- */
+  function vote(st, voter, target) {
+    if (st.phase !== "over" || st.voting !== "open") return "A votação não está aberta.";
+    if (!voter) return "Voto inválido.";
+    if (!byId(st, target)) return "Escolha a coleção de um jogador.";
+    if (voter === target) return "Não vale votar na própria coleção.";
+    st.votes[voter] = target;
+    st.seq++;
+    return null;
+  }
+  function closeVote(st) {
+    if (st.phase !== "over" || st.voting !== "open") return "A votação não está aberta.";
+    st.voting = "closed";
+    st.seq++;
+    return null;
+  }
+  function voteTally(st) {
+    const c = {};
+    Object.values(st.votes || {}).forEach((pid) => (c[pid] = (c[pid] || 0) + 1));
+    return c;
+  }
+  // mais votos vence; empate fica com quem está na frente na soma das notas
+  function voteWinner(st) {
+    const c = voteTally(st);
+    const best = scores(st).filter((r) => c[r.id]).sort((a, b) => c[b.id] - c[a.id])[0];
+    return best ? { id: best.id, votes: c[best.id] } : null;
   }
 
   /* ---------- tempo ---------- */
@@ -882,12 +928,21 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
       v.lot.bids = all ? bids : {};
     }
     if (v.phase !== "over" && !all) v.players.forEach((p) => { if (p.id !== viewerId) p.missions = p.missions.map(() => ({ hidden: true })); });
+    // as notas só aparecem no fim
+    if (v.phase === "playing" && !all) [v.lots, ...v.players.map((p) => p.films)].forEach((list) => list.forEach((f) => { f.r = null; f.rsrc = ""; }));
+    // voto secreto: com a votação aberta, cada um só vê o próprio; no fim, a contagem sem os nomes
+    if (!all) {
+      const votes = v.votes || {};
+      v.myVote = votes[viewerId] || null;
+      v.voteTotal = Object.keys(votes).length;
+      v.votes = v.voting === "closed" ? Object.fromEntries(Object.values(votes).map((t, i) => ["v" + i, t])) : {};
+    }
     if (v.phase !== "playing") delete v.lot;
     return v;
   }
 
   return { COLORS, GROUP_TAG, FORMATS, DEFAULTS, MAX_PLAYERS, MARKET_BONUS, create, addPlayer, removePlayer, setConnected, updateSettings, donate, donateLeft,
-    start, act, next, tick, finish, backToLobby, scores, market, view, primaryGenre, canPlay, cleanSettings, missionPool };
+    start, act, next, tick, finish, backToLobby, vote, closeVote, voteTally, voteWinner, scores, market, view, primaryGenre, canPlay, cleanSettings, missionPool };
 });
 </script>
 <script>/* ============================================================
@@ -1423,7 +1478,6 @@ function zoomable(f, extra) {
   S.zoom[key] = Object.assign({}, f, extra || {});
   return `<button type="button" class="zoom" data-zoom="${key}" aria-label="Ampliar pôster de ${esc(f.title)}">${poster(f)}</button>`;
 }
-const scoreChip = (f) => { const r = C.ratingInfo(f); return r ? `<span class="chip score">★ ${pts(r.v)} ${esc(r.src)}</span>` : ""; };
 
 /* ---------- ícones ---------- */
 const eye = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -1475,7 +1529,7 @@ function renderHome() {
         <div class="hud top"><span class="onair">AO VIVO</span><span class="tag">Lote 3 de 10</span><span class="tag fmt-tag">🔨 Aberto</span></div>
         <div class="content">${poster(DEMO_FILM)}
           <div class="info"><h2 class="title">${esc(DEMO_FILM.title)}</h2><div class="orig">${esc(DEMO_FILM.orig)} (${DEMO_FILM.year})</div>
-            <div class="chips">${scoreChip(DEMO_FILM)}<span class="chip">${esc(DEMO_FILM.dir)}</span><span class="chip">Ficção científica</span></div>
+            <div class="chips"><span class="chip">${esc(DEMO_FILM.dir)}</span><span class="chip">Ficção científica</span></div>
             <p class="synopsis">Um ladrão que invade sonhos recebe a missão inversa: plantar uma ideia na mente de alguém. Quanto mais fundo a equipe desce, mais difícil fica saber o que é real.</p></div></div>
         <div class="scrub"><div class="track"><div class="fill demo-fill"></div></div></div>
       </div>
@@ -1492,7 +1546,7 @@ function renderHome() {
       <div class="formats">
         <div class="fmt extra"><span class="ico">📈</span><b>Mercado de gêneros</b><p>Os três gêneros mais comprados na partida dão bônus no fim: +3, +2 e +1 ponto por filme.</p></div>
         <div class="fmt extra"><span class="ico">🕵️</span><b>Missões secretas</b><p>Cada jogador recebe um objetivo escondido, como ter 2 filmes de terror. Cumpriu, ganha pontos.</p></div>
-        <div class="fmt extra"><span class="ico">⭐</span><b>Pontuação</b><p>Cada filme vale a nota dele no IMDb (ou Metacritic e Rotten Tomatoes). Empate vai para quem guardou mais dinheiro.</p></div>
+        <div class="fmt extra"><span class="ico">⭐</span><b>Dois jeitos de ganhar</b><p>As notas ficam escondidas durante a live. No fim, vence quem somar mais nota no IMDb, e a galera, assistindo ou jogando, vota na melhor coleção.</p></div>
       </div>
     </section>
   </main>`;
@@ -1662,7 +1716,7 @@ function stagePanel(st) {
     <div class="hud top"><span class="onair">AO VIVO</span><span class="tag num">Lote ${st.idx + 1} de ${st.lots.length}</span>${dots}<span class="tag fmt-tag">${FMT_ICON[lot.format]} ${fm.name}</span></div>
     <div class="content">${zoomable(f)}
       <div class="info"><h2 class="title">${esc(f.title)}</h2>${f.orig && f.orig !== f.title ? `<div class="orig">${esc(f.orig)}</div>` : ""}
-        <div class="chips">${scoreChip(f)}${f.year ? `<span class="chip">${esc(f.year)}</span>` : ""}${f.dir ? `<span class="chip">${esc(f.dir)}</span>` : ""}${genres.map((g) => `<span class="chip">${esc(g)}</span>`).join("")}${f.by ? `<span class="chip">Indicado por ${esc(f.by)}</span>` : ""}</div>
+        <div class="chips">${f.year ? `<span class="chip">${esc(f.year)}</span>` : ""}${f.dir ? `<span class="chip">${esc(f.dir)}</span>` : ""}${genres.map((g) => `<span class="chip">${esc(g)}</span>`).join("")}${f.by ? `<span class="chip">Indicado por ${esc(f.by)}</span>` : ""}</div>
         ${synHtml}
         <a class="hint" href="https://www.imdb.com/title/${esc(f.id)}/" target="_blank" rel="noopener">Ver no IMDb</a>
       </div></div>
@@ -1829,21 +1883,47 @@ function renderLive() {
 /* ============================================================
    FIM DA TRANSMISSÃO
    ============================================================ */
+// voto da galera: online o servidor só manda o meu voto e, depois de fechar, a contagem sem nomes
+function voteBox(st, p, tally, fav) {
+  const n = tally[p.id] || 0;
+  if (st.voting !== "open") return `<div class="vote-line ${fav ? "fav" : ""}"><span>🗳️ Voto da galera</span><b class="num">${n} ${n === 1 ? "voto" : "votos"}</b></div>`;
+  if (S.mode === "local") return "";
+  if (p.id === S.you) return `<div class="vote-line"><span class="hint">Sua coleção. Não vale votar nela.</span></div>`;
+  const mine = st.myVote === p.id;
+  return `<button class="btn ${mine ? "mint" : ""}" data-vote="${p.id}" aria-pressed="${mine}">${mine ? "✓ Seu voto" : "Votar nesta coleção"}</button>`;
+}
+function localVotePanel(st) {
+  if (S.mode !== "local" || st.voting !== "open") return "";
+  const rows = st.players.map((v) => `<div class="voter"><span class="avatar sm" style="background:${v.color}">${initial(v.name)}</span><span class="nm">${esc(v.name)}</span>
+    <div class="seg" role="group" aria-label="Voto de ${esc(v.name)}">${st.players.filter((p) => p.id !== v.id).map((p) => `<button type="button" data-vote="${p.id}" data-voter="${v.id}" aria-pressed="${st.votes[v.id] === p.id}">${esc(p.name)}</button>`).join("")}</div></div>`).join("");
+  return `<section class="panel"><div class="panel-head"><h2>Votação da melhor coleção</h2><span class="hint">Ninguém vota em si mesmo</span></div><div class="voters">${rows}</div></section>`;
+}
 function renderFinal() {
   const st = cur(), sc = E.scores(st), r = st.settings;
   const top = sc[0], winner = pl(top.id);
   const mk = r.market ? E.market(st) : [];
+  const open = st.voting === "open", tally = E.voteTally(st);
+  const total = S.mode === "online" ? st.voteTotal || 0 : Object.keys(st.votes || {}).length;
+  const vw = open ? null : E.voteWinner(st), fan = vw && pl(vw.id);
+  let crowd;
+  if (open) crowd = `<section class="champion crowd"><span class="avatar">🗳️</span><div><span class="label">Voto da galera</span><h1>Votação aberta</h1>
+      <p class="num">Quem joga e quem assiste escolhe a melhor coleção. ${total} ${total === 1 ? "voto" : "votos"} até agora.${S.mode === "online" && !st.myVote ? " Vote nos cartões abaixo." : ""}</p>
+      ${isHost() ? `<div class="toolbar"><button class="btn mint" data-act="close-vote">Encerrar votação</button></div>` : ""}</div></section>`;
+  else if (fan) crowd = `<section class="champion crowd"><span class="avatar" style="background:${fan.color}">${initial(fan.name)}</span><div><span class="label">Voto da galera</span><h1>${esc(fan.name)} montou a melhor coleção</h1>
+      <p class="num">${vw.votes} de ${total} ${total === 1 ? "voto" : "votos"}. Empate fica com quem somou mais nota.</p></div></section>`;
+  else crowd = `<section class="champion crowd"><span class="avatar">🗳️</span><div><span class="label">Voto da galera</span><h1>Ninguém votou</h1><p>A votação foi encerrada sem votos.</p></div></section>`;
   const cards = sc.map((row, i) => {
     const p = pl(row.id);
     const cols = [["Notas", pts(row.ratings)]];
     if (r.market) cols.push(["Mercado", "+" + row.market]);
     if (r.missions) cols.push(["Missões", "+" + row.missionPts]);
     cols.push(["Total", pts(row.total)]);
-    return `<article class="stand" style="--pc:${p.color}">
+    return `<article class="stand ${fan && fan.id === p.id ? "fav" : ""}" style="--pc:${p.color}">
       <div class="head"><span class="rank num">${i + 1}º</span><span class="avatar" style="background:${p.color}">${initial(p.name)}</span><h3>${esc(p.name)}</h3><span class="hint num">sobrou ${brl(p.money)}</span></div>
       <div class="breakdown" style="grid-template-columns:repeat(${cols.length},minmax(0,1fr))">${cols.map(([l, v], k) => `<div class="${k === cols.length - 1 ? "total" : ""}"><span>${l}</span><b class="num">${v}</b></div>`).join("")}</div>
       ${p.films.length ? `<div class="coll">${p.films.map((f) => { const ri = f.r != null ? { v: f.r, src: f.rsrc || "IMDb" } : null; return `<div class="item"><div style="width:40px">${zoomable(f)}</div><div class="t">${esc(f.title)}<small>${ri ? `★ ${pts(ri.v)} ${esc(ri.src)}` : "sem nota"}${f.year ? ` · ${esc(f.year)}` : ""}</small></div><span class="paid num">${brl(f.paid)}</span></div>`; }).join("")}</div>` : `<p class="empty">Não arrematou nenhum filme.</p>`}
       ${r.missions ? `<div class="mis-list">${row.missions.map((m) => `<div><span class="${m.ok ? "ok" : "no"}">${m.ok ? "✓" : "✗"}</span><span>${esc(m.text)} ${m.ok ? `(+${m.pts})` : ""}</span></div>`).join("")}</div>` : ""}
+      ${voteBox(st, p, tally, fan && fan.id === p.id)}
     </article>`;
   }).join("");
   const unsold = st.results.filter((x) => !x.by);
@@ -1851,8 +1931,12 @@ function renderFinal() {
     ? `<button class="btn go big" data-act="again">Nova rodada com a mesma galera</button><button class="btn quiet" data-act="leave">Sair</button>`
     : `<p class="hint">Aguardando ${esc(nameOf(S.host))} abrir outra rodada.</p><button class="btn quiet" data-act="leave">Sair</button>`;
   const main = `<div class="main final">
-    <section class="champion"><span class="avatar" style="background:${winner.color}">${initial(winner.name)}</span>
-      <div><h1>${esc(winner.name)} venceu o leilão</h1><p class="num">${pts(top.total)} pontos com ${winner.films.length} ${winner.films.length === 1 ? "filme" : "filmes"}. Empate vai para quem guardou mais dinheiro.</p></div></section>
+    <div class="champs">
+      <section class="champion"><span class="avatar" style="background:${winner.color}">${initial(winner.name)}</span>
+        <div><span class="label">Soma das notas</span><h1>${esc(winner.name)} venceu nas notas</h1><p class="num">${pts(top.total)} pontos com ${winner.films.length} ${winner.films.length === 1 ? "filme" : "filmes"}. Empate vai para quem guardou mais dinheiro.</p></div></section>
+      ${crowd}
+    </div>
+    ${localVotePanel(st)}
     <div class="standings">${cards}</div>
     ${r.market && mk.length ? `<section class="panel"><h2>Bolsa de gêneros no fechamento</h2><div class="ticker">${mk.map((m) => `<div class="tick ${m.bonus ? "hot" : ""}"><b>${esc(m.genre)}</b><span class="num">${m.count} ${m.count === 1 ? "filme" : "filmes"}</span>${m.bonus ? `<em>+${m.bonus} por filme</em>` : ""}</div>`).join("")}</div></section>` : ""}
     ${unsold.length ? `<section class="panel"><h2>Ficaram sem dono</h2><div class="chips" style="display:flex;flex-wrap:wrap;gap:6px">${unsold.map((x) => `<span class="chip">${esc(x.title)}</span>`).join("")}</div></section>` : ""}
@@ -2059,8 +2143,9 @@ function showZoom(key, x, y) {
   const f = S.zoom[key]; if (!f) return hideZoom();
   if (zoomKey !== key) {
     const ri = f.r != null ? { v: f.r, src: f.rsrc || "IMDb" } : C.ratingInfo(f);
+    const rate = screen() === "live" ? "Nota revelada no fim" : ri ? `★ ${pts(ri.v)} ${esc(ri.src)}` : "Sem nota"; // na live a nota fica escondida
     zoomPop.innerHTML = `${poster(f)}<span class="t">${esc(f.title)}</span><div class="sub"><span>${esc(f.year || "")}${f.dir ? " · " + esc(f.dir) : ""}</span></div>
-      <div class="sub"><span class="rate">${ri ? `★ ${pts(ri.v)} ${esc(ri.src)}` : "Sem nota"}</span>${f.paid ? `<span>Pago ${brl(f.paid)}</span>` : ""}</div>`;
+      <div class="sub"><span class="rate">${rate}</span>${f.paid ? `<span>Pago ${brl(f.paid)}</span>` : ""}</div>`;
     zoomKey = key;
   }
   zoomPop.hidden = false; zoomPop.style.display = "flex";
@@ -2237,6 +2322,12 @@ $app.addEventListener("click", async (e) => {
   if (d.openSealed) { S.ui.sealedOpen = d.openSealed; render(); document.getElementById("bidv")?.focus(); return; }
   if (d.sealed || d.sealed0) { const pid = d.sealed || d.sealed0; const v = d.sealed0 ? 0 : +(document.getElementById("bidv") || {}).value || 0; S.ui.sealedOpen = null; return doAct("sealed", v, pid); }
   if (d.buy) return doAct("buy", 0, d.buy);
+  if (d.vote) {
+    if (S.mode === "online") { const r = await N.call("game:vote", { target: d.vote }); if (r.error) toast(r.error, true); return; }
+    const err = E.vote(S.local, d.voter, d.vote);
+    if (err) return toast(err, true);
+    saveLocal(); return render();
+  }
   if (d.peekMission) {
     const p = pl(d.peekMission);
     return modal(`Missão de ${p.name}`, `<p class="hint">Só ${esc(p.name)} deve olhar.</p>${p.missions.map((m) => `<div class="mission"><span class="seal">🕵️</span><div><p>${esc(m.text)}</p><span class="pts">+${m.pts} pontos se cumprir</span></div></div>`).join("")}`, [{ label: "Esconder", cls: "go" }]);
@@ -2281,6 +2372,10 @@ $app.addEventListener("click", async (e) => {
       if (r.error) return toast(r.error, true);
       S.ui.donate.text = ""; S.ui.donate.v = 1; return render();
     }
+    case "close-vote":
+      if (S.mode === "online") { const r = await N.call("game:closeVote"); if (r.error) toast(r.error, true); }
+      else { const err = E.closeVote(S.local); if (err) toast(err, true); else { saveLocal(); render(); } }
+      return;
     case "again":
       if (S.mode === "online") { const r = await N.call("game:lobby"); if (r.error) toast(r.error, true); else drawLots(); }
       else { S.local = null; store.del("ml-local"); render(); drawLots(); }
