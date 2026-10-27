@@ -584,6 +584,9 @@ function marketTabs(me) {
     `<button type="button" class="mtab" data-mtab="${k}" aria-current="${S.mtab === k ? "page" : "false"}"><span aria-hidden="true">${i}</span>${l}${badge[k] ? `<span class="badge num">${badge[k]}</span>` : ""}</button>`).join("")}</div></nav>`;
 }
 // painel sem botão de esconder: dentro das abas cada tela já tem um assunto só
+// explicação num balão (mouse em cima, foco pelo teclado ou toque), em vez de um parágrafo na tela
+const tipAttr = (html) => `data-tip="${esc(html)}"`;
+const tip = (html) => `<button type="button" class="tip" ${tipAttr(html)} aria-label="${esc(html.replace(/<[^>]+>/g, ""))}">?</button>`;
 function mpanel(key, title, body, extra, cls) {
   return `<section class="panel ${cls || ""}"><div class="panel-head"><h2>${title}</h2>${extra || ""}</div>${body}</section>`;
 }
@@ -727,20 +730,21 @@ function scoreBox(m) {
   if (!s) return "";
   return `<div class="scorebox"><div><span class="label">Pontos da coleção</span><b class="num">${pts(s.total)}</b>
       <span class="hint num">${pts(s.base)} das notas${s.bonuses.length ? " + bônus" : ""}</span></div>
-    ${s.bonuses.length ? `<div class="chips">${bonusChips(s)}</div>` : `<p class="hint">Bônus: 3 filmes da mesma série (+${MC.collectionBonuses.series.pts}), do mesmo diretor (+${MC.collectionBonuses.director.pts}), 4 da mesma década ou do mesmo gênero (+${MC.collectionBonuses.decade.pts}) e filmes do gênero da temporada.</p>`}
+    ${s.bonuses.length ? `<div class="chips">${bonusChips(s)}</div>` : `<p class="hint">Nenhum bônus ainda ${tip(`Bônus: 3 filmes da mesma série (+${MC.collectionBonuses.series.pts}), do mesmo diretor (+${MC.collectionBonuses.director.pts}), 4 da mesma década ou do mesmo gênero (+${MC.collectionBonuses.decade.pts}) e filmes do gênero da temporada.`)}</p>`}
     ${caps ? `<p class="hint">Teto por jogador: ${caps}</p>` : ""}</div>`;
 }
 function seasonBanner(s) {
   s = s || (S.ranking && S.ranking.season);
   if (!s) return "";
-  return `<div class="season">🔥 <span>Temporada: <b>${esc(s.genre)}</b> em alta até ${esc(new Date(s.endsAt - 1).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }))}. Cada filme do gênero vale +${MC.seasonPts} pontos e ${Math.round((MC.seasonValueBoost - 1) * 100)}% a mais no valor de referência.</span>${s.override ? `<span class="pill top">escolhido pelo admin</span>` : ""}</div>`;
+  const until = new Date(s.endsAt - 1).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return `<button type="button" class="season" ${tipAttr(`<b>${esc(s.genre)}</b> em alta até ${esc(until)}. Cada filme do gênero vale +${MC.seasonPts} pontos na coleção e ${Math.round((MC.seasonValueBoost - 1) * 100)}% a mais no valor de referência.${s.override ? " Escolhido pelo admin." : ""}`)}>🔥 <span>Temporada: <b>${esc(s.genre)}</b></span></button>`;
 }
 function rankingPanel(me) {
   const R = S.ranking;
   if (!R) return "";
   const rows = R.ranking.map((r, i) => `<div class="rank-row ${r.id === me.id ? "me" : ""}"><span class="pos num">${i + 1}º</span><b>${esc(r.name)}</b>
     <span class="hint num">${r.films} ${r.films === 1 ? "filme" : "filmes"}</span><span class="chips">${bonusChips(r)}</span><b class="num total">${pts(r.total)}</b></div>`).join("");
-  return mpanel("ranking", "Ranking de colecionadores", `${seasonBanner()}<p class="hint">Pontos = soma das notas de referência dos seus filmes (cada filme conta uma vez; um Tomate Podre vale 10 menos a nota dele) + bônus de conjunto + temporada.</p><div class="ranking">${rows}</div>`);
+  return mpanel("ranking", `Ranking de colecionadores ${tip("Pontos = soma das notas de referência dos seus filmes (cada filme conta uma vez; um Tomate Podre vale 10 menos a nota dele) + bônus de conjunto + temporada.")}`, `${seasonBanner()}<div class="ranking">${rows}</div>`);
 }
 async function loadRanking() {
   const r = await N.call("market:ranking");
@@ -770,11 +774,10 @@ function catalogPanel(me) {
   const copies = (f) => `<span class="hint num">${f.minted} de ${f.supply} ${f.supply === 1 ? "cópia emitida" : "cópias emitidas"}</span>`;
   const body = !c.films.length
     ? `<div class="curtain"><div><b>${c.refilling ? "A Casa está escolhendo os filmes…" : "Catálogo vazio"}</b><p>A Casa sorteia filmes com pelo menos ${MC.minScores} notas (IMDb, Metacritic ou Rotten Tomatoes) e cadastra sozinha.</p></div></div>`
-    : `<p class="hint">Cada filme tem uma tiragem limitada de cópias numeradas, definida pela raridade. A nota de referência é a média das notas disponíveis.</p>
-       <div class="cat-tools"><div class="seg" role="group" aria-label="Filtrar por raridade">${opts.map(([k, l]) => `<button type="button" data-catf="${k}" aria-pressed="${flt === k}">${esc(l)}</button>`).join("")}</div>
+    : `<div class="cat-tools"><div class="seg" role="group" aria-label="Filtrar por raridade">${opts.map(([k, l]) => `<button type="button" data-catf="${k}" aria-pressed="${flt === k}">${esc(l)}</button>`).join("")}</div>
          ${viewToggle("catalog")}</div>
        ${S.views.catalog === "grid" ? `<div class="pgrid">${list.map((f) => posterCard(f)).join("")}</div>` : `<div class="mlist">${list.map((f) => filmRow(f, copies(f))).join("")}</div>`}`;
-  return mpanel("catalog", "Filmes do Mercado", body, admin);
+  return mpanel("catalog", `Filmes do Mercado ${tip("Cada filme tem uma tiragem limitada de cópias numeradas, definida pela raridade. A nota de referência é a média das notas disponíveis (IMDb, Metacritic e Rotten Tomatoes, que vale metade).")}`, body, admin);
 }
 // Lista ou Pôsteres: cada lugar (catálogo, coleção, últimos leilões) guarda a própria escolha em ml-views
 function viewToggle(key) {
@@ -850,8 +853,8 @@ function auctionCard(a, me) {
     <div class="ahead">${head}<span class="clock-wrap">${scheduled ? `<span class="hint">abre em</span> <span class="clock num" data-clock="${a.startsAt}"></span>` : `<span class="clock num" data-clock="${a.endsAt}"></span>`}</span></div>
     ${filmRow(f, `<span class="serial num">${esc(a.lot)}</span>${a.fromStock ? `<span class="hint">volta do estoque da Casa</span>` : ""}${a.featured ? `<span class="pill top">vitrine</span>` : ""}`)}
     <div class="abody"><div class="aread">${read}</div><div class="actl">${ctl}</div></div>
-    ${a.highBy === "house" ? `<p class="hint">🏠 A Casa disputa as estreias com um teto escondido: para levar, passe do lance dela. Se ela terminar na frente, a cópia não sai.</p>` : ""}
-    ${a.hasReserve && !a.isSeller ? `<p class="hint">🔒 Tem preço de reserva secreto: abaixo dele, a cópia não é vendida.</p>` : ""}
+    ${a.highBy === "house" ? `<p class="hint">🏠 A Casa está na frente ${tip("A Casa disputa as estreias com um teto escondido: para levar, passe do lance dela. Se ela terminar na frente, a cópia não sai.")}</p>` : ""}
+    ${a.hasReserve && !a.isSeller ? `<p class="hint">🔒 Reserva secreta ${tip("O dono definiu um preço mínimo escondido: abaixo dele, a cópia não é vendida e os lances voltam.")}</p>` : ""}
     ${a.extended ? `<p class="hint num">Prorrogada ${a.extended}× por lances no fim.</p>` : ""}
     ${me.admin ? `<div class="adm-row"><span class="hint">Admin:</span><button class="btn quiet" data-adm-close="${esc(a.id)}">Encerrar agora</button><button class="btn quiet" data-adm-cancel="${esc(a.id)}">Cancelar</button></div>` : ""}
   </article>`;
@@ -868,11 +871,10 @@ function userAuctionsPanel(me) {
   const A = S.auctions;
   if (!A) return "";
   const P = A.players || [], feat = P.filter((a) => a.featured), rest = P.filter((a) => !a.featured);
-  const body = `<p class="hint">Qualquer um anuncia uma cópia da coleção pelo botão <b>Anunciar</b>. Anunciar custa ${mny(MC.listingFee)}; a vitrine (com aviso para todos) custa mais ${mny(MC.featureFee)}, e é de graça para ${esc(rarName(MC.featureFreeFrom))} ou mais raro. Quem vende paga ${Math.round(MC.saleFeePct * 100)}% do preço.</p>
-    ${feat.length ? `<span class="label">⭐ Vitrine</span><div class="auctions">${feat.map((a) => auctionCard(a, me)).join("")}</div>` : ""}
+  const body = `${feat.length ? `<span class="label">⭐ Vitrine</span><div class="auctions">${feat.map((a) => auctionCard(a, me)).join("")}</div>` : ""}
     ${rest.length ? `<span class="label">Anunciados</span><div class="auctions">${rest.map((a) => auctionCard(a, me)).join("")}</div>` : ""}
     ${P.length ? "" : `<div class="curtain"><div><b>Nenhum leilão de jogador agora</b><p>Anuncie uma cópia da sua coleção para os outros darem lance.</p></div></div>`}`;
-  return mpanel("players", "Leilões dos jogadores", body, P.length ? `<span class="pill in">${P.length} ${P.length === 1 ? "anúncio" : "anúncios"}</span>` : "");
+  return mpanel("players", `Leilões dos jogadores ${tip(`Qualquer um anuncia uma cópia da coleção pelo botão <b>Anunciar</b>. Anunciar custa ${mny(MC.listingFee)}; a vitrine (com aviso para todos) custa mais ${mny(MC.featureFee)}, e é de graça para ${esc(rarName(MC.featureFreeFrom))} ou mais raro. Quem vende paga ${Math.round(MC.saleFeePct * 100)}% do preço.`)}`, body, P.length ? `<span class="pill in">${P.length} ${P.length === 1 ? "anúncio" : "anúncios"}</span>` : "");
 }
 /* ---------- anunciar uma cópia: formulário num modal que sobrevive aos re-renders ---------- */
 let listDraft = null;
@@ -922,8 +924,7 @@ function adminPanel(me) {
   const rows = accs.map((u) => `<div class="acc-row"><b>${esc(u.name)}${u.admin ? ` <span class="pill top">admin</span>` : ""}</b>
     <span class="num">${mny(u.wallet.free)} livres${u.wallet.reserved ? ` · ${mny(u.wallet.reserved)} reservados` : ""}</span>
     <span class="copies">${u.copies.length ? u.copies.map((c) => `${rarBadge(c.rarity)} ${esc(c.title)} <small class="num">${esc(c.label)}</small>`).join("<br>") : `<span class="hint">sem cópias</span>`}</span></div>`).join("");
-  return mpanel("admin", "Ferramentas do admin", `<p class="hint">Para testar: abra estreias fora da agenda, encerre antes do tempo (o vencedor recebe a cópia na hora) e confira abaixo a carteira e a coleção de cada conta.</p>
-    <div class="toolbar"><span class="label">Abrir estreia agora:</span>${MC.estreias.map((ev) => `<button class="btn" data-adm-open="${esc(ev.key)}">${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}</button>`).join("")}</div>
+  return mpanel("admin", `Ferramentas do admin ${tip("Para testar: abra estreias fora da agenda, encerre antes do tempo (o vencedor recebe a cópia na hora) e confira abaixo a carteira e a coleção de cada conta.")}`, `    <div class="toolbar"><span class="label">Abrir estreia agora:</span>${MC.estreias.map((ev) => `<button class="btn" data-adm-open="${esc(ev.key)}">${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}</button>`).join("")}</div>
     <form class="acct-form" id="admGrant" autocomplete="off"><input class="input" id="adm-name" maxlength="18" placeholder="Nome da conta"><input class="input num" id="adm-amount" type="number" min="1" max="10000" placeholder="M$"><button class="btn" type="submit">Dar M$</button></form>
     <div class="panel-head"><span class="label">Contas (${accs.length})</span><button class="btn quiet" data-act="adm-refresh">Atualizar</button></div>
     <div class="accs">${rows || `<p class="hint">Carregando…</p>`}</div>
@@ -948,11 +949,10 @@ function auctionsPanel(me) {
   const recent = A.recent.slice(0, recentGrid ? 7 : 4).map((a) => recentGrid
     ? posterCard(a.film, { label: "leilão encerrado", foot: `<span class="meta res">${resultShort(a)}</span>`, detail: `<span class="hint">${a.kind === "user" ? `${FMT_ICO[a.format]} ${esc(a.formatName)}` : `${EVENT_ICON[a.event] || "🎬"} ${esc(a.eventName || "")}`}${a.lot ? ` · ${esc(a.lot)}` : ""}</span>${resultText(a)}` })
     : filmRow(a.film, resultText(a)));
-  const body = `<p class="hint">Cada estreia leiloa uma cópia. Lance nos últimos ${MC.extendWindowSec} s soma mais ${MC.extendBySec} s ao relógio. O lance fica reservado na sua carteira; se alguém passar, ele volta na hora. Quem vence paga e recebe a cópia.</p>
-    ${A.open.length ? `<div class="auctions">${A.open.map((a) => auctionCard(a, me)).join("")}</div>` : `<div class="curtain"><div><b>Nenhuma estreia aberta agora</b><p>A Casa abre uma por dia, uma por semana e uma por mês.</p></div></div>`}
+  const body = `${A.open.length ? `<div class="auctions">${A.open.map((a) => auctionCard(a, me)).join("")}</div>` : `<div class="curtain"><div><b>Nenhuma estreia aberta agora</b><p>A Casa abre uma por dia, uma por semana e uma por mês.</p></div></div>`}
     ${next.length ? `<p class="hint">Próximas: ${next.join(" · ")}</p>` : ""}
     ${recent.length ? `<div class="cat-tools"><span class="label">Últimos leilões encerrados</span>${viewToggle("recent")}</div><div class="${recentGrid ? "pgrid" : "mlist"}">${recent.join("")}</div>` : ""}`;
-  return mpanel("auctions", "Estreias da Casa", body, A.open.length ? `<span class="pill in">${A.open.length} ${A.open.length === 1 ? "aberta" : "abertas"}</span>` : "");
+  return mpanel("auctions", `Estreias da Casa ${tip(`Cada estreia leiloa uma cópia. Lance nos últimos ${MC.extendWindowSec} s soma mais ${MC.extendBySec} s ao relógio. O lance fica reservado na sua carteira; se alguém passar, ele volta na hora. Quem vence paga e recebe a cópia.`)}`, body, A.open.length ? `<span class="pill in">${A.open.length} ${A.open.length === 1 ? "aberta" : "abertas"}</span>` : "");
 }
 async function loadAuctions() {
   const r = await N.call("market:auctions");
@@ -999,6 +999,7 @@ function render() {
   const feedAtBottom = !feed || feed.scrollHeight - feed.scrollTop - feed.clientHeight < 40;
   const chatDraft = (document.getElementById("chatText") || {}).value || "";
   S.zoom = {};
+  if (tipFor) hideTip();   // o elemento do balão vai ser trocado
   const sc = screen();
   let body;
   if (sc === "home") body = renderHome();
@@ -1213,6 +1214,31 @@ document.addEventListener("focusout", (e) => { if (e.target.closest && e.target.
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { hideZoom(); if (S.ui.modal) { S.ui.modal = null; render(); } } });
 addEventListener("scroll", hideZoom, { passive: true });
 
+/* ---------- balões de explicação ([data-tip]) ---------- */
+const tipPop = document.createElement("div"); tipPop.id = "tipPop"; tipPop.setAttribute("role", "tooltip"); tipPop.hidden = true; document.body.appendChild(tipPop);
+const HOVER = matchMedia("(hover: hover)");
+let tipFor = null;
+function showTip(el) {
+  tipFor = el; tipPop.innerHTML = el.dataset.tip; tipPop.hidden = false;
+  const r = el.getBoundingClientRect(), w = tipPop.offsetWidth, h = tipPop.offsetHeight, pad = 10;
+  let top = r.bottom + 8;
+  if (top + h > innerHeight - pad) top = r.top - h - 8;
+  tipPop.style.left = Math.max(pad, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - pad)) + "px";
+  tipPop.style.top = Math.max(pad, top) + "px";
+}
+function hideTip() { tipPop.hidden = true; tipFor = null; }
+// com mouse: abre em cima e fecha ao sair; no toque: abre e fecha tocando (ou tocando fora)
+document.addEventListener("mousemove", (e) => {
+  if (!HOVER.matches) return;
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  if (t) { if (t !== tipFor) showTip(t); } else if (tipFor) hideTip();
+});
+document.addEventListener("focusin", (e) => { const t = e.target.closest && e.target.closest("[data-tip]"); if (t && t.matches(":focus-visible")) showTip(t); });
+document.addEventListener("focusout", (e) => { if (e.target.closest && e.target.closest("[data-tip]")) hideTip(); });
+document.addEventListener("click", (e) => { if (tipFor && !(e.target.closest && e.target.closest("[data-tip]"))) hideTip(); }, true);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && tipFor) hideTip(); });
+addEventListener("scroll", () => { if (tipFor) hideTip(); }, { passive: true });
+
 /* ============================================================
    AÇÕES
    ============================================================ */
@@ -1343,6 +1369,7 @@ $app.addEventListener("click", async (e) => {
   const b = e.target.closest("button, [data-zoom]"); if (!b) return;
   const d = b.dataset;
   if (d.zoom) { const r = b.getBoundingClientRect(); if (zoomKey === d.zoom) hideZoom(); else showZoom(d.zoom, r.right, r.top + r.height / 2); return; }
+  if (d.tip != null) { if (tipFor === b && !HOVER.matches) hideTip(); else showTip(b); return; }
   if (d.fold) { S.fold[d.fold] = !S.fold[d.fold]; store.set("ml-fold", S.fold); return render(); }
   if (d.modal != null) { const a = S.ui.modal.actions[+d.modal]; S.ui.modal = null; render(); if (a.run) a.run(); return; }
   if (d.rule) return setRule({ [d.rule]: +d.val });
