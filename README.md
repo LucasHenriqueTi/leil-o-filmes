@@ -77,12 +77,101 @@ O Mercado é um modo separado, com economia que fica salva entre as partidas. A 
 O que já funciona:
 
 - **Conta**: nome e senha. A primeira conta criada vira admin. Se alguém esquecer a senha, um admin gera uma senha temporária pela tela do Mercado.
-- **Carteira**: R$ 30 de boas-vindas e uma mesada de R$ 30 toda segunda às 00:00 (horário de Brasília), igual para todos. Semanas em que o servidor ficou desligado não acumulam.
+- **Moeda própria (M$)**: o dinheiro do Mercado é separado do R$ da partida rápida. Um não vira o outro.
+- **Carteira**: M$ 30 de boas-vindas e uma mesada de M$ 30 toda segunda às 00:00 (horário de Brasília), igual para todos. Semanas em que o servidor ficou desligado não acumulam.
 - **Extrato**: cada entrada e saída de dinheiro aparece com o motivo e a data.
+- **Catálogo do Mercado**: a Casa escolhe os filmes sozinha. Ela sorteia no Wikidata filmes que tenham pelo menos 2 notas entre IMDb, Metacritic e Rotten Tomatoes. Há também 9 filmes de exemplo salvos no projeto, um ou mais por raridade, que aparecem até sem internet.
+- **Nota de referência**: a média dessas notas, de 0 a 10. O Rotten Tomatoes vale metade, porque mede a porcentagem de críticas positivas e não é uma nota (87% não quer dizer 8,7). Quando as notas quase não discordam (diferença de até 1 ponto), o filme ganha o selo **Unanimidade**.
+- **Raridade**: a nota define quantas cópias o filme vai ter, e cada cópia é numerada ("cópia 2/3"), com dono e histórico de vendas.
 
-Ainda vão chegar: raridade com cópias numeradas, o Leilão da Casa, leilões entre jogadores e coleções.
+  | Raridade | Nota | Cópias | Lance mínimo |
+  |---|---|---|---|
+  | Comum | até 6,4 | 20 | M$ 1 |
+  | Incomum | 6,5 a 7,2 | 10 | M$ 3 |
+  | Raro | 7,3 a 7,9 | 5 | M$ 6 |
+  | Épico | 8,0 a 8,4 | 3 | M$ 10 |
+  | Lendário | 8,5 a 9,4 | 1 | M$ 15 |
+  | Obra de Arte | 9,5 a 10, com as 3 notas | 1 | M$ 25 |
 
-Os números (valor da mesada, dia, horário etc.) ficam em `public/market-config.js`. Os dados ficam em `data/market.json`; dá para mudar o caminho com a variável `ML_DATA`.
+- **Garimpo**: um filme pouco lembrado (menos de 30 páginas na Wikipédia) sobe uma raridade, até Épico.
+- **Estreias da Casa**: é assim que as cópias entram no jogo. Cada estreia leiloa uma cópia, nova ou recomprada:
+
+  | Estreia | Quando | Raridades | Duração |
+  |---|---|---|---|
+  | do dia | todo dia às 20h | Comum ou Incomum | 15 min |
+  | da semana | sábado às 20h | Raro ou Épico | 30 min |
+  | do mês | dia 1º às 20h | Lendário ou Obra de Arte | 60 min |
+
+  O lance fica reservado na carteira. Se alguém passar, o dinheiro volta na hora. Um lance nos últimos 30 segundos soma mais 30 segundos ao relógio. Quem vence paga e recebe a cópia numerada.
+- **Venda para a Casa**: na Coleção, cada cópia tem o botão "Vender para a Casa". A Casa paga 40% do valor de referência, que é o lance mínimo da raridade × 2, na média com as últimas vendas do filme. Ela nunca paga mais que o lance mínimo da raridade, então comprar barato numa estreia e revender não dá lucro. A cópia volta para o estoque e pode sair numa próxima estreia.
+
+**Ferramentas do admin** (painel na tela do Mercado, só para admins):
+- encerrar uma estreia antes do tempo (quem está na frente paga e recebe a cópia na hora);
+- cancelar uma estreia (o lance volta);
+- abrir uma estreia do dia, da semana ou do mês fora da agenda;
+- dar M$ para uma conta de teste;
+- ver a carteira e a coleção de todas as contas.
+
+**Zerar o Mercado:** com o servidor desligado, rode `npm run reset`. Apaga contas, carteiras, catálogo, cópias e estreias. No próximo início tudo começa do zero, e a primeira conta criada vira admin.
+
+**Modo de teste** (ligado por enquanto, em `testMode`): toda vez que o servidor liga, as estreias abertas são canceladas (com os lances devolvidos), o catálogo volta aos exemplos mais os filmes que já têm dono, a Casa busca 12 filmes novos e as três estreias abrem na hora. Desligue antes de publicar.
+
+### Leilões entre jogadores
+
+Na Coleção, o botão **Anunciar** coloca uma cópia sua em leilão para os outros jogadores. Você escolhe:
+
+- **Formato:**
+
+  | Formato | Como funciona |
+  |---|---|
+  | Aberto | Lances à vista, sempre maiores. Lance nos últimos 30 s soma mais 30 s. |
+  | Lance secreto | Cada um dá um lance escondido e pode trocar até o fim. O maior leva e paga o próprio lance. |
+  | Secreto de 2º preço | Lances escondidos. O maior leva, mas paga o valor do segundo maior lance. |
+  | Relógio holandês | O preço começa no valor que você escolher e cai até o mínimo. O primeiro a apertar "Comprar" leva. |
+
+- **Duração** (de 5 minutos a 3 dias) e **início** (agora ou agendado para até 7 dias depois).
+- **Reserva secreta** (opcional): abaixo dela a cópia não é vendida, continua sua e os lances voltam. Os outros só sabem que existe uma reserva, não o valor.
+- **Vitrine**: o leilão aparece em destaque e todo mundo recebe um aviso.
+
+**Custos:** anunciar custa M$ 2. A vitrine custa mais M$ 5, e é de graça para Épico, Lendário e Obra de Arte. Quem vende paga 8% do preço. As taxas saem de circulação, o que segura a inflação. Até 6 leilões de jogadores podem estar anunciados ao mesmo tempo, no máximo 2 por pessoa. Dá para desistir de um anúncio enquanto ninguém deu lance.
+
+Os lances funcionam como nas estreias: o valor fica reservado na carteira e volta se você for superado ou se o leilão não vender.
+
+### Como a tela do Mercado é organizada
+
+A tela inicial mostra o Mercado ao vivo, mesmo para quem ainda não tem conta: estreias acontecendo, ranking, filmes que chegaram ao catálogo e a temporada, com o convite para criar conta.
+
+Dentro do Mercado, as abas no topo separam cada assunto:
+
+| Aba | O que tem |
+|---|---|
+| Painel | Resumo: saldo, pontos, coleção, o que está ao vivo, ranking e novidades. |
+| Estreias | As estreias da Casa. |
+| Leilões | Leilões entre jogadores. |
+| Coleção | Suas cópias, com os botões de anunciar e de vender para a Casa. |
+| Catálogo | Os filmes do Mercado. |
+| Ranking | Ranking de colecionadores e temporada. |
+| Carteira | Saldo, extrato e senha. |
+| Admin | Só para admins. |
+
+### Pontos, temporada e competição
+
+- **Pontos da coleção:** cada filme vale a nota de referência dele (uma vez, mesmo com duas cópias). Os bônus somam:
+  - 3 filmes da mesma série (trilogia): +8;
+  - 3 do mesmo diretor: +5;
+  - 4 da mesma década: +3;
+  - 4 do mesmo gênero: +3.
+
+  O **Ranking de colecionadores** mostra quem está na frente.
+- **Temporada:** a cada mês, um gênero fica em alta. Cada filme dele vale +2 pontos e 25% a mais no valor de referência. O gênero aparece no ranking e nos filmes, com a etiqueta 🔥 em alta.
+- **Teto por raridade:** cada jogador pode ter no máximo 2 Lendários e 1 Obra de Arte, contando os leilões em que está na frente.
+- **A Casa compete nas estreias:** ela tem um teto escondido, perto do valor de referência. Se você dá um lance abaixo dele, a Casa cobre na hora. Para levar, é preciso passar do lance dela. Se ela terminar na frente, a cópia não sai. Assim, as estreias continuam disputadas mesmo com poucos jogadores.
+
+### Simulação da economia
+
+`npm run sim` simula um ano com 6 jogadores (gastador, colecionador e especulador) usando as regras de verdade. Mostra o dinheiro em circulação mês a mês, o que entrou e saiu, os preços e cópias por raridade e como cada perfil terminou. Para mudar: `npm run sim -- 26 4` (26 semanas, 4 jogadores). Use para calibrar os números em `public/market-config.js`.
+
+Os números (mesada, raridades, cópias, estreias, recompra etc.) ficam em `public/market-config.js`. Os filmes de exemplo e as correções (uma nota ou um título que veio errado do Wikidata, ou um filme incluído à mão) ficam em `public/market-films.js`. Os dados ficam em `data/market.json`; dá para mudar o caminho com a variável `ML_DATA`.
 
 **Atenção:** no Render gratuito, o disco é apagado a cada deploy. O Mercado ainda não está pronto para produção. Antes de publicar, é preciso escolher onde os dados vão ficar.
 
@@ -94,7 +183,7 @@ Todas as fontes são gratuitas e não precisam de chave:
 - **Wikipédia**: pôsteres e sinopses.
 - **api.imdbapi.dev**: nota do IMDb ao vivo, quando responde.
 
-Sem acesso a essas fontes, o jogo usa os 77 filmes embutidos em `public/catalog.js`. As buscas são feitas pelo navegador de quem joga, não pelo servidor.
+Sem acesso a essas fontes, o jogo usa os 77 filmes embutidos em `public/catalog.js`. Na partida rápida, as buscas são feitas pelo navegador de quem joga. No Mercado, quem busca é o servidor e congela as notas, para ninguém conseguir forjar a raridade de um filme.
 
 ## Estrutura
 
@@ -103,9 +192,11 @@ server.js            servidor: site + salas online (WebSocket) + Mercado
 lib/websocket.js     WebSocket sem dependências
 lib/store.js         onde o Mercado é salvo (arquivo JSON; trocável por um banco)
 lib/auth.js          senhas e sessões do Mercado
+lib/films.js         busca de filmes e notas do Mercado no Wikidata (servidor)
 public/engine.js     regras do jogo (roda igual no servidor e no navegador)
-public/market.js     regras do Mercado: contas, carteira, extrato, mesada
+public/market.js     regras do Mercado: contas, carteira, extrato, mesada, raridade, cópias
 public/market-config.js  números do Mercado para calibrar
+public/market-films.js   correções manuais de notas e títulos do Mercado
 public/catalog.js    filmes, pôsteres, notas e sinopses
 public/net.js        conexão com o servidor e reconexão automática
 public/app.js        interface
