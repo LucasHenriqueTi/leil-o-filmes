@@ -13,6 +13,8 @@ const crypto = require("crypto");
 const Engine = require("./public/engine.js");
 const Market = require("./public/market.js");
 const Auth = require("./lib/auth.js");
+const Films = require("./lib/films.js");
+const { fix: OVERRIDES, examples: EXAMPLES } = require("./public/market-films.js");
 const { openStore } = require("./lib/store.js");
 const { attachWebSocket } = require("./lib/websocket.js");
 
@@ -21,6 +23,7 @@ const MC = Market.CONFIG;
 const store = openStore(process.env.ML_DATA);
 const ADMINS = new Set(String(process.env.ML_ADMINS || "").split(",").map(Market.nameKey).filter(Boolean));
 const tries = Auth.limiter(MC.loginTries, MC.loginWindowMin * 60e3);
+const FILMS_OFF = process.env.ML_FILMS === "off"; // desliga as buscas no Wikidata (testes sem internet)
 const PUBLIC = path.join(__dirname, "public");
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
   ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".txt": "text/plain; charset=utf-8" };
@@ -410,6 +413,137 @@ attachWebSocket(server, "/ws", (socket) => {
     const uid = meOf(cb); if (!uid) return;
     reply(cb, Object.assign({ ok: true }, marketPayload(uid)));
   });
+
+  socket.on("market:catalog", (d, cb) => {
+    if (!meOf(cb)) return;
+    reply(cb, { ok: true, films: Market.catalogView(eco), refilledAt: eco.house.refilledAt || null, refilling });
+  });
+
+  socket.on("admin:refillCatalog", async (d, cb) => {
+    const uid = meOf(cb); if (!uid) return;
+    if (!eco.users[uid].admin) return reply(cb, { error: "Só admins podem fazer isso." });
+    if (FILMS_OFF) return reply(cb, { error: "As buscas de filmes estão desligadas neste servidor (ML_FILMS=off)." });
+    if (refilling) return reply(cb, { error: "A Casa já está atualizando o catálogo. Espere um pouco." });
+    const r = await refillCatalog({ count: MC.bootBatch });
+    reply(cb, r.error ? { error: r.error } : { ok: true, added: r.added });
+  });
+
+  /* ---------- Mercado: estreias da Casa e recompra ---------- */
+  // vitrine pública da tela inicial: funciona sem login, para convidar a criar conta
+  socket.on("market:showcase", (d, cb) => reply(cb, Object.assign({ ok: true }, Market.showcase(eco, Date.now()))));
+
+  socket.on("market:ranking", (d, cb) => {
+    if (!meOf(cb)) return;
+    const now = Date.now();
+    reply(cb, { ok: true, ranking: Market.rankingView(eco, now), season: Market.season(eco, now) });
+  });
+
+  socket.on("market:auctions", (d, cb) => {
+    const uid = meOf(cb); if (!uid) return;
+    reply(cb, Object.assign({ ok: true }, Market.auctionsView(eco, uid)));
+  });
+
+  socket.on("market:bid", async (d = {}, cb) => {
+    const uid = meOf(cb); if (!uid) return;
+    const id = String(d.id || ""), before = eco.auctions[id] && eco.auctions[id].highBy;
+    const r = await mutate((e, now) => { const err = Market.bid(e, id, uid, d.amount, now); return err ? { error: err } : {}; });
+    if (r.error) return reply(cb, r);
+    const a = eco.auctions[id];
+    // house: o comprador fantasma da Casa cobriu o lance na hora
+    reply(cb, { ok: true, closed: a.status === "closed", price: a.status === "closed" ? a.result.price : undefined, house: a.highBy === "house", high: a.high });
+    if (a.status === "closed") return afterClose([id]);   // relógio holandês: comprou, fechou
+    pushMe(uid);
+    if (before && before !== "house" && before !== uid && a.highBy !== before) { pushMe(before); notify(before, `Seu lance em ${eco.films[a.film].title} foi superado.`); }
+    pushAuctions();
+  });
+
+  // anunciar uma cópia da coleção (leilão de jogador)
+  socket.on("market:list", async (d = {}, cb) => {
+    const uid = meOf(cb); if (!uid) return;
+    const o = { copy: String(d.copy || ""), format: String(d.format || ""), minutes: d.minutes, startsAt: d.startsAt, reserve: d.reserve, startPrice: d.startPrice, featured: !!d.featured };
+    const r = await mutate((e, now) => Market.listCopy(e, uid, o, now));
+    if (r.error) return reply(cb, r);
+    reply(cb, { ok: true, id: r.id });
+    pushMe(uid); pushAuctions();
+    const a = eco.auctions[r.id];
+    if (a.featured) announce(a, a.status === "open" ? "Na vitrine agora" : "Na vitrine");
+  });
+
+  socket.on("market:unlist", async (d = {}, cb) => {
+    const uid = meOf(cb); if (!uid) return;
+    const r = await mutate((e, now) => { const err = Market.unlist(e, uid, String(d.id || ""), now); return err ? { error: err } : {}; });
+    if (r.error) return reply(cb, r);
+    reply(cb, { ok: true });
+    pushMe(uid); pushAuctions();
+  });
+
+  socket.on("market:sell", async (d = {}, cb) => {
+    const uid = meOf(cb); if (!uid) return;
+    const c = eco.copies[d.copy], price = c ? Market.buybackPrice(eco, c.film) : 0;
+    const r = await mutate((e, now) => { const err = Market.sellToHouse(e, uid, String(d.copy || ""), now); return err ? { error: err } : {}; });
+    if (r.error) return reply(cb, r);
+    reply(cb, { ok: true, price });
+    pushMe(uid); pushAuctions();
+  });
+
+  /* ---------- Mercado: ferramentas de admin (para testar o fluxo inteiro) ---------- */
+  const adminOf = (cb) => {
+    const uid = meOf(cb); if (!uid) return null;
+    if (!eco.users[uid].admin) { reply(cb, { error: "Só admins podem fazer isso." }); return null; }
+    return uid;
+  };
+  socket.on("admin:accounts", (d, cb) => { if (adminOf(cb)) reply(cb, { ok: true, accounts: Market.accountsView(eco) }); });
+
+  // encerra agora: quem está na frente paga e recebe a cópia, como no fim normal
+  socket.on("admin:closeAuction", async (d = {}, cb) => {
+    if (!adminOf(cb)) return;
+    const id = String(d.id || "");
+    const r = await mutate((e, now) => { const err = Market.closeAuction(e, id, now); return err ? { error: err } : {}; });
+    if (r.error) return reply(cb, r);
+    reply(cb, { ok: true, result: Market.auctionView(eco, eco.auctions[id]).result });
+    afterClose([id]);
+  });
+
+  socket.on("admin:cancelAuction", async (d = {}, cb) => {
+    if (!adminOf(cb)) return;
+    const id = String(d.id || "");
+    const r = await mutate((e, now) => { const err = Market.cancelAuction(e, id, now); return err ? { error: err } : {}; });
+    if (r.error) return reply(cb, r);
+    reply(cb, { ok: true });
+    const a = eco.auctions[id], title = eco.films[a.film].title;
+    participants(a).forEach((u) => { pushMe(u); notify(u, u === a.seller ? `O admin cancelou o leilão de ${title}. A cópia continua com você.` : `O leilão de ${title} foi cancelado pelo admin. Seu lance voltou para a carteira.`); });
+    pushAuctions();
+  });
+
+  socket.on("admin:openEstreia", async (d = {}, cb) => {
+    if (!adminOf(cb)) return;
+    const r = await mutate((e, now) => Market.openEstreiaNow(e, String(d.event || ""), now));
+    if (r.error) return reply(cb, r);
+    reply(cb, { ok: true, id: r.id });
+    pushAuctions();
+  });
+
+  // dá M$ para uma conta de teste (entra no extrato como "Ajuste do admin")
+  // troca o gênero em alta neste mês (para testar a temporada); vazio volta ao sorteio do mês
+  socket.on("admin:season", async (d = {}, cb) => {
+    if (!adminOf(cb)) return;
+    const r = await mutate((e, now) => { const err = Market.setSeason(e, String(d.genre || ""), now); return err ? { error: err } : {}; });
+    if (r.error) return reply(cb, r);
+    reply(cb, { ok: true, season: Market.season(eco, Date.now()) });
+    Object.keys(eco.users).forEach(pushMe); pushAuctions();
+  });
+
+  socket.on("admin:grant", async (d = {}, cb) => {
+    const uid = adminOf(cb); if (!uid) return;
+    const target = Market.findByName(eco, d.name), amount = Math.floor(+d.amount);
+    if (!target) return reply(cb, { error: "Não achei uma conta com esse nome." });
+    if (!(amount >= 1 && amount <= 10000)) return reply(cb, { error: "Valor de 1 a 10.000." });
+    const r = await mutate((e, now) => { const err = Market.credit(e, target.id, amount, "admin", now, `por ${e.users[uid].name}`); return err ? { error: err } : {}; });
+    if (r.error) return reply(cb, r);
+    reply(cb, { ok: true, name: target.name });
+    pushMe(target.id);
+    if (target.id !== uid) notify(target.id, `O admin colocou ${Market.money(amount)} na sua carteira.`);
+  });
 });
 
 /* ---------- Mercado: estado persistente ---------- */
@@ -428,7 +562,11 @@ function mutate(fn) {
   queue = run.catch(() => {});
   return run;
 }
-const marketPayload = (uid) => ({ me: Market.view(eco, uid), ledger: Market.ledgerOf(eco, uid, MC.ledgerView), collection: [] });
+const marketPayload = (uid) => {
+  const now = Date.now();
+  const caps = Object.entries(MC.rarityCaps || {}).map(([k, cap]) => ({ rarity: k, cap, owned: Object.values(eco.copies).filter((c) => c.owner === uid && eco.films[c.film].rarity === k).length }));
+  return { me: Market.view(eco, uid), ledger: Market.ledgerOf(eco, uid, MC.ledgerView), collection: Market.collectionOf(eco, uid, now), score: Market.collectionScore(eco, uid, now), caps };
+};
 const socketsOf = (uid) => [...conns.values()].filter((c) => c.data && c.data.uid === uid);
 function pushMe(uid) { const d = marketPayload(uid); socketsOf(uid).forEach((c) => c.send({ t: "market:me", d })); }
 // desconecta da conta as conexões cuja sessão foi revogada (senha trocada ou resetada)
@@ -439,6 +577,104 @@ function signOut(uid) {
 async function marketTick() {
   const r = await mutate((e, now) => { const paid = Market.tick(e, now); return paid.length ? { paid } : { skip: true }; });
   (r.paid || []).forEach(pushMe);
+}
+// estreias e lances interessam a todo mundo que está no Mercado
+function pushAuctions() {
+  for (const c of conns.values()) if (c.data && c.data.uid && eco.users[c.data.uid]) c.send({ t: "market:auctions", d: Market.auctionsView(eco, c.data.uid) });
+}
+const notify = (uid, text) => socketsOf(uid).forEach((c) => c.send({ t: "market:notice", d: { text } }));
+// fecha os leilões vencidos e abre as estreias da agenda; só entra na fila quando há algo a fazer
+async function auctionTick() {
+  if (!Market.dueAuctions(eco, Date.now())) return;
+  const r = await mutate((e, now) => {
+    const started = Market.startDue(e, now), closed = Market.tickAuctions(e, now), opened = Market.openDueEstreias(e, now);
+    return started.length || closed.length || opened.length ? { started, closed, opened } : { skip: true };
+  });
+  if (r.skip) return;
+  if ((r.opened || []).length) console.log(`Mercado: ${r.opened.length} estreia(s) aberta(s).`);
+  (r.started || []).forEach((id) => { const a = eco.auctions[id]; if (a && a.featured) announce(a, "Começou agora na vitrine"); });
+  afterClose(r.closed || []);
+}
+// todo mundo que participou: dono, quem deu lance (o reservado mudou) e quem venceu
+const participants = (a) => [...new Set([a.seller, a.highBy, ...Object.keys(a.sealed || {}), ...a.bids.map((b) => b.uid)].filter((u) => u && eco.users[u]))];
+// aviso para todos que estão no Mercado (leilões na vitrine)
+function announce(a, prefix) {
+  const f = eco.films[a.film], text = `${prefix}: ${f.title} (${Market.rarity(f.rarity).name}), de ${eco.users[a.seller].name}, no formato ${Market.FORMATS[a.format].name}.`;
+  for (const c of conns.values()) if (c.data && c.data.uid && eco.users[c.data.uid] && c.data.uid !== a.seller) c.send({ t: "market:notice", d: { text } });
+}
+// depois de fechar: cada um vê a carteira e a coleção certas na hora e recebe o aviso
+function afterClose(ids) {
+  ids.forEach((id) => {
+    const a = eco.auctions[id], res = (a && a.result) || {};
+    if (!a) return;
+    const title = eco.films[a.film].title;
+    participants(a).forEach(pushMe);
+    if (res.winner) notify(res.winner, `Você arrematou ${title} por ${Market.money(res.price)}!`);
+    if (a.kind === "user") {
+      notify(a.seller, res.winner ? `Sua cópia de ${title} foi vendida para ${eco.users[res.winner].name} por ${Market.money(res.price)} (taxa de ${Market.money(res.fee)}).`
+        : res.reserveMissed ? `${title} não atingiu a sua reserva. A cópia continua com você.` : `${title} terminou sem lances. A cópia continua com você.`);
+    }
+  });
+  pushAuctions();
+}
+// Modo de teste, a cada início: o catálogo volta aos exemplos (mais os filmes que já têm cópias),
+// a Casa busca filmes novos e as 3 estreias recomeçam agora.
+async function bootMarket() {
+  const keep = new Set(EXAMPLES.map((f) => f.id));
+  await mutate((e, now) => {
+    if (MC.testMode) {
+      // as estreias antigas saem antes da busca no Wikidata, devolvendo os lances
+      Object.values(e.auctions).forEach((a) => { if (a.status === "open" && a.kind === "house") Market.cancelAuction(e, a.id, now); });
+      Market.pruneCatalog(e, keep);
+    }
+    EXAMPLES.forEach((f) => { if (!e.films[f.id]) Market.addFilm(e, f, now); else if (f.series && !e.films[f.id].series) e.films[f.id].series = f.series; });
+    Market.refreeze(e);
+  });
+  if (MC.testMode) await refillCatalog({ count: MC.bootBatch });
+  else refillCatalog();
+  const r = await mutate((e, now) => ({ opened: MC.testMode ? Market.restartEstreias(e, now) : Market.openDueEstreias(e, now) }));
+  console.log(`Mercado: pronto, ${Object.keys(eco.films).length} filmes no catálogo e ${r.opened.length} estreia(s) aberta(s).`);
+  pushAuctions();
+  Object.keys(eco.users).forEach(pushMe);   // quem já estava conectado vê o lance devolvido
+}
+// A Casa reabastece o catálogo: sorteia filmes no Wikidata e cadastra os que têm notas suficientes.
+// Com `count`, busca exatamente essa quantidade; sem, só completa até `catalogTarget`.
+// A rede fica fora da fila; só o cadastro entra em `mutate`.
+let refilling = false;
+async function refillCatalog(opts) {
+  if (FILMS_OFF || refilling) return { added: 0 };
+  refilling = true;
+  try {
+    const count = (opts && opts.count) || 0;
+    const need = count || MC.catalogTarget - Market.openFilms(eco);
+    const include = Object.keys(OVERRIDES).filter((id) => OVERRIDES[id] && OVERRIDES[id].include && !eco.films[id]);
+    if (need <= 0 && !include.length) return { added: 0 };
+    const ids = include.slice();
+    if (need > 0) {
+      const fresh = (await Films.loadPool(MC.catalogMinLinks, MC.minScores)).filter((r) => !eco.films[r.imdb]);
+      for (let i = fresh.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [fresh[i], fresh[j]] = [fresh[j], fresh[i]]; }
+      ids.push(...fresh.slice(0, Math.min(MC.catalogBatch, Math.ceil(need * 1.5))).map((r) => r.imdb));
+    }
+    const films = (await Films.fetchFilms(ids)).map((f) => Market.applyOverrides(f, OVERRIDES));
+    const room = need;
+    const r = await mutate((e, now) => {
+      let added = 0;
+      for (const f of films) {
+        const must = include.includes(f.id);
+        if (!must && added >= room) continue;
+        if (!Market.addFilm(e, f, now)) added++;   // filme sem notas suficientes fica de fora, sem erro
+      }
+      e.house.refilledAt = now;
+      return { added };
+    });
+    if (r.added) console.log(`Mercado: a Casa cadastrou ${r.added} filmes (${Object.keys(eco.films).length} no catálogo).`);
+    return r;
+  } catch (e) {
+    console.warn("Mercado: não deu para atualizar o catálogo agora:", e.message);
+    return { added: 0, error: "O Wikidata não respondeu. Tente de novo em alguns minutos." };
+  } finally {
+    refilling = false;
+  }
 }
 
 /* ---------- relógio central: timers dos lotes ---------- */
@@ -468,5 +704,10 @@ setInterval(() => {
   await marketTick();
   setInterval(() => marketTick().catch((e) => console.error("erro na mesada", e)), 60e3);
   server.listen(PORT, () => console.log(`Martelo Live rodando em http://localhost:${PORT}`));
+  // catálogo e estreias em segundo plano: o jogo não espera o Wikidata
+  bootMarket().catch((e) => console.error("erro ao preparar o Mercado", e)).finally(() => {
+    setInterval(() => auctionTick().catch((e) => console.error("erro nas estreias", e)), 1000);
+  });
+  setInterval(() => refillCatalog(), MC.catalogRefreshHours * 3600e3);
 })().catch((e) => { console.error("Não deu para abrir o Mercado:", e); process.exit(1); });
 module.exports = { server, rooms };

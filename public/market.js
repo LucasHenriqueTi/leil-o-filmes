@@ -4,6 +4,8 @@
    (serializável em JSON). O tempo entra sempre como parâmetro `now` (ms).
    Senhas e tokens nunca passam por aqui: o servidor entrega só o hash.
    Toda movimentação de dinheiro gera um lançamento no extrato (`ledger`).
+   Filmes do Mercado têm nota de referência congelada, raridade e tiragem limitada
+   de cópias numeradas; cada cópia guarda o dono e o histórico.
    ============================================================ */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory(require("./market-config.js"));
@@ -12,12 +14,13 @@
   "use strict";
 
   const DAY = 864e5, WEEK = 7 * DAY;
-  const KINDS = { signup: "Boas-vindas", allowance: "Mesada semanal", fee: "Taxa", sale: "Venda", buyback: "Venda para a Casa", donate: "Donate", prize: "Prêmio", admin: "Ajuste do admin" };
+  const KINDS = { signup: "Boas-vindas", allowance: "Mesada semanal", fee: "Taxa", sale: "Venda", buyback: "Venda para a Casa", donate: "Donate", prize: "Prêmio", admin: "Ajuste do admin", estreia: "Estreia da Casa", purchase: "Compra em leilão" };
 
   /* ---------- utilidades ---------- */
   const cleanName = (n) => String(n || "").replace(/\s+/g, " ").trim().slice(0, 18);
   const nameKey = (n) => cleanName(n).toLowerCase();
   const isAmount = (v) => Number.isInteger(v) && v >= 1;
+  const money = (n) => `${CONFIG.currency} ${n}`;   // moeda do Mercado (não é o R$ da partida rápida)
 
   /* ---------- criação ---------- */
   function create() {
@@ -108,7 +111,7 @@
     const u = eco.users[uid];
     if (!u) return "Conta não encontrada.";
     if (!isAmount(amount)) return "Valor inválido.";
-    if (amount > u.wallet.free) return `Saldo insuficiente: você tem R$ ${u.wallet.free} livres.`;
+    if (amount > u.wallet.free) return `Saldo insuficiente: você tem ${money(u.wallet.free)} livres.`;
     u.wallet.free -= amount;
     entry(eco, uid, -amount, kind, now, ref); eco.seq++;
     return null;
@@ -118,7 +121,7 @@
     const u = eco.users[uid];
     if (!u) return "Conta não encontrada.";
     if (!isAmount(amount)) return "Valor inválido.";
-    if (amount > u.wallet.free) return `Saldo insuficiente: você tem R$ ${u.wallet.free} livres.`;
+    if (amount > u.wallet.free) return `Saldo insuficiente: você tem ${money(u.wallet.free)} livres.`;
     u.wallet.free -= amount; u.wallet.reserved += amount; eco.seq++;
     return null;
   }
@@ -155,6 +158,555 @@
     return paid;
   }
 
+  /* ---------- notas e raridade ---------- */
+  const SOURCES = { imdb: "IMDb", metacritic: "Metacritic", rt: "Rotten Tomatoes" };
+  // "8.8/10", "74/100" e "87%" viram 0 a 10
+  function parseScore(txt) {
+    const a = String(txt).match(/(\d+(?:[.,]\d+)?)\s*\/\s*(\d+)/);
+    if (a) return clampScore(parseFloat(a[1].replace(",", ".")) / parseFloat(a[2]) * 10);
+    const p = String(txt).match(/(\d+(?:[.,]\d+)?)\s*%/);
+    if (p) return clampScore(parseFloat(p[1].replace(",", ".")) / 10);
+    return null;
+  }
+  const clampScore = (v) => (Number.isFinite(v) && v >= 0 && v <= 10 ? Math.round(v * 100) / 100 : null);
+  const round1 = (v) => Math.round(v * 10) / 10;
+  const scoreOf = (scores, k) => (scores && scores[k] != null && scores[k] !== "" ? clampScore(+scores[k]) : null);
+  // nota de referência: média ponderada das notas disponíveis (scoreWeights); null se houver menos que o mínimo.
+  // A Unanimidade compara as notas como vieram, sem peso.
+  function refRating(scores, cfg) {
+    cfg = cfg || CONFIG;
+    const W = cfg.scoreWeights || {}, vals = [];
+    let sum = 0, wsum = 0;
+    Object.keys(SOURCES).forEach((k) => {
+      const v = scoreOf(scores, k), w = W[k] == null ? 1 : W[k];
+      if (v == null) return;
+      vals.push(v); sum += v * w; wsum += w;
+    });
+    if (vals.length < cfg.minScores || !(wsum > 0)) return null;
+    const spread = round1(Math.max(...vals) - Math.min(...vals));
+    return { ref: round1(sum / wsum), n: vals.length, spread, unanimous: spread <= cfg.unanimityMaxSpread };
+  }
+  const rarityIndex = (key, cfg) => (cfg || CONFIG).rarities.findIndex((r) => r.key === key);
+  function rarityOf(ref, garimpo, n, cfg) {
+    cfg = cfg || CONFIG;
+    const R = cfg.rarities, fits = (i) => !(R[i].requireScores > n);
+    let base = 0;
+    R.forEach((r, i) => { if (ref >= r.min && fits(i)) base = i; });
+    if (!garimpo) return R[base].key;
+    // o Garimpo sobe até o teto, mas nunca rebaixa
+    let up = Math.max(base, Math.min(base + cfg.garimpoBoost, rarityIndex(cfg.garimpoCap, cfg)));
+    while (up > base && !fits(up)) up--;
+    return R[up].key;
+  }
+  const rarity = (key, cfg) => (cfg || CONFIG).rarities[rarityIndex(key, cfg)] || null;
+  // correções manuais (public/market-films.js) por cima do que veio do Wikidata
+  function applyOverrides(film, overrides) {
+    const o = overrides && overrides[film.id];
+    if (!o) return film;
+    return Object.assign({}, film, o.film || {}, { scores: Object.assign({}, film.scores, o.scores || {}) });
+  }
+
+  /* ---------- catálogo e cópias ---------- */
+  const IMDB = /^tt\d{5,10}$/;
+  const str = (v, n) => String(v == null ? "" : v).slice(0, n);
+  function addFilm(eco, f, now, cfg) {
+    cfg = cfg || CONFIG;
+    if (!f || !IMDB.test(f.id)) return "Código do IMDb inválido.";
+    if (eco.films[f.id]) return "Esse filme já está no Mercado.";
+    const r = refRating(f.scores, cfg);
+    if (!r) return `O filme precisa de pelo menos ${cfg.minScores} notas para entrar no Mercado.`;
+    const scores = {};
+    Object.keys(SOURCES).forEach((k) => { const v = scoreOf(f.scores, k); if (v != null) scores[k] = v; });
+    const links = Math.max(0, Math.floor(+f.links || 0)), garimpo = links > 0 && links < cfg.garimpoBelowLinks;
+    const key = rarityOf(r.ref, garimpo, r.n, cfg);
+    const img = typeof f.img === "string" && /^https:\/\/upload\.wikimedia\.org\//.test(f.img) ? f.img.slice(0, 600) : null;
+    eco.films[f.id] = {
+      id: f.id, title: str(f.title, 140) || "Sem título", orig: str(f.orig, 140), year: Math.floor(+f.year) || "", dir: str(f.dir, 140),
+      g: (Array.isArray(f.g) ? f.g : []).slice(0, 8).map((x) => str(x, 32)), img, wiki: str(f.wiki, 200), links, series: str(f.series, 140),
+      scores, ref: r.ref, spread: r.spread, unanimous: r.unanimous, garimpo, rarity: key,
+      supply: rarity(key, cfg).copies, minted: 0, addedAt: now
+    };
+    eco.seq++;
+    return null;
+  }
+  const ownerOk = (eco, who) => who === "house" || !!eco.users[who];
+  // a cópia nasce com o próximo número da tiragem
+  function mintCopy(eco, filmId, owner, now) {
+    const f = eco.films[filmId];
+    if (!f) return "Filme fora do Mercado.";
+    if (f.minted >= f.supply) return `Todas as ${f.supply} cópias de ${f.title} já foram emitidas.`;
+    if (!ownerOk(eco, owner)) return "Dono inválido.";
+    const serial = ++f.minted, id = `${filmId}#${serial}`;
+    eco.copies[id] = { id, film: filmId, serial, owner, history: [{ at: now, from: null, to: owner, price: 0, kind: "mint" }] };
+    eco.seq++;
+    return null;
+  }
+  // troca de dono; o dinheiro é movido à parte (na mesma mutação do servidor)
+  function transferCopy(eco, copyId, to, price, kind, now) {
+    const c = eco.copies[copyId];
+    if (!c) return "Cópia não encontrada.";
+    if (!ownerOk(eco, to)) return "Dono inválido.";
+    if (to === c.owner) return "A cópia já é desse dono.";
+    if (!(Number.isInteger(price) && price >= 0)) return "Preço inválido.";
+    c.history.push({ at: now, from: c.owner, to, price, kind });
+    c.owner = to; eco.seq++;
+    return null;
+  }
+  const copyLabel = (eco, c) => `cópia ${c.serial}/${eco.films[c.film].supply}`;
+  const filmCard = (f) => ({ id: f.id, title: f.title, orig: f.orig, year: f.year, dir: f.dir, g: f.g, img: f.img, wiki: f.wiki, series: f.series || "", scores: f.scores, ref: f.ref, spread: f.spread, unanimous: f.unanimous, garimpo: f.garimpo, rarity: f.rarity, supply: f.supply, minted: f.minted });
+  const byRarity = (a, b) => rarityIndex(b.rarity) - rarityIndex(a.rarity) || b.ref - a.ref || a.title.localeCompare(b.title);
+  function collectionOf(eco, uid, now) {
+    return Object.values(eco.copies).filter((c) => c.owner === uid)
+      .map((c) => ({ id: c.id, serial: c.serial, label: copyLabel(eco, c), history: c.history, film: filmCard(eco.films[c.film]),
+        value: refValue(eco, c.film, null, now), buyback: buybackPrice(eco, c.film, null, now), listed: (activeFor(eco, c.id) || {}).id || null }))
+      .sort((a, b) => byRarity(a.film, b.film) || a.serial - b.serial);
+  }
+  function catalogView(eco) {
+    const house = {};
+    Object.values(eco.copies).forEach((c) => { if (c.owner === "house") house[c.film] = (house[c.film] || 0) + 1; });
+    return Object.values(eco.films).map((f) => Object.assign(filmCard(f), { left: f.supply - f.minted, house: house[f.id] || 0, addedAt: f.addedAt || 0 })).sort(byRarity);
+  }
+  const openFilms = (eco) => Object.values(eco.films).filter((f) => f.minted < f.supply).length;
+  // Nota e raridade congelam na primeira cópia emitida; antes disso, seguem a fórmula atual
+  // (assim, mudar pesos ou faixas no config vale para os filmes que ainda não têm cópias).
+  function refreeze(eco, cfg) {
+    cfg = cfg || CONFIG;
+    let n = 0;
+    Object.values(eco.films).forEach((f) => {
+      if (f.minted > 0) return;
+      const r = refRating(f.scores, cfg);
+      if (!r) return;
+      const key = rarityOf(r.ref, f.garimpo, r.n, cfg);
+      if (f.ref !== r.ref || f.rarity !== key) n++;
+      Object.assign(f, { ref: r.ref, spread: r.spread, unanimous: r.unanimous, rarity: key, supply: rarity(key, cfg).copies });
+    });
+    if (n) eco.seq++;
+    return n;
+  }
+  // tira do catálogo os filmes sem cópias e sem estreia aberta, menos os que devem ficar;
+  // as estreias encerradas sem venda desses filmes saem junto (não sobra histórico apontando para o nada)
+  function pruneCatalog(eco, keep) {
+    const busy = new Set(Object.values(eco.auctions).filter((a) => a.status === "open").map((a) => a.film));
+    let n = 0;
+    Object.values(eco.films).forEach((f) => { if (f.minted === 0 && !busy.has(f.id) && !(keep && keep.has(f.id))) { delete eco.films[f.id]; n++; } });
+    Object.values(eco.auctions).forEach((a) => { if (!eco.films[a.film]) delete eco.auctions[a.id]; });
+    if (n) eco.seq++;
+    return n;
+  }
+
+  /* ---------- valor de referência e recompra da Casa ---------- */
+  // valor base (lance mínimo × fator) na média com as últimas vendas de verdade do filme;
+  // filme do gênero em alta na temporada vale mais
+  function refValue(eco, filmId, cfg, now) {
+    cfg = cfg || CONFIG;
+    const f = eco.films[filmId];
+    if (!f) return 0;
+    const base = rarity(f.rarity, cfg).minBid * cfg.refValueFactor;
+    const sales = [];
+    Object.values(eco.copies).forEach((c) => { if (c.film === filmId) c.history.forEach((h) => { if (h.price > 0 && h.kind !== "mint" && h.kind !== "buyback") sales.push(h); }); });
+    const last = sales.sort((a, b) => b.at - a.at).slice(0, cfg.refValueSales);
+    const v = Math.round((base + last.reduce((a, h) => a + h.price, 0)) / (1 + last.length));
+    return now != null && inSeason(eco, f, now, cfg) ? Math.round(v * cfg.seasonValueBoost) : v;
+  }
+
+  /* ---------- temporada: a cada mês um gênero está em alta ---------- */
+  const monthKey = (now, cfg) => { const L = new Date(now + cfg.tzOffsetMin * 60e3); return `${L.getUTCFullYear()}-${String(L.getUTCMonth() + 1).padStart(2, "0")}`; };
+  // sorteio fixo pelo mês (todo mundo vê o mesmo gênero); o admin pode trocar para testar
+  function season(eco, now, cfg) {
+    cfg = cfg || CONFIG;
+    now = now == null ? Date.now() : now;
+    const key = monthKey(now, cfg), off = cfg.tzOffsetMin * 60e3, L = new Date(now + off);
+    const over = eco.house && eco.house.season && eco.house.season.month === key ? eco.house.season.genre : null;
+    let h = 0; for (const ch of "temporada-" + key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return { genre: over || cfg.seasonGenres[h % cfg.seasonGenres.length], month: key, override: !!over,
+      endsAt: Date.UTC(L.getUTCFullYear(), L.getUTCMonth() + 1, 1) - off };
+  }
+  const inSeason = (eco, f, now, cfg) => (f.g || []).includes(season(eco, now, cfg).genre);
+  function setSeason(eco, genre, now, cfg) {
+    cfg = cfg || CONFIG;
+    if (genre && !cfg.seasonGenres.includes(genre)) return "Gênero fora da lista da temporada.";
+    eco.house.season = genre ? { month: monthKey(now, cfg), genre } : null;
+    eco.seq++;
+    return null;
+  }
+
+  /* ---------- pontuação da coleção e ranking ---------- */
+  const decadeOf = (y) => (+y ? `anos ${Math.floor(+y / 10) * 10}` : "");
+  function collectionScore(eco, uid, now, cfg) {
+    cfg = cfg || CONFIG;
+    const films = [...new Set(Object.values(eco.copies).filter((c) => c.owner === uid).map((c) => c.film))].map((id) => eco.films[id]).filter(Boolean);
+    const base = Math.round(films.reduce((a, f) => a + f.ref, 0) * 10) / 10;
+    const groups = { series: (f) => f.series, director: (f) => f.dir, decade: (f) => decadeOf(f.year), genre: (f) => (f.g || [])[0] };
+    const bonuses = [];
+    Object.entries(cfg.collectionBonuses).forEach(([kind, b]) => {
+      const count = {};
+      films.forEach((f) => { const k = groups[kind](f); if (k) count[k] = (count[k] || 0) + 1; });
+      Object.entries(count).forEach(([label, n]) => { if (n >= b.n) bonuses.push({ kind, name: b.name, label, n, pts: b.pts }); });
+    });
+    const s = season(eco, now, cfg), hot = films.filter((f) => (f.g || []).includes(s.genre)).length;
+    if (hot) bonuses.push({ kind: "season", name: "Temporada", label: s.genre, n: hot, pts: hot * cfg.seasonPts });
+    const extra = bonuses.reduce((a, b) => a + b.pts, 0);
+    return { films: films.length, base, bonuses, total: Math.round((base + extra) * 10) / 10 };
+  }
+  function rankingView(eco, now, cfg) {
+    return Object.values(eco.users).map((u) => Object.assign({ id: u.id, name: u.name }, collectionScore(eco, u.id, now, cfg)))
+      .sort((a, b) => b.total - a.total || b.films - a.films || a.name.localeCompare(b.name));
+  }
+
+  // vitrine pública (tela inicial, sem login): só o que já é público dentro do Mercado
+  function showcase(eco, now, cfg) {
+    cfg = cfg || CONFIG;
+    const A = auctionsView(eco, null, 0), films = catalogView(eco);
+    return {
+      open: A.open, featured: A.players.filter((a) => a.status === "open" && a.featured).slice(0, 3), next: A.next,
+      ranking: rankingView(eco, now, cfg).slice(0, 5).map((r) => ({ name: r.name, total: r.total, films: r.films })),
+      recent: films.slice().sort((a, b) => b.addedAt - a.addedAt || rarityIndex(b.rarity) - rarityIndex(a.rarity)).slice(0, 10),
+      season: season(eco, now, cfg),
+      stats: { accounts: Object.keys(eco.users).length, films: films.length, copies: Object.values(eco.copies).filter((c) => c.owner !== "house").length }
+    };
+  }
+
+  /* ---------- teto de cópias por raridade ---------- */
+  // conta as cópias que a pessoa tem e os leilões em que ela está na frente (ou tem lance secreto)
+  function capCheck(eco, uid, rarityKey, exceptAid, cfg) {
+    cfg = cfg || CONFIG;
+    const cap = (cfg.rarityCaps || {})[rarityKey];
+    if (!cap) return null;
+    const owned = Object.values(eco.copies).filter((c) => c.owner === uid && eco.films[c.film].rarity === rarityKey).length;
+    const pending = Object.values(eco.auctions).filter((a) => a.id !== exceptAid && a.status === "open" && a.rarity === rarityKey && (a.highBy === uid || (a.sealed || {})[uid])).length;
+    return owned + pending >= cap ? `Teto do Mercado: no máximo ${cap} ${cap === 1 ? "cópia" : "cópias"} ${rarity(rarityKey, cfg).name} por jogador (contando os lances na frente).` : null;
+  }
+  // a Casa nunca paga mais que o lance mínimo da faixa: sem lucro em comprar barato e revender para ela
+  function buybackPrice(eco, filmId, cfg, now) {
+    cfg = cfg || CONFIG;
+    const f = eco.films[filmId];
+    if (!f) return 0;
+    const minBid = rarity(f.rarity, cfg).minBid;
+    return Math.max(1, Math.min(Math.floor(refValue(eco, filmId, cfg, now) * cfg.buybackPct), Math.max(1, minBid - 1)));
+  }
+  function sellToHouse(eco, uid, copyId, now, cfg) {
+    const c = eco.copies[copyId];
+    if (!c || c.owner !== uid) return "Essa cópia não é sua.";
+    if (activeFor(eco, copyId)) return "Essa cópia está anunciada num leilão.";
+    const price = buybackPrice(eco, c.film, cfg, now), f = eco.films[c.film];
+    transferCopy(eco, copyId, "house", price, "buyback", now);
+    credit(eco, uid, price, "buyback", now, `${f.title} (${copyLabel(eco, c)})`);
+    return null;
+  }
+
+  /* ---------- estreias: a Casa leiloa uma cópia por evento ---------- */
+  // próximo horário do evento (dia, semana ou mês) depois de `now`, no fuso do config
+  function nextEstreia(ev, now, cfg) {
+    cfg = cfg || CONFIG;
+    const off = cfg.tzOffsetMin * 60e3, L = new Date(now + off);
+    const at = (y, m, d) => Date.UTC(y, m, d, ev.hour || 0) - off;
+    let t;
+    if (ev.every === "month") {
+      t = at(L.getUTCFullYear(), L.getUTCMonth(), ev.day || 1);
+      if (t <= now) t = at(L.getUTCFullYear(), L.getUTCMonth() + 1, ev.day || 1);
+    } else {
+      t = at(L.getUTCFullYear(), L.getUTCMonth(), L.getUTCDate());
+      if (ev.every === "week") t += ((ev.weekday - L.getUTCDay() + 7) % 7) * DAY;
+      if (t <= now) t += ev.every === "week" ? WEEK : DAY;
+    }
+    return t;
+  }
+  // sorteia um filme das faixas do evento que ainda tenha cópia para emitir ou cópia no estoque da Casa
+  function pickLot(eco, bands, rng) {
+    const busy = new Set(Object.values(eco.auctions).filter((a) => a.kind === "house" && a.status === "open").map((a) => a.film));
+    const stock = {};
+    Object.values(eco.copies).forEach((c) => { if (c.owner === "house") (stock[c.film] = stock[c.film] || []).push(c.id); });
+    const cands = Object.values(eco.films).filter((f) => bands.includes(f.rarity) && !busy.has(f.id) && (f.minted < f.supply || stock[f.id]))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    if (!cands.length) return null;
+    const f = cands[Math.floor((rng || Math.random)() * cands.length)];
+    return { film: f.id, copy: stock[f.id] ? stock[f.id].sort()[0] : null };
+  }
+  function openAuction(eco, ev, lot, now) {
+    const f = eco.films[lot.film];
+    if (!f) return "Filme fora do Mercado.";
+    eco.auctionSeq = (eco.auctionSeq || 0) + 1;
+    const id = "a" + eco.auctionSeq;
+    eco.auctions[id] = { id, kind: "house", event: ev.key, eventName: ev.name, film: f.id, copy: lot.copy || null, rarity: f.rarity, minBid: rarity(f.rarity).minBid,
+      startsAt: now, endsAt: now + ev.minutes * 60e3, high: 0, highBy: null, bids: [], extended: 0, status: "open", result: null };
+    eco.seq++;
+    return id;
+  }
+  // abre as estreias que chegaram na hora e agenda as próximas; devolve os leilões abertos
+  function openDueEstreias(eco, now, cfg, rng) {
+    cfg = cfg || CONFIG;
+    eco.house.next = eco.house.next || {};
+    const opened = [];
+    cfg.estreias.forEach((ev) => {
+      if (!eco.house.next[ev.key]) { eco.house.next[ev.key] = nextEstreia(ev, now, cfg); eco.seq++; }
+      if (now < eco.house.next[ev.key]) return;
+      const lot = pickLot(eco, ev.bands, rng);
+      if (lot) opened.push(openAuction(eco, ev, lot, now));
+      eco.house.next[ev.key] = nextEstreia(ev, now, cfg); eco.seq++;
+    });
+    return opened;
+  }
+  // modo de teste: cancela as estreias abertas (devolvendo os lances) e abre uma de cada agora
+  function restartEstreias(eco, now, cfg, rng) {
+    cfg = cfg || CONFIG;
+    Object.values(eco.auctions).forEach((a) => { if (a.status === "open" && a.kind === "house") cancelAuction(eco, a.id, now); });
+    eco.house.next = {};
+    const opened = [];
+    cfg.estreias.forEach((ev) => {
+      const lot = pickLot(eco, ev.bands, rng);
+      if (lot) opened.push(openAuction(eco, ev, lot, now));
+      eco.house.next[ev.key] = nextEstreia(ev, now, cfg);
+    });
+    eco.seq++;
+    return opened;
+  }
+  // admin: abre agora uma estreia do tipo pedido (sem mexer na agenda)
+  function openEstreiaNow(eco, key, now, cfg, rng) {
+    cfg = cfg || CONFIG;
+    const ev = cfg.estreias.find((x) => x.key === key);
+    if (!ev) return { error: "Estreia desconhecida." };
+    const lot = pickLot(eco, ev.bands, rng);
+    if (!lot) return { error: `Não há filme livre para a ${ev.name.toLowerCase()} (faixas ${ev.bands.map((b) => rarity(b, cfg).name).join(" e ")}).` };
+    return { id: openAuction(eco, ev, lot, now) };
+  }
+  // admin: visão de todas as contas para conferir carteiras e coleções
+  function accountsView(eco) {
+    return Object.values(eco.users).map((u) => ({ id: u.id, name: u.name, admin: u.admin, wallet: Object.assign({}, u.wallet),
+      copies: collectionOf(eco, u.id).map((c) => ({ id: c.id, title: c.film.title, rarity: c.film.rarity, label: c.label })) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  /* ---------- leilões dos jogadores ---------- */
+  const FORMATS = {
+    open: { name: "Aberto", desc: "Lances à vista, sempre maiores. Lance no fim prorroga o relógio." },
+    sealed: { name: "Lance secreto", desc: "Cada um dá um lance escondido (pode trocar até o fim). O maior leva e paga o próprio lance." },
+    vickrey: { name: "Secreto de 2º preço", desc: "Lances escondidos. O maior leva, mas paga o valor do segundo maior lance." },
+    dutch: { name: "Relógio holandês", desc: "O preço começa alto e cai até o mínimo. O primeiro a comprar leva." }
+  };
+  const isActive = (a) => a.status === "open" || a.status === "scheduled";
+  const activeFor = (eco, copyId) => Object.values(eco.auctions).find((a) => isActive(a) && a.copy === copyId) || null;
+  const freeFeature = (key, cfg) => rarityIndex(key, cfg) >= rarityIndex(cfg.featureFreeFrom, cfg);
+  const listingCost = (eco, copyId, featured, cfg) => {
+    cfg = cfg || CONFIG;
+    const c = eco.copies[copyId], f = c && eco.films[c.film];
+    return cfg.listingFee + (f && featured && !freeFeature(f.rarity, cfg) ? cfg.featureFee : 0);
+  };
+  // anuncia uma cópia da coleção: cobra a taxa de abertura (e a de vitrine), trava a cópia até o fim
+  function listCopy(eco, uid, o, now, cfg) {
+    cfg = cfg || CONFIG;
+    const u = eco.users[uid], c = eco.copies[o.copy];
+    if (!u) return { error: "Conta não encontrada." };
+    if (!c || c.owner !== uid) return { error: "Essa cópia não é sua." };
+    if (activeFor(eco, c.id)) return { error: "Essa cópia já está anunciada." };
+    if (!FORMATS[o.format] || !cfg.userFormats.includes(o.format)) return { error: "Formato inválido." };
+    const minutes = Math.floor(+o.minutes);
+    if (!cfg.userDurations.includes(minutes)) return { error: "Duração inválida." };
+    const startsAt = o.startsAt ? Math.floor(+o.startsAt) : now;
+    if (!(startsAt >= now - 5 * 60e3 && startsAt <= now + cfg.maxScheduleDays * DAY)) return { error: `O início precisa ser entre agora e daqui a ${cfg.maxScheduleDays} dias.` };
+    const active = Object.values(eco.auctions).filter((a) => a.kind === "user" && isActive(a));
+    if (active.length >= cfg.maxActiveUserAuctions) return { error: `O Mercado já tem ${cfg.maxActiveUserAuctions} leilões de jogadores anunciados. Espere um terminar.` };
+    if (active.filter((a) => a.seller === uid).length >= cfg.maxActivePerUser) return { error: `Cada jogador pode ter até ${cfg.maxActivePerUser} leilões anunciados ao mesmo tempo.` };
+    const f = eco.films[c.film], minBid = rarity(f.rarity, cfg).minBid;
+    const reserve = o.reserve ? Math.floor(+o.reserve) : 0;
+    if (!(reserve >= 0 && reserve <= cfg.dutchMaxStart)) return { error: "Preço de reserva inválido." };
+    let startPrice = 0;
+    if (o.format === "dutch") {
+      startPrice = Math.floor(+o.startPrice);
+      const floor = Math.max(minBid, reserve);
+      if (!(startPrice > floor && startPrice <= cfg.dutchMaxStart)) return { error: `No relógio, o preço inicial precisa ser maior que ${money(floor)} e no máximo ${money(cfg.dutchMaxStart)}.` };
+    }
+    const free = freeFeature(f.rarity, cfg), featured = free || !!o.featured;
+    const fee = listingCost(eco, c.id, featured, cfg);
+    if (fee > u.wallet.free) return { error: `Anunciar custa ${money(fee)} e você tem ${money(u.wallet.free)} livres.` };
+    const ref = `${f.title} (${copyLabel(eco, c)})`;
+    if (cfg.listingFee > 0) debit(eco, uid, cfg.listingFee, "fee", now, "anúncio: " + ref);
+    if (fee > cfg.listingFee) debit(eco, uid, fee - cfg.listingFee, "fee", now, "vitrine: " + ref);
+    const st = Math.max(startsAt, now);
+    eco.auctionSeq = (eco.auctionSeq || 0) + 1;
+    const id = "a" + eco.auctionSeq;
+    eco.auctions[id] = { id, kind: "user", seller: uid, format: o.format, film: f.id, copy: c.id, rarity: f.rarity, minBid, reserve, startPrice, featured,
+      startsAt: st, endsAt: st + minutes * 60e3, high: 0, highBy: null, bids: [], sealed: {}, extended: 0, status: st > now ? "scheduled" : "open", result: null, createdAt: now };
+    eco.seq++;
+    return { id };
+  }
+  // o dono desiste: só antes de ter lance (a taxa de anúncio não volta)
+  function unlist(eco, uid, aid, now) {
+    const a = eco.auctions[aid];
+    if (!a || a.kind !== "user" || a.seller !== uid) return "Esse anúncio não é seu.";
+    if (!isActive(a)) return "Esse leilão já terminou.";
+    if (a.highBy || Object.keys(a.sealed || {}).length) return "Já tem lance: o leilão vai até o fim.";
+    return cancelAuction(eco, aid, now);
+  }
+  // relógio holandês: cai em linha reta do preço inicial até o mínimo (lance mínimo da raridade ou o que o dono pediu)
+  const dutchFloor = (a) => Math.max(a.minBid, a.reserve || 0);
+  function dutchPrice(a, now) {
+    const t = Math.min(1, Math.max(0, (now - a.startsAt) / Math.max(1, a.endsAt - a.startsAt)));
+    return Math.max(dutchFloor(a), Math.round(a.startPrice - (a.startPrice - dutchFloor(a)) * t));
+  }
+  function dutchBuy(eco, a, uid, now) {
+    const price = dutchPrice(a, now), u = eco.users[uid];
+    if (price > u.wallet.free) return `O preço agora é ${money(price)} e você tem ${money(u.wallet.free)} livres.`;
+    reserve(eco, uid, price);
+    a.high = price; a.highBy = uid; a.bids.push({ uid, v: price, at: now });
+    return closeAuction(eco, a.id, now);
+  }
+  // lance secreto (1º ou 2º preço): o valor fica reservado e dá para trocar até o fim; empate fica com quem mandou antes
+  function sealedBid(eco, a, uid, v) {
+    const u = eco.users[uid], old = a.sealed[uid];
+    if (!(v >= a.minBid)) return `O lance mínimo é ${money(a.minBid)}.`;
+    if (v - (old ? old.v : 0) > u.wallet.free) return `Saldo insuficiente: você tem ${money(u.wallet.free)} livres.`;
+    if (old) release(eco, uid, old.v);
+    reserve(eco, uid, v);
+    return { v, keepAt: !!old && old.v === v };
+  }
+
+  // lance: no Aberto precisa cobrir o mínimo (ou o maior lance + 1) com saldo livre; o valor fica reservado
+  // e o lance anterior volta para quem foi superado. Lance no fim prorroga o relógio.
+  // Nos outros formatos dos jogadores, o mesmo pedido vira lance secreto ou compra no relógio.
+  function bid(eco, aid, uid, amount, now, cfg) {
+    cfg = cfg || CONFIG;
+    const a = eco.auctions[aid];
+    if (a && a.status === "scheduled") return "Esse leilão ainda não começou.";
+    if (!a || a.status !== "open") return "Esse leilão não está aberto.";
+    if (now >= a.endsAt) return "Esse leilão já terminou.";
+    const u = eco.users[uid];
+    if (!u) return "Conta não encontrada.";
+    if (a.seller === uid) return "Você não pode dar lance no próprio leilão.";
+    const capErr = capCheck(eco, uid, a.rarity, a.id, cfg);
+    if (capErr) return capErr;
+    if (a.format === "dutch") return dutchBuy(eco, a, uid, now);
+    if (a.format === "sealed" || a.format === "vickrey") {
+      const r = sealedBid(eco, a, uid, Math.floor(+amount));
+      if (typeof r === "string") return r;
+      a.sealed[uid] = { v: r.v, at: r.keepAt ? a.sealed[uid].at : now };
+      eco.seq++;
+      return null;
+    }
+    if (a.highBy === uid) return "Seu lance já está na frente.";
+    const v = Math.floor(+amount), min = a.highBy ? a.high + 1 : a.minBid;
+    if (!(v >= min)) return `O lance mínimo agora é ${money(min)}.`;
+    if (v > u.wallet.free) return `Saldo insuficiente: você tem ${money(u.wallet.free)} livres.`;
+    if (a.highBy && a.highBy !== "house") release(eco, a.highBy, a.high);
+    a.bids.push({ uid, v, at: now });
+    if (a.endsAt - now <= cfg.extendWindowSec * 1000) { a.endsAt += cfg.extendBySec * 1000; a.extended++; }
+    // comprador fantasma: nas estreias, abaixo do teto escondido a Casa cobre na hora com +1
+    const ceiling = a.kind === "house" && cfg.ghostBuyer ? ghostCeiling(eco, a, now, cfg) : 0;
+    if (v < ceiling) {
+      a.high = v + 1; a.highBy = "house"; a.bids.push({ uid: "house", v: v + 1, at: now });
+    } else {
+      reserve(eco, uid, v);
+      a.high = v; a.highBy = uid;
+    }
+    eco.seq++;
+    return null;
+  }
+  const ghostCeiling = (eco, a, now, cfg) => Math.max(a.minBid, Math.round(refValue(eco, a.film, cfg, now) * cfg.ghostPct));
+  const releaseAll = (eco, a) => {
+    if (a.highBy && a.highBy !== "house") release(eco, a.highBy, a.high);
+    Object.entries(a.sealed || {}).forEach(([uid, b]) => release(eco, uid, b.v));
+  };
+  function cancelAuction(eco, aid, now) {
+    const a = eco.auctions[aid];
+    if (!a || !isActive(a)) return "Esse leilão não está aberto.";
+    releaseAll(eco, a);
+    a.status = "canceled"; a.closedAt = now; a.result = { winner: null, price: 0 };
+    eco.seq++;
+    return null;
+  }
+  // leilão de jogador: quem vence paga com o reservado; o dono recebe o preço menos a taxa de venda;
+  // sem lance ou abaixo da reserva secreta, a cópia fica com o dono e os lances voltam
+  function closeUser(eco, a, now, cfg) {
+    let winner = null, price = 0, top = 0, reveal = null;
+    if (a.format === "sealed" || a.format === "vickrey") {
+      const bids = Object.entries(a.sealed).map(([uid, b]) => ({ uid, v: b.v, at: b.at })).sort((x, y) => y.v - x.v || x.at - y.at);
+      reveal = bids.map((b) => ({ uid: b.uid, v: b.v }));
+      bids.forEach((b) => release(eco, b.uid, b.v));
+      if (bids[0]) {
+        top = bids[0].v;
+        if (top >= (a.reserve || 0)) {
+          winner = bids[0].uid;
+          price = a.format === "sealed" ? top : Math.min(top, Math.max(bids[1] ? bids[1].v : a.minBid, a.reserve || 0, a.minBid));
+          reserve(eco, winner, price);
+        }
+      }
+    } else if (a.highBy) {
+      top = a.high;
+      if (a.high >= (a.reserve || 0)) { winner = a.highBy; price = a.high; } else release(eco, a.highBy, a.high);
+    }
+    const f = eco.films[a.film], c = eco.copies[a.copy], ref = `${f.title} (${copyLabel(eco, c)})`;
+    let fee = 0;
+    if (winner) {
+      capture(eco, winner, price, "purchase", now, ref);
+      transferCopy(eco, c.id, winner, price, "sale", now);
+      credit(eco, a.seller, price, "sale", now, ref);
+      fee = Math.min(price, Math.round(price * cfg.saleFeePct));
+      if (fee > 0) debit(eco, a.seller, fee, "fee", now, "taxa de venda: " + ref);
+    }
+    a.status = "closed"; a.closedAt = now;
+    a.result = { winner, price, fee, copy: winner ? c.id : null, reserveMissed: !winner && top > 0, reveal };
+    eco.seq++;
+    return null;
+  }
+  // fecha: o vencedor paga com o dinheiro reservado (sai de circulação) e recebe a cópia
+  function closeAuction(eco, aid, now, cfg) {
+    cfg = cfg || CONFIG;
+    const a = eco.auctions[aid];
+    if (!a || !isActive(a)) return "Esse leilão não está aberto.";
+    if (a.kind === "user") return closeUser(eco, a, now, cfg);
+    // sem lance, ou a Casa (comprador fantasma) terminou na frente: nada é emitido
+    if (!a.highBy || a.highBy === "house") { a.status = "closed"; a.closedAt = now; a.result = { winner: null, price: 0, house: a.highBy === "house" }; eco.seq++; return null; }
+    const f = eco.films[a.film];
+    let cid = a.copy && eco.copies[a.copy] && eco.copies[a.copy].owner === "house" ? a.copy : null;
+    if (!cid) {
+      if (mintCopy(eco, a.film, "house", now)) return cancelAuction(eco, aid, now);   // tiragem esgotada: devolve o lance
+      cid = `${a.film}#${f.minted}`;
+    }
+    capture(eco, a.highBy, a.high, "estreia", now, `${f.title} (${copyLabel(eco, eco.copies[cid])})`);
+    transferCopy(eco, cid, a.highBy, a.high, "estreia", now);
+    a.status = "closed"; a.closedAt = now; a.result = { winner: a.highBy, price: a.high, copy: cid };
+    eco.seq++;
+    return null;
+  }
+  // fecha os leilões vencidos; devolve os ids fechados
+  function tickAuctions(eco, now) {
+    return Object.values(eco.auctions).filter((a) => a.status === "open" && now >= a.endsAt).map((a) => (closeAuction(eco, a.id, now), a.id));
+  }
+  // leilões agendados que chegaram na hora de abrir; devolve os ids
+  function startDue(eco, now) {
+    const ids = Object.values(eco.auctions).filter((a) => a.status === "scheduled" && now >= a.startsAt).map((a) => a.id);
+    ids.forEach((id) => { eco.auctions[id].status = "open"; });
+    if (ids.length) eco.seq++;
+    return ids;
+  }
+  const dueAuctions = (eco, now, cfg) => Object.values(eco.auctions).some((a) => (a.status === "open" && now >= a.endsAt) || (a.status === "scheduled" && now >= a.startsAt))
+    || (cfg || CONFIG).estreias.some((ev) => !(eco.house.next || {})[ev.key] || now >= eco.house.next[ev.key]);
+  // o que cada um pode ver: a reserva secreta só para o dono; lances secretos só depois do fim (cada um vê o seu)
+  function auctionView(eco, a, viewer) {
+    const f = eco.films[a.film], nameOf = (id) => (id === "house" ? "Casa" : (eco.users[id] || {}).name || "Alguém");
+    const serial = a.copy ? eco.copies[a.copy].serial : isActive(a) ? f.minted + 1 : null;
+    const fmt = a.format || "open", secret = fmt === "sealed" || fmt === "vickrey", seller = !!viewer && a.seller === viewer;
+    const v = { id: a.id, kind: a.kind, event: a.event || null, eventName: a.eventName || null, film: filmCard(f), lot: serial ? `cópia ${serial}/${f.supply}` : "",
+      fromStock: a.kind === "house" && !!a.copy, format: fmt, formatName: FORMATS[fmt].name, seller: a.seller || null, sellerName: a.seller ? nameOf(a.seller) : null, isSeller: seller,
+      featured: !!a.featured, minBid: a.minBid, startsAt: a.startsAt, endsAt: a.endsAt, extended: a.extended || 0, status: a.status, closedAt: a.closedAt || null,
+      high: secret ? 0 : a.high, highBy: secret ? null : a.highBy, highName: !secret && a.highBy ? nameOf(a.highBy) : null,
+      mine: !!viewer && (secret ? !!(a.sealed || {})[viewer] : a.highBy === viewer), bids: secret ? Object.keys(a.sealed || {}).length : a.bids.length,
+      hasReserve: fmt !== "dutch" && (a.reserve || 0) > 0, reserve: seller || fmt === "dutch" ? a.reserve || 0 : null,
+      result: a.result && Object.assign({}, a.result, { winnerName: a.result.winner ? nameOf(a.result.winner) : null,
+        reveal: a.result.reveal ? a.result.reveal.map((b) => ({ name: nameOf(b.uid), v: b.v, me: b.uid === viewer })) : null }) };
+    if (secret) v.myBid = viewer && a.sealed[viewer] ? a.sealed[viewer].v : null;
+    if (fmt === "dutch") Object.assign(v, { startPrice: a.startPrice, floor: dutchFloor(a) });
+    return v;
+  }
+  // estreias abertas (mais raras no topo), leilões dos jogadores (vitrine primeiro) e as últimas encerradas
+  function auctionsView(eco, viewer, recent) {
+    const all = Object.values(eco.auctions);
+    const open = all.filter((a) => a.kind === "house" && a.status === "open").sort((a, b) => rarityIndex(b.rarity) - rarityIndex(a.rarity) || a.endsAt - b.endsAt);
+    const players = all.filter((a) => a.kind === "user" && isActive(a))
+      .sort((a, b) => (b.featured - a.featured) || (a.status === b.status ? 0 : a.status === "open" ? -1 : 1) || a.startsAt - b.startsAt || a.endsAt - b.endsAt);
+    const done = all.filter((a) => !isActive(a)).sort((a, b) => b.closedAt - a.closedAt).slice(0, recent == null ? 8 : recent);
+    return { open: open.map((a) => auctionView(eco, a, viewer)), players: players.map((a) => auctionView(eco, a, viewer)),
+      recent: done.map((a) => auctionView(eco, a, viewer)), next: Object.assign({}, eco.house.next || {}) };
+  }
+
   /* ---------- leitura ---------- */
   const supply = (eco) => Object.values(eco.users).reduce((a, u) => a + u.wallet.free + u.wallet.reserved, 0);
   function view(eco, uid) {
@@ -171,5 +723,11 @@
 
   return { CONFIG, KINDS, WEEK, cleanName, nameKey, create, nextCycle, findByName, checkName, addUser, setAuth,
     addSession, sessionUser, revokeSession, revokeSessions, pruneSessions,
-    credit, debit, reserve, release, capture, tick, supply, view, ledgerOf, balanceFromLedger };
+    credit, debit, reserve, release, capture, tick, supply, view, ledgerOf, balanceFromLedger,
+    SOURCES, parseScore, refRating, rarityOf, rarity, rarityIndex, applyOverrides,
+    addFilm, mintCopy, transferCopy, copyLabel, collectionOf, catalogView, openFilms, refreeze, pruneCatalog,
+    money, refValue, buybackPrice, sellToHouse,
+    FORMATS, listCopy, unlist, listingCost, dutchPrice, startDue,
+    season, setSeason, collectionScore, rankingView, showcase, capCheck, ghostCeiling,
+    nextEstreia, pickLot, openAuction, openEstreiaNow, accountsView, openDueEstreias, restartEstreias, bid, cancelAuction, closeAuction, tickAuctions, dueAuctions, auctionView, auctionsView };
 });

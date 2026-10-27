@@ -13,6 +13,7 @@ const GROUP_TAG = E.GROUP_TAG;
 /* ---------- utilidades ---------- */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const brl = (n) => "R$ " + Number(n || 0).toLocaleString("pt-BR");
+const mny = (n) => MC.currency + " " + Number(n || 0).toLocaleString("pt-BR");   // dinheiro do Mercado (separado do R$ da partida rápida)
 const pts = (n) => Number(n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const rid = (n) => { const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, (b) => "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[b % 62]).join(""); };
 const hue = (str) => { let h = 0; for (const c of String(str)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
@@ -38,7 +39,8 @@ const S = {
   ui: { err: "", showDraw: false, drawing: false, drawMsg: "", search: [], searchMsg: "", preparing: false, sealedOpen: null, synOpen: false, modal: null, toast: null, joining: false, donate: { v: 1, text: "" }, emojiOpen: false },
   sound: store.get("ml-sound") !== false,
   auth: store.get("ml-auth") || null, me: null, market: null,   // Mercado: token da conta, conta e carteira
-  acct: { tab: "login", name: "", pass: "", busy: false, pwOld: "", pwNew: "" },
+  acct: { tab: "register", name: "", pass: "", busy: false, pwOld: "", pwNew: "" },
+  mtab: store.get("ml-mtab") || "painel", showcase: null,   // Mercado: aba aberta e vitrine pública
   fold: Object.assign({ info: true, donate: true, rules: true }, store.get("ml-fold") || {}), // painéis escondidos (os três começam fechados)
   lastTop: null, zoom: {}
 };
@@ -49,7 +51,7 @@ if (S.local) S.mode = "local";
 
 const cur = () => (S.mode === "online" ? S.st : S.local);
 const isHost = () => S.mode === "local" || (!!S.you && S.you === S.host);
-const now = () => (S.mode === "online" ? N.now() : Date.now());
+const now = () => (S.mode === "online" || S.mode === "market" ? N.now() : Date.now());
 const pl = (id) => { const st = cur(); return st && st.players.find((p) => p.id === id); };
 const nameOf = (id) => (pl(id) || {}).name || "Alguém";
 const colorOf = (id) => (pl(id) || {}).color || "#a99cc4";
@@ -97,14 +99,33 @@ function topbar() {
     ${online && S.code ? `<span class="chip-code">Sala <b>${esc(S.code)}</b><button data-act="copy-link">Copiar convite</button></span>
       <span class="viewers num" title="Pessoas conectadas na sala">${eye}${S.viewers}</span>` : ""}
     ${S.mode === "local" ? `<span class="hint">Mesmo aparelho</span>` : ""}
-    ${S.me && S.mode !== "market" ? `<button class="chip-acct num" data-act="market" title="Abrir o Mercado"><span class="avatar sm">${initial(S.me.name)}</span><span class="nm">${esc(S.me.name)} · ${brl(S.me.wallet.free)}</span></button>` : ""}
+    ${S.me ? `<button class="chip-acct num" ${S.mode === "market" ? `data-mtab="carteira"` : `data-act="market"`} title="${S.mode === "market" ? "Carteira" : "Abrir o Mercado"}"><span class="avatar sm">${initial(S.me.name)}</span><span class="nm">${esc(S.me.name)} · ${mny(S.me.wallet.free)}</span></button>` : ""}
     ${online ? `<span class="conn ${N.status}" title="${{ on: "Conectado", connecting: "Reconectando…", unavailable: "Servidor indisponível", off: "Desconectado" }[N.status]}"></span>` : ""}
-  </div></header>`;
+  </div>${S.mode === "market" && S.me ? marketTabs(S.me) : ""}</header>`;
 }
 
 /* ============================================================
    INÍCIO
    ============================================================ */
+/* ---------- vitrine do Mercado na tela inicial: o que está acontecendo, para convidar a entrar ---------- */
+function marketShowcase() {
+  const sc = S.showcase;
+  if (!N.available || !sc) return "";
+  const live = sc.open.concat(sc.featured), st = sc.stats;
+  return `<section class="showcase">
+    <div class="sc-head"><div><span class="onair">MERCADO AO VIVO</span><h2>Monte uma coleção que fica salva.</h2>
+      <p class="lede">Estreias com cópias numeradas, coleções que valem pontos e um ranking da galera. ${S.me ? "Seus filmes e sua carteira esperam por você." : `Crie sua conta e ganhe <b>${mny(MC.signupBonus)}</b> para começar, mais ${mny(MC.allowance)} toda semana.`}</p></div>
+      <div class="sc-cta"><button class="btn coin big" data-act="market-join">${S.me ? "Abrir o Mercado" : `Criar conta e ganhar ${mny(MC.signupBonus)}`}</button>${S.me ? "" : `<button class="btn quiet" data-act="market-login">Já tenho conta</button>`}</div></div>
+    <div class="sc-stats"><span><b class="num">${st.accounts}</b> ${st.accounts === 1 ? "colecionador" : "colecionadores"}</span><span><b class="num">${st.films}</b> filmes no catálogo</span><span><b class="num">${st.copies}</b> ${st.copies === 1 ? "cópia" : "cópias"} com dono</span><span><b class="num">${live.length}</b> ${live.length === 1 ? "leilão aberto" : "leilões abertos"}</span></div>
+    ${seasonBanner(sc.season)}
+    <div class="mgrid">${liveNow(live, sc.next, "join")}${mpanel("", "🏆 Ranking", rankList(sc.ranking))}</div>
+    ${sc.recent.length ? mpanel("", "Chegaram ao catálogo", filmStrip(sc.recent)) : ""}
+  </section>`;
+}
+async function loadShowcase() {
+  const r = await N.call("market:showcase");
+  if (!r.error) { S.showcase = r; S.showcaseAt = Date.now(); if (screen() === "home" || (S.mode === "market" && !S.me)) render(); }
+}
 const DEMO_FILM = C.BASE.find((f) => f.id === "tt1375666") || C.BASE[0];
 function renderHome() {
   const onlineOk = N.available && N.status !== "unavailable";
@@ -138,6 +159,7 @@ function renderHome() {
         <div class="scrub"><div class="track"><div class="fill demo-fill"></div></div></div>
       </div>
     </section>
+    ${marketShowcase()}
     <section>
       <h2 class="section-title">Três jeitos de leiloar</h2>
       <div class="formats">
@@ -190,7 +212,7 @@ function playersPanel() {
     const list = S.setup.localPlayers.map((n, i) => `<div class="prow"><span class="avatar sm" style="background:${E.COLORS[i % E.COLORS.length]}">${initial(n)}</span>
       <input class="input" id="lp-${i}" data-lp="${i}" value="${esc(n)}" maxlength="18" placeholder="Jogador ${i + 1}">
       <button class="x" data-rmlp="${i}" aria-label="Remover jogador" ${S.setup.localPlayers.length <= 2 ? "disabled" : ""}>×</button></div>`).join("");
-    return panel("players", "Jogadores", `<div class="plist">${list}</div>
+    return mpanel("players", "Jogadores", `<div class="plist">${list}</div>
       <button class="btn ghost" data-act="addlp" ${S.setup.localPlayers.length >= E.MAX_PLAYERS ? "disabled" : ""}>Adicionar jogador</button>
       <p class="hint">Todos jogam neste aparelho, passando a vez. No Lance secreto, cada um digita escondido.</p>`, `<span class="hint num">${S.setup.localPlayers.length} de ${E.MAX_PLAYERS}</span>`);
   }
@@ -205,7 +227,7 @@ function playersPanel() {
       <span class="link">${esc(link)}</span>
       <div class="toolbar"><button class="btn" data-act="copy-link">Copiar link de convite</button><button class="btn ghost" data-act="copy-code">Copiar código</button></div></div>`,
     `<span class="hint">Código <b>${esc(S.code)}</b></span>`)
-    + panel("players", "Na sala", `<div class="plist">${rows}</div>
+    + mpanel("players", "Na sala", `<div class="plist">${rows}</div>
     ${S.you ? "" : `<p class="hint">Você está assistindo. Lances ficam com quem entrou como jogador.</p>`}`, `<span class="hint num">${st.players.length} de ${E.MAX_PLAYERS}</span>`);
 }
 /* ---------- doação na sala (estilo donate de live) ---------- */
@@ -550,51 +572,350 @@ function renderFinal() {
    MERCADO: conta, carteira e coleção que ficam salvas
    ============================================================ */
 const fmtWhen = (t) => new Date(t).toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+/* ---------- Mercado: abas no topo e uma tela por assunto ---------- */
+const MTABS = [["painel", "Painel", "🏠"], ["estreias", "Estreias", "🎟️"], ["leiloes", "Leilões", "🔨"], ["colecao", "Coleção", "🎞️"],
+  ["catalogo", "Catálogo", "📚"], ["ranking", "Ranking", "🏆"], ["carteira", "Carteira", "👛"], ["admin", "Admin", "🛠️"]];
+function marketTabs(me) {
+  const A = S.auctions || {}, m = S.market || {};
+  const badge = { estreias: (A.open || []).length, leiloes: (A.players || []).length, colecao: (m.collection || []).length };
+  return `<nav class="mtabs" aria-label="Mercado"><div class="wrap">${MTABS.filter(([k]) => k !== "admin" || me.admin).map(([k, l, i]) =>
+    `<button type="button" class="mtab" data-mtab="${k}" aria-current="${S.mtab === k ? "page" : "false"}"><span aria-hidden="true">${i}</span>${l}${badge[k] ? `<span class="badge num">${badge[k]}</span>` : ""}</button>`).join("")}</div></nav>`;
+}
+// painel sem botão de esconder: dentro das abas cada tela já tem um assunto só
+function mpanel(key, title, body, extra, cls) {
+  return `<section class="panel ${cls || ""}"><div class="panel-head"><h2>${title}</h2>${extra || ""}</div>${body}</section>`;
+}
+const BENEFITS = () => [
+  ["🎁", `${mny(MC.signupBonus)} de boas-vindas`, `e mais ${mny(MC.allowance)} de mesada toda semana, igual para todos.`],
+  ["🎟️", "Estreias com cópias numeradas", "Uma por dia, uma por semana e uma por mês, cada vez mais raras. A Casa disputa junto."],
+  ["🏆", "Coleção que vale pontos", "Trilogias, diretores e o gênero da temporada dão bônus. Suba no ranking da galera."],
+  ["🔨", "Revenda entre jogadores", "Anuncie suas cópias em quatro formatos de leilão, com reserva secreta."]
+];
 function renderMarket() {
   const a = S.acct;
   if (!S.me) {
-    const reg = a.tab === "register";
-    return `<main class="wrap market"><section class="panel auth-panel">
-      <div><h1 class="market-title">Mercado</h1><p class="hint">Sua carteira e sua coleção de filmes ficam salvas entre as partidas.</p></div>
-      <div class="seg" role="group" aria-label="Entrar ou criar conta">
-        <button type="button" data-acct-tab="login" aria-pressed="${!reg}">Entrar</button>
-        <button type="button" data-acct-tab="register" aria-pressed="${reg}">Criar conta</button></div>
-      <form class="entry" id="authForm">
-        <div class="field"><label for="au-name">Nome</label><input class="input" id="au-name" maxlength="18" autocomplete="username" value="${esc(a.name)}"></div>
-        <div class="field"><label for="au-pass">Senha</label><input class="input" id="au-pass" type="password" maxlength="200" autocomplete="${reg ? "new-password" : "current-password"}" value="${esc(a.pass)}"></div>
-        ${reg ? `<p class="hint">Pelo menos ${MC.passwordMin} caracteres. Se esquecer, um admin gera uma senha temporária para você.</p>` : ""}
-        ${S.ui.err ? `<p class="err">${esc(S.ui.err)}</p>` : ""}
-        <button class="btn go big" type="submit" ${a.busy ? "disabled" : ""}>${a.busy ? "Um momento…" : reg ? "Criar conta" : "Entrar"}</button>
-      </form>
-      <button class="btn quiet" data-act="home">Voltar ao início</button>
-    </section></main>`;
+    const reg = a.tab === "register", sc = S.showcase;
+    return `<main class="wrap market auth">
+      <section class="panel auth-panel">
+        <div><h1 class="market-title">${reg ? "Crie sua conta no Mercado" : "Entre no Mercado"}</h1><p class="hint">Sua carteira e sua coleção de filmes ficam salvas entre as partidas.</p></div>
+        <div class="seg" role="group" aria-label="Entrar ou criar conta">
+          <button type="button" data-acct-tab="register" aria-pressed="${reg}">Criar conta</button>
+          <button type="button" data-acct-tab="login" aria-pressed="${!reg}">Já tenho conta</button></div>
+        <form class="entry" id="authForm">
+          <div class="field"><label for="au-name">Nome</label><input class="input" id="au-name" maxlength="18" autocomplete="username" value="${esc(a.name)}"></div>
+          <div class="field"><label for="au-pass">Senha</label><input class="input" id="au-pass" type="password" maxlength="200" autocomplete="${reg ? "new-password" : "current-password"}" value="${esc(a.pass)}"></div>
+          ${reg ? `<p class="hint">Pelo menos ${MC.passwordMin} caracteres. Se esquecer, um admin gera uma senha temporária para você.</p>` : ""}
+          ${S.ui.err ? `<p class="err">${esc(S.ui.err)}</p>` : ""}
+          <button class="btn ${reg ? "coin" : "go"} big" type="submit" ${a.busy ? "disabled" : ""}>${a.busy ? "Um momento…" : reg ? `Criar conta e ganhar ${mny(MC.signupBonus)}` : "Entrar"}</button>
+        </form>
+        <ul class="benefits">${BENEFITS().map(([i, t, d]) => `<li><span aria-hidden="true">${i}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></li>`).join("")}</ul>
+      </section>
+      <aside class="auth-side">${sc ? liveNow(sc.open.concat(sc.featured), sc.next, "join") + (sc.ranking.length ? mpanel("", "Ranking agora", rankList(sc.ranking)) : "") : ""}</aside>
+    </main>`;
   }
-  const m = S.market || { me: S.me, ledger: [], collection: [] }, me = m.me, w = me.wallet;
-  const rows = m.ledger.map((e) => `<div class="lrow"><span>${esc(MK.KINDS[e.kind] || e.kind)}${e.ref ? ` <small>${esc(e.ref)}</small>` : ""}</span><span class="when">${esc(new Date(e.at).toLocaleDateString("pt-BR"))}</span><b class="num ${e.delta < 0 ? "out" : "in"}">${e.delta < 0 ? "−" : "+"}${brl(Math.abs(e.delta))}</b></div>`).join("");
-  return `<main class="wrap market">
-    <div class="col">
-      ${panel("wallet", `Carteira de ${esc(me.name)}${me.admin ? ` <span class="pill top">admin</span>` : ""}`,
-        `<div class="bal"><span class="label">Saldo livre</span><b class="num">${brl(w.free)}</b>${w.reserved ? `<span class="hint num">Mais ${brl(w.reserved)} reservados em lances</span>` : ""}</div>
-        <p class="hint">Próxima mesada de ${brl(MC.allowance)}: ${esc(fmtWhen(me.nextAllowanceAt))}.</p>`,
-        `<button class="btn quiet" data-act="logout">Sair da conta</button>`, "wallet")}
-      ${panel("collection", "Coleção", m.collection.length ? "" : `<div class="curtain"><div><b>Nenhum filme ainda</b><p>Seus filmes chegam pelos leilões do Mercado.</p></div></div>`)}
+  const m = S.market || { me: S.me, ledger: [], collection: [] }, me = m.me;
+  const tab = S.mtab === "admin" && !me.admin ? "painel" : S.mtab;
+  const views = {
+    painel: () => dashboard(m, me),
+    estreias: () => auctionsPanel(me),
+    leiloes: () => playersPanel(me) || mpanel("players", "Leilões dos jogadores", `<p class="hint">Carregando…</p>`),
+    colecao: () => collectionPanel(m),
+    catalogo: () => catalogPanel(me),
+    ranking: () => rankingPanel(me) || mpanel("ranking", "Ranking de colecionadores", `<p class="hint">Carregando…</p>`),
+    carteira: () => walletView(m, me),
+    admin: () => adminPanel(me)
+  };
+  return `<main class="wrap market tabbed">${(views[tab] || views.painel)()}</main>`;
+}
+
+/* ---------- Painel: o resumo do Mercado para quem entrou ---------- */
+function stat(tab, label, value, sub, cls) {
+  return `<button type="button" class="stat ${cls || ""}" data-mtab="${tab}"><span class="label">${label}</span><b class="num">${value}</b><span class="hint">${sub || ""}</span></button>`;
+}
+function dashboard(m, me) {
+  const w = me.wallet, s = m.score || { total: 0, bonuses: [] }, R = S.ranking, A = S.auctions || { open: [], players: [], next: {} };
+  const pos = R ? R.ranking.findIndex((r) => r.id === me.id) + 1 : 0;
+  const live = A.open.concat((A.players || []).filter((a) => a.status === "open")), leading = live.filter((a) => a.mine);
+  const recent = S.catalog ? S.catalog.films.slice().sort((x, y) => (y.addedAt || 0) - (x.addedAt || 0)).slice(0, 10) : [];
+  const caps = (m.caps || []).map((c) => `${rarName(c.rarity)} ${c.owned}/${c.cap}`).join(" · ");
+  return `<section class="hello"><h1>Olá, ${esc(me.name)}</h1><p class="hint">Próxima mesada de ${mny(MC.allowance)}: ${esc(fmtWhen(me.nextAllowanceAt))}.</p></section>
+    <div class="stats">
+      ${stat("carteira", "Saldo livre", mny(w.free), w.reserved ? `+ ${mny(w.reserved)} reservados em lances` : "pronto para dar lance", "coin")}
+      ${stat("ranking", "Pontos", pts(s.total), pos ? `${pos}º de ${R.ranking.length} no ranking` : "monte sua coleção", "mint")}
+      ${stat("colecao", "Coleção", `${m.collection.length} ${m.collection.length === 1 ? "cópia" : "cópias"}`, caps ? `teto: ${caps}` : "")}
+      ${stat("estreias", "Ao vivo agora", `${live.length} ${live.length === 1 ? "leilão" : "leilões"}`, leading.length ? `você está na frente em ${leading.length}` : "dê o primeiro lance", "live")}
     </div>
+    ${seasonBanner(R && R.season)}
+    ${liveNow(live, A.next, "tab")}
+    <div class="mgrid">
+      ${mpanel("", "Top do ranking", R ? rankList(R.ranking.slice(0, 5), me.id) : `<p class="hint">Carregando…</p>`, `<button class="btn quiet" data-mtab="ranking">Ver tudo</button>`)}
+      ${mpanel("", "Chegaram ao catálogo", recent.length ? filmStrip(recent) : `<p class="hint">Carregando…</p>`, `<button class="btn quiet" data-mtab="catalogo">Ver catálogo</button>`)}
+    </div>`;
+}
+// leilões abertos em formato compacto: no Mercado leva à aba certa; na tela inicial convida a entrar
+function miniAuction(a, mode) {
+  const f = a.film, user = a.kind === "user", fmt = a.format || "open", secret = fmt === "sealed" || fmt === "vickrey";
+  const price = fmt === "dutch" ? `<b class="num" data-dutch="${a.startPrice}|${a.floor}|${a.startsAt}|${a.endsAt}">${mny(a.startPrice)}</b>`
+    : secret ? `<b class="num">${a.bids} ${a.bids === 1 ? "lance" : "lances"}</b>` : `<b class="num">${mny(a.highBy ? a.high : a.minBid)}</b>`;
+  const who = user ? `${FMT_ICO[fmt]} ${esc(a.formatName)} · ${esc(a.sellerName)}` : `${EVENT_ICON[a.event] || "🎬"} ${esc(a.eventName)}`;
+  const goto = mode === "join" ? `data-act="market-join" data-after="${user ? "leiloes" : "estreias"}"` : `data-mtab="${user ? "leiloes" : "estreias"}"`;
+  return `<button type="button" class="mini r-${esc(f.rarity)}" ${goto}>
+    <span class="mp">${poster(f)}</span>
+    <span class="mi"><span class="ev">${who}</span><b class="t">${esc(f.title)}</b><span class="tags">${rarBadge(f.rarity)}<span class="hint num">${esc(a.lot)}</span></span></span>
+    <span class="mr"><span class="clock num" data-clock="${a.endsAt}"></span>${price}<span class="hint">${fmt === "dutch" ? "preço agora" : secret ? "secretos" : a.highBy ? (a.highBy === "house" ? "da Casa" : a.mine ? "seu lance" : "maior lance") : "lance mínimo"}</span></span>
+  </button>`;
+}
+function liveNow(list, next, mode) {
+  const nx = MC.estreias.filter((ev) => next && next[ev.key]).map((ev) => `${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}: ${esc(fmtWhen(next[ev.key]))}`);
+  return `<section class="panel live-now"><div class="panel-head"><h2><span class="onair">AO VIVO</span> Acontecendo agora</h2>${mode === "tab" ? `<button class="btn quiet" data-mtab="estreias">Ver estreias</button>` : ""}</div>
+    ${list.length ? `<div class="minis">${list.slice(0, 6).map((a) => miniAuction(a, mode)).join("")}</div>` : `<p class="hint">Nenhum leilão aberto neste momento.</p>`}
+    ${nx.length ? `<p class="hint">Próximas estreias: ${nx.join(" · ")}</p>` : ""}</section>`;
+}
+function rankList(rows, meId) {
+  if (!rows.length) return `<p class="hint">Ninguém tem filmes ainda. A primeira cópia já põe você no topo.</p>`;
+  return `<ol class="rank-mini">${rows.map((r, i) => `<li class="${r.id && r.id === meId ? "me" : ""}"><span class="pos num">${["🥇", "🥈", "🥉"][i] || i + 1 + "º"}</span><b>${esc(r.name)}</b><span class="hint num">${r.films} ${r.films === 1 ? "filme" : "filmes"}</span><b class="num total">${pts(r.total)}</b></li>`).join("")}</ol>`;
+}
+function filmStrip(list) {
+  return `<div class="strip">${list.map((f) => `<div class="tile r-${esc(f.rarity)}">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}<span class="t">${esc(f.title)}</span><span class="tags">${rarBadge(f.rarity)}<b class="num">${pts(f.ref)}</b></span></div>`).join("")}</div>`;
+}
+
+/* ---------- Coleção e Carteira ---------- */
+function collectionPanel(m) {
+  const body = scoreBox(m) + (m.collection.length
+    ? `<div class="mlist">${m.collection.map((c) => `<div class="citem">${filmRow(c.film, `<span class="serial num">${esc(c.label)}</span>`)}
+        <div class="cact">${c.listed
+          ? `<span class="pill top">anunciada</span><button class="btn quiet" data-mtab="leiloes">Ver no painel de leilões</button>`
+          : `<button class="btn" data-list="${esc(c.id)}">Anunciar</button><button class="btn ghost num" data-sell="${esc(c.id)}" title="A Casa paga ${Math.round(MC.buybackPct * 100)}% do valor de referência (${mny(c.value)})">Vender para a Casa · ${mny(c.buyback)}</button>`}</div></div>`).join("")}</div>`
+    : `<div class="curtain"><div><b>Nenhum filme ainda</b><p>Suas cópias chegam pelas estreias da Casa e pelos leilões dos jogadores.</p></div><button class="btn coin" data-mtab="estreias">Ver estreias</button></div>`);
+  return mpanel("collection", "Coleção", body, m.collection.length ? `<span class="hint num">${m.collection.length} ${m.collection.length === 1 ? "cópia" : "cópias"}</span>` : "");
+}
+function walletView(m, me) {
+  const a = S.acct, w = me.wallet;
+  const rows = m.ledger.map((e) => `<div class="lrow"><span>${esc(MK.KINDS[e.kind] || e.kind)}${e.ref ? ` <small>${esc(e.ref)}</small>` : ""}</span><span class="when">${esc(new Date(e.at).toLocaleDateString("pt-BR"))}</span><b class="num ${e.delta < 0 ? "out" : "in"}">${e.delta < 0 ? "−" : "+"}${mny(Math.abs(e.delta))}</b></div>`).join("");
+  return `<div class="mgrid">
     <div class="col">
-      ${panel("ledger", "Extrato", `<div class="ledger">${rows || `<p class="hint">Nenhuma movimentação ainda.</p>`}</div>`)}
-      ${panel("account", "Conta", `<form class="acct-form" id="pwForm">
+      ${mpanel("wallet", `Carteira de ${esc(me.name)}${me.admin ? ` <span class="pill top">admin</span>` : ""}`,
+        `<div class="bal"><span class="label">Saldo livre</span><b class="num">${mny(w.free)}</b>${w.reserved ? `<span class="hint num">Mais ${mny(w.reserved)} reservados em lances</span>` : ""}</div>
+        <p class="hint">Próxima mesada de ${mny(MC.allowance)}: ${esc(fmtWhen(me.nextAllowanceAt))}.</p>`,
+        `<button class="btn quiet" data-act="logout">Sair da conta</button>`, "wallet")}
+      ${mpanel("account", "Conta", `<form class="acct-form" id="pwForm">
           <input class="input" id="pw-old" type="password" placeholder="Senha atual" autocomplete="current-password" value="${esc(a.pwOld)}">
           <input class="input" id="pw-new" type="password" placeholder="Senha nova" autocomplete="new-password" value="${esc(a.pwNew)}">
           <button class="btn" type="submit">Trocar senha</button></form>
         ${me.admin ? `<form class="acct-form" id="resetForm" autocomplete="off"><input class="input" id="rs-name" maxlength="18" placeholder="Nome da conta"><button class="btn" type="submit">Gerar senha temporária</button></form>
           <p class="hint">A pessoa sai da conta em todos os aparelhos e entra com a senha temporária.</p>` : ""}`)}
     </div>
-  </main>`;
+    ${mpanel("ledger", "Extrato", `<div class="ledger">${rows || `<p class="hint">Nenhuma movimentação ainda.</p>`}</div>`)}
+  </div>`;
+}
+/* ---------- pontuação da coleção, tetos, temporada e ranking ---------- */
+const BONUS_ICO = { series: "🎞️", director: "🎬", decade: "📅", genre: "🎭", season: "🔥" };
+const bonusChips = (s) => s.bonuses.map((b) => `<span class="chip bonus" title="${esc(b.name)}: ${b.n} filmes">${BONUS_ICO[b.kind] || "★"} ${esc(b.name)}: ${esc(b.label)} <b class="num">+${pts(b.pts)}</b></span>`).join("");
+function scoreBox(m) {
+  const s = m.score, caps = (m.caps || []).map((c) => `${esc(rarName(c.rarity))}: <b class="num">${c.owned} de ${c.cap}</b>`).join(" · ");
+  if (!s) return "";
+  return `<div class="scorebox"><div><span class="label">Pontos da coleção</span><b class="num">${pts(s.total)}</b>
+      <span class="hint num">${pts(s.base)} das notas${s.bonuses.length ? " + bônus" : ""}</span></div>
+    ${s.bonuses.length ? `<div class="chips">${bonusChips(s)}</div>` : `<p class="hint">Bônus: 3 filmes da mesma série (+${MC.collectionBonuses.series.pts}), do mesmo diretor (+${MC.collectionBonuses.director.pts}), 4 da mesma década ou do mesmo gênero (+${MC.collectionBonuses.decade.pts}) e filmes do gênero da temporada.</p>`}
+    ${caps ? `<p class="hint">Teto por jogador: ${caps}</p>` : ""}</div>`;
+}
+function seasonBanner(s) {
+  s = s || (S.ranking && S.ranking.season);
+  if (!s) return "";
+  return `<div class="season">🔥 <span>Temporada: <b>${esc(s.genre)}</b> em alta até ${esc(new Date(s.endsAt - 1).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }))}. Cada filme do gênero vale +${MC.seasonPts} pontos e ${Math.round((MC.seasonValueBoost - 1) * 100)}% a mais no valor de referência.</span>${s.override ? `<span class="pill top">escolhido pelo admin</span>` : ""}</div>`;
+}
+function rankingPanel(me) {
+  const R = S.ranking;
+  if (!R) return "";
+  const rows = R.ranking.map((r, i) => `<div class="rank-row ${r.id === me.id ? "me" : ""}"><span class="pos num">${i + 1}º</span><b>${esc(r.name)}</b>
+    <span class="hint num">${r.films} ${r.films === 1 ? "filme" : "filmes"}</span><span class="chips">${bonusChips(r)}</span><b class="num total">${pts(r.total)}</b></div>`).join("");
+  return mpanel("ranking", "Ranking de colecionadores", `${seasonBanner()}<p class="hint">Pontos = soma das notas de referência dos seus filmes (cada filme conta uma vez) + bônus de conjunto + temporada.</p><div class="ranking">${rows}</div>`);
+}
+async function loadRanking() {
+  const r = await N.call("market:ranking");
+  if (!r.error) { S.ranking = r; render(); }
+}
+
+/* ---------- catálogo do Mercado: raridade, notas e tiragem ---------- */
+const hotGenre = () => (S.ranking && S.ranking.season ? S.ranking.season.genre : null);
+const rarName = (k) => (MK.rarity(k) || {}).name || k;
+const rarBadge = (k) => `<span class="rar r-${esc(k)}">${esc(rarName(k))}</span>`;
+const filmScores = (f) => Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null).map(([k, n]) => `${n} ${pts(f.scores[k])}`).join(" · ");
+function filmRow(f, side) {
+  return `<div class="mfilm r-${esc(f.rarity)}"><div class="ph">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}</div>
+    <div class="meta"><b>${esc(f.title)}</b><span class="hint">${esc(f.year)}${f.dir ? " · " + esc(f.dir) : ""}</span>
+      <div class="tags">${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal" title="As notas quase não discordam">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip" title="Pouco lembrado: subiu uma raridade">Garimpo</span>` : ""}${hotGenre() && (f.g || []).includes(hotGenre()) ? `<span class="chip hot" title="Gênero da temporada: vale mais pontos e mais no valor de referência">🔥 em alta</span>` : ""}</div>
+      <span class="hint num">${esc(filmScores(f))}</span></div>
+    <div class="ref"><b class="num">${pts(f.ref)}</b>${side || ""}</div></div>`;
+}
+function catalogPanel(me) {
+  const c = S.catalog;
+  const admin = me.admin ? `<button class="btn quiet" data-act="refill" ${c && c.refilling ? "disabled" : ""}>Atualizar agora</button>` : "";
+  if (!c) return mpanel("catalog", "Filmes do Mercado", `<p class="hint">Carregando o catálogo…</p>`, admin);
+  const flt = S.ui.catFilter || "all", count = {};
+  c.films.forEach((f) => (count[f.rarity] = (count[f.rarity] || 0) + 1));
+  const opts = [["all", `Todos (${c.films.length})`], ...MC.rarities.slice().reverse().filter((r) => count[r.key]).map((r) => [r.key, `${r.name} (${count[r.key]})`])];
+  const list = c.films.filter((f) => flt === "all" || f.rarity === flt);
+  const copies = (f) => `<span class="hint num">${f.minted} de ${f.supply} ${f.supply === 1 ? "cópia emitida" : "cópias emitidas"}</span>`;
+  const body = !c.films.length
+    ? `<div class="curtain"><div><b>${c.refilling ? "A Casa está escolhendo os filmes…" : "Catálogo vazio"}</b><p>A Casa sorteia filmes com pelo menos ${MC.minScores} notas (IMDb, Metacritic ou Rotten Tomatoes) e cadastra sozinha.</p></div></div>`
+    : `<p class="hint">Cada filme tem uma tiragem limitada de cópias numeradas, definida pela raridade. A nota de referência é a média das notas disponíveis.</p>
+       <div class="seg" role="group" aria-label="Filtrar por raridade">${opts.map(([k, l]) => `<button type="button" data-catf="${k}" aria-pressed="${flt === k}">${esc(l)}</button>`).join("")}</div>
+       <div class="mlist">${list.map((f) => filmRow(f, copies(f))).join("")}</div>`;
+  return mpanel("catalog", "Filmes do Mercado", body, admin);
+}
+/* ---------- estreias da Casa: leilões que emitem as cópias ---------- */
+const EVENT_ICON = { day: "🎟️", week: "🎬", month: "🏆" };
+const bidDrafts = {};   // valor digitado em cada leilão (sobrevive ao re-render)
+const FMT_ICO = { open: "🔨", sealed: "✉️", vickrey: "🥈", dutch: "⏱️" };
+const bidBox = (a, min, label, start) => `<form class="bid-form" id="bidForm-${esc(a.id)}"><div class="stepper"><button type="button" data-mstep="-1" data-aid="${esc(a.id)}" aria-label="Diminuir">−</button>
+    <input id="mbid-${esc(a.id)}" type="number" inputmode="numeric" min="${min}" value="${Math.max(min, Math.floor(+bidDrafts[a.id]) || start || min)}" aria-label="Valor do lance"><button type="button" data-mstep="1" data-aid="${esc(a.id)}" aria-label="Aumentar">+</button></div>
+    <button class="btn coin" type="submit">${label}</button></form>`;
+// cartão de leilão: estreia da Casa ou leilão de jogador, em qualquer formato
+function auctionCard(a, me) {
+  const f = a.film, fmt = a.format || "open", user = a.kind === "user", scheduled = a.status === "scheduled";
+  const free = `seu saldo livre ${mny(me.wallet.free)}`;
+  let read, ctl;
+  if (fmt === "dutch") {
+    read = `<span class="label">Preço agora</span><b class="num" data-dutch="${a.startPrice}|${a.floor}|${a.startsAt}|${a.endsAt}">${mny(a.startPrice)}</b><span class="hint num">cai até ${mny(a.floor)}</span>`;
+    ctl = `<button class="btn coin" data-dutch-buy="${esc(a.id)}" ${scheduled || a.isSeller ? "disabled" : ""}>Comprar agora</button><p class="hint">O primeiro a comprar leva pelo preço da hora · ${free}</p>`;
+  } else if (fmt === "sealed" || fmt === "vickrey") {
+    read = `<span class="label">${FMT_ICO[fmt]} ${esc(a.formatName)}</span><b class="num">${a.bids} ${a.bids === 1 ? "lance" : "lances"}</b><span class="hint">${fmt === "vickrey" ? "quem vence paga o 2º maior lance" : "quem vence paga o próprio lance"}</span>`;
+    ctl = `${a.myBid ? `<p class="lead-ok">Seu lance secreto: ${mny(a.myBid)}. Dá para trocar até o fim.</p>` : ""}${bidBox(a, a.minBid, a.myBid ? "Trocar lance" : "Lance secreto", a.myBid)}<p class="hint num">Mínimo ${mny(a.minBid)} · ${free}</p>`;
+  } else {
+    const min = a.highBy ? a.high + 1 : a.minBid;
+    read = `<span class="label">${a.highBy ? "Maior lance" : "Lance mínimo"}</span><b class="num">${mny(a.highBy ? a.high : a.minBid)}</b>
+      <span class="hint">${a.highBy ? (a.mine ? "é seu" : a.highBy === "house" ? "da Casa" : `de ${esc(a.highName)}`) : "ninguém deu lance ainda"}</span>`;
+    ctl = a.mine ? `<p class="lead-ok">Seu lance está na frente. Se alguém passar, o dinheiro volta para você na hora.</p>`
+      : `${bidBox(a, min, "Dar lance")}<p class="hint num">Mínimo ${mny(min)} · ${free}</p>`;
+  }
+  if (a.isSeller) {
+    ctl = `<p class="lead-ok">Seu leilão${a.reserve ? `, com reserva secreta de ${mny(a.reserve)}` : ""}.</p>
+      ${a.bids || a.highBy ? `<p class="hint">Já tem lance: vai até o fim.</p>` : `<button class="btn quiet" data-unlist="${esc(a.id)}">Desistir (a taxa de anúncio não volta)</button>`}`;
+  } else if (scheduled) ctl = `<p class="hint">Abre ${esc(fmtWhen(a.startsAt))}. Os lances valem a partir daí.</p>`;
+  const head = user
+    ? `<span class="ev">${FMT_ICO[fmt]} ${esc(a.formatName)} <small>de ${esc(a.sellerName)}</small></span>`
+    : `<span class="ev">${EVENT_ICON[a.event] || "🎬"} ${esc(a.eventName)}</span>`;
+  return `<article class="auction r-${esc(f.rarity)} ${a.featured ? "featured" : ""}">
+    <div class="ahead">${head}<span class="clock-wrap">${scheduled ? `<span class="hint">abre em</span> <span class="clock num" data-clock="${a.startsAt}"></span>` : `<span class="clock num" data-clock="${a.endsAt}"></span>`}</span></div>
+    ${filmRow(f, `<span class="serial num">${esc(a.lot)}</span>${a.fromStock ? `<span class="hint">volta do estoque da Casa</span>` : ""}${a.featured ? `<span class="pill top">vitrine</span>` : ""}`)}
+    <div class="abody"><div class="aread">${read}</div><div class="actl">${ctl}</div></div>
+    ${a.highBy === "house" ? `<p class="hint">🏠 A Casa disputa as estreias com um teto escondido: para levar, passe do lance dela. Se ela terminar na frente, a cópia não sai.</p>` : ""}
+    ${a.hasReserve && !a.isSeller ? `<p class="hint">🔒 Tem preço de reserva secreto: abaixo dele, a cópia não é vendida.</p>` : ""}
+    ${a.extended ? `<p class="hint num">Prorrogada ${a.extended}× por lances no fim.</p>` : ""}
+    ${me.admin ? `<div class="adm-row"><span class="hint">Admin:</span><button class="btn quiet" data-adm-close="${esc(a.id)}">Encerrar agora</button><button class="btn quiet" data-adm-cancel="${esc(a.id)}">Cancelar</button></div>` : ""}
+  </article>`;
+}
+// resultado de um leilão encerrado, com os lances secretos revelados
+function resultText(a) {
+  const r = a.result || {};
+  const who = r.winner ? `${esc(r.winnerName)} levou por <b class="num">${mny(r.price)}</b>` : a.status === "canceled" ? "cancelado" : r.reserveMissed ? "não atingiu a reserva" : "sem lances";
+  const rev = r.reveal && r.reveal.length ? `<br><small>lances: ${r.reveal.map((b) => `${esc(b.name)} ${mny(b.v)}`).join(", ")}</small>` : "";
+  return `<span class="hint">${a.kind === "user" ? `${FMT_ICO[a.format]} de ${esc(a.sellerName)} · ` : ""}${who}${rev}</span>`;
+}
+/* ---------- leilões dos jogadores: vitrine e lista ---------- */
+function playersPanel(me) {
+  const A = S.auctions;
+  if (!A) return "";
+  const P = A.players || [], feat = P.filter((a) => a.featured), rest = P.filter((a) => !a.featured);
+  const body = `<p class="hint">Qualquer um anuncia uma cópia da coleção pelo botão <b>Anunciar</b>. Anunciar custa ${mny(MC.listingFee)}; a vitrine (com aviso para todos) custa mais ${mny(MC.featureFee)}, e é de graça para ${esc(rarName(MC.featureFreeFrom))} ou mais raro. Quem vende paga ${Math.round(MC.saleFeePct * 100)}% do preço.</p>
+    ${feat.length ? `<span class="label">⭐ Vitrine</span><div class="auctions">${feat.map((a) => auctionCard(a, me)).join("")}</div>` : ""}
+    ${rest.length ? `<span class="label">Anunciados</span><div class="auctions">${rest.map((a) => auctionCard(a, me)).join("")}</div>` : ""}
+    ${P.length ? "" : `<div class="curtain"><div><b>Nenhum leilão de jogador agora</b><p>Anuncie uma cópia da sua coleção para os outros darem lance.</p></div></div>`}`;
+  return mpanel("players", "Leilões dos jogadores", body, P.length ? `<span class="pill in">${P.length} ${P.length === 1 ? "anúncio" : "anúncios"}</span>` : "");
+}
+/* ---------- anunciar uma cópia: formulário num modal que sobrevive aos re-renders ---------- */
+let listDraft = null;
+const toLocalInput = (t) => { const d = new Date(t - new Date(t).getTimezoneOffset() * 60e3); return d.toISOString().slice(0, 16); };
+function durName(m) { return m < 60 ? `${m} min` : m < 1440 ? `${m / 60} h` : `${m / 1440} ${m === 1440 ? "dia" : "dias"}`; }
+function listFormHtml() {
+  const d = listDraft, c = ((S.market || {}).collection || []).find((x) => x.id === d.copy);
+  if (!c) return `<p class="hint">Essa cópia não está mais na sua coleção.</p>`;
+  const r = MC.rarities.find((x) => x.key === c.film.rarity), freeFeat = MK.rarityIndex(c.film.rarity) >= MK.rarityIndex(MC.featureFreeFrom);
+  const cost = MC.listingFee + (d.featured && !freeFeat ? MC.featureFee : 0), dutch = d.format === "dutch";
+  return `${filmRow(c.film, `<span class="serial num">${esc(c.label)}</span>`)}
+    <div class="field"><span class="label">Formato</span><div class="seg" role="group">${MC.userFormats.map((k) => `<button type="button" data-lf-format="${k}" aria-pressed="${d.format === k}">${FMT_ICO[k]} ${esc(MK.FORMATS[k].name)}</button>`).join("")}</div>
+      <p class="hint">${esc(MK.FORMATS[d.format].desc)}</p></div>
+    <div class="grid-3">
+      <div class="field"><label for="lf-minutes">Duração</label><select class="input" id="lf-minutes">${MC.userDurations.map((m) => `<option value="${m}" ${+d.minutes === m ? "selected" : ""}>${durName(m)}</option>`).join("")}</select></div>
+      <div class="field"><span class="label">Início</span><div class="seg" role="group"><button type="button" data-lf-when="now" aria-pressed="${!d.schedule}">Agora</button><button type="button" data-lf-when="later" aria-pressed="${!!d.schedule}">Agendar</button></div></div>
+      ${d.schedule ? `<div class="field"><label for="lf-start">Começa em</label><input class="input" id="lf-start" type="datetime-local" value="${esc(d.start)}"></div>` : ""}
+    </div>
+    <div class="grid-3">
+      ${dutch ? `<div class="field"><label for="lf-startPrice">Preço inicial</label><input class="input num" id="lf-startPrice" type="number" min="${r.minBid + 1}" value="${esc(d.startPrice)}"></div>` : ""}
+      <div class="field"><label for="lf-reserve">${dutch ? "Preço mínimo (o relógio para aqui)" : "Reserva secreta (opcional)"}</label><input class="input num" id="lf-reserve" type="number" min="0" placeholder="${dutch ? r.minBid : "sem reserva"}" value="${esc(d.reserve)}"></div>
+    </div>
+    <p class="hint">Lance mínimo da raridade ${esc(r.name)}: ${mny(r.minBid)}. ${dutch ? "Todos veem o preço caindo até o mínimo." : "A reserva fica escondida: abaixo dela, a cópia continua sua e os lances voltam."}</p>
+    <label class="check"><input type="checkbox" id="lf-featured" ${d.featured || freeFeat ? "checked" : ""} ${freeFeat ? "disabled" : ""}> Pôr na vitrine e avisar todo mundo ${freeFeat ? "(de graça para esta raridade)" : `(+${mny(MC.featureFee)})`}</label>
+    <p class="cost num">Custa ${mny(cost)} para anunciar (não volta). Se vender, você recebe o preço menos ${Math.round(MC.saleFeePct * 100)}%.</p>
+    ${d.err ? `<p class="err">${esc(d.err)}</p>` : ""}`;
+}
+function openListForm(copyId) {
+  listDraft = { copy: copyId, format: "open", minutes: 60, schedule: false, start: toLocalInput(Date.now() + 3600e3), reserve: "", startPrice: "", featured: false, err: "" };
+  showListModal();
+}
+function showListModal() {
+  S.ui.modal = { title: "Anunciar cópia", body: listFormHtml, cls: "wide", actions: [{ label: "Cancelar", run: () => { listDraft = null; } }, { label: "Anunciar", cls: "go", run: submitListing }] };
+  render();
+}
+async function submitListing() {
+  const d = listDraft; if (!d) return;
+  const r = await N.call("market:list", { copy: d.copy, format: d.format, minutes: +d.minutes, startsAt: d.schedule ? new Date(d.start).getTime() : null,
+    reserve: d.reserve === "" ? 0 : +d.reserve, startPrice: +d.startPrice, featured: d.featured });
+  if (r.error) { d.err = r.error; return showListModal(); }   // reabre com o erro, sem perder o que foi preenchido
+  listDraft = null; toast(d.schedule ? "Leilão agendado." : "Leilão aberto!");
+}
+// ferramentas de teste: abrir estreias, dar M$ e conferir carteiras e coleções de todas as contas
+function adminPanel(me) {
+  if (!me.admin) return "";
+  const accs = S.adminAccounts || [];
+  const rows = accs.map((u) => `<div class="acc-row"><b>${esc(u.name)}${u.admin ? ` <span class="pill top">admin</span>` : ""}</b>
+    <span class="num">${mny(u.wallet.free)} livres${u.wallet.reserved ? ` · ${mny(u.wallet.reserved)} reservados` : ""}</span>
+    <span class="copies">${u.copies.length ? u.copies.map((c) => `${rarBadge(c.rarity)} ${esc(c.title)} <small class="num">${esc(c.label)}</small>`).join("<br>") : `<span class="hint">sem cópias</span>`}</span></div>`).join("");
+  return mpanel("admin", "Ferramentas do admin", `<p class="hint">Para testar: abra estreias fora da agenda, encerre antes do tempo (o vencedor recebe a cópia na hora) e confira abaixo a carteira e a coleção de cada conta.</p>
+    <div class="toolbar"><span class="label">Abrir estreia agora:</span>${MC.estreias.map((ev) => `<button class="btn" data-adm-open="${esc(ev.key)}">${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}</button>`).join("")}</div>
+    <form class="acct-form" id="admGrant" autocomplete="off"><input class="input" id="adm-name" maxlength="18" placeholder="Nome da conta"><input class="input num" id="adm-amount" type="number" min="1" max="10000" placeholder="M$"><button class="btn" type="submit">Dar M$</button></form>
+    <div class="panel-head"><span class="label">Contas (${accs.length})</span><button class="btn quiet" data-act="adm-refresh">Atualizar</button></div>
+    <div class="accs">${rows || `<p class="hint">Carregando…</p>`}</div>
+    <div class="toolbar"><span class="label">Temporada deste mês:</span><select class="input" id="adm-season" style="width:auto"><option value="">Sorteio do mês</option>${MC.seasonGenres.map((g) => `<option ${S.ranking && S.ranking.season && S.ranking.season.override && S.ranking.season.genre === g ? "selected" : ""}>${esc(g)}</option>`).join("")}</select><button class="btn" data-act="adm-season">Trocar</button></div>`, "", "admin-panel");
+}
+async function loadAccounts() {
+  if (!S.me || !S.me.admin) return;
+  const r = await N.call("admin:accounts");
+  if (!r.error) { S.adminAccounts = r.accounts; render(); }
+}
+async function adminCall(t, d, okMsg) {
+  const r = await N.call(t, d);
+  if (r.error) return toast(r.error, true);
+  toast(typeof okMsg === "function" ? okMsg(r) : okMsg);
+  loadAccounts();
+}
+function auctionsPanel(me) {
+  const A = S.auctions;
+  if (!A) return mpanel("auctions", "Estreias da Casa", `<p class="hint">Carregando as estreias…</p>`);
+  const next = MC.estreias.filter((ev) => A.next[ev.key]).map((ev) => `${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}: ${esc(fmtWhen(A.next[ev.key]))}`);
+  const recent = A.recent.slice(0, 4).map((a) => filmRow(a.film, resultText(a)));
+  const body = `<p class="hint">Cada estreia leiloa uma cópia. Lance nos últimos ${MC.extendWindowSec} s soma mais ${MC.extendBySec} s ao relógio. O lance fica reservado na sua carteira; se alguém passar, ele volta na hora. Quem vence paga e recebe a cópia.</p>
+    ${A.open.length ? `<div class="auctions">${A.open.map((a) => auctionCard(a, me)).join("")}</div>` : `<div class="curtain"><div><b>Nenhuma estreia aberta agora</b><p>A Casa abre uma por dia, uma por semana e uma por mês.</p></div></div>`}
+    ${next.length ? `<p class="hint">Próximas: ${next.join(" · ")}</p>` : ""}
+    ${recent.length ? `<span class="label">Últimos leilões encerrados</span><div class="mlist">${recent.join("")}</div>` : ""}`;
+  return mpanel("auctions", "Estreias da Casa", body, A.open.length ? `<span class="pill in">${A.open.length} ${A.open.length === 1 ? "aberta" : "abertas"}</span>` : "");
+}
+async function loadAuctions() {
+  const r = await N.call("market:auctions");
+  if (!r.error) { S.auctions = r; render(); }
+}
+async function loadCatalog() {
+  const r = await N.call("market:catalog");
+  if (r.error) return;
+  S.catalog = r; render();
+  if (r.refilling && S.mode === "market") setTimeout(loadCatalog, 4000);
 }
 async function openMarket() {
   S.mode = "market"; S.ui.err = ""; render();
   N.connect(); await waitOpen();
   if (S.auth && !S.me) await resumeAuth();
-  if (S.me) refreshMarket();
+  if (S.me) refreshMarket(); else loadShowcase();   // sem conta: a vitrine ao lado do formulário
 }
 async function resumeAuth() {
   const r = await N.call("auth:resume", { session: S.auth });
@@ -604,9 +925,9 @@ async function resumeAuth() {
 }
 async function refreshMarket() {
   const r = await N.call("market:me");
-  if (!r.error) { S.market = r; S.me = r.me; render(); }
+  if (!r.error) { S.market = r; S.me = r.me; render(); loadCatalog(); loadAuctions(); loadAccounts(); loadRanking(); }
 }
-function signedOut() { S.auth = null; S.me = null; S.market = null; store.del("ml-auth"); }
+function signedOut() { S.auth = null; S.me = null; S.market = null; S.catalog = null; S.auctions = null; S.adminAccounts = null; S.ranking = null; store.del("ml-auth"); }
 
 /* ============================================================
    RENDER
@@ -649,7 +970,8 @@ function renderToast() {
 }
 function modalHtml() {
   const m = S.ui.modal; if (!m) return "";
-  return `<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true"><h3>${esc(m.title)}</h3>${m.body}<div class="toolbar" style="justify-content:flex-end">${m.actions.map((a, i) => `<button class="btn ${a.cls || ""}" data-modal="${i}">${esc(a.label)}</button>`).join("")}</div></div></div>`;
+  // body pode ser uma função: o conteúdo é montado de novo a cada render, a partir do estado (formulários)
+  return `<div class="modal-bg"><div class="modal ${m.cls || ""}" role="dialog" aria-modal="true"><h3>${esc(m.title)}</h3>${typeof m.body === "function" ? m.body() : m.body}<div class="toolbar" style="justify-content:flex-end">${m.actions.map((a, i) => `<button class="btn ${a.cls || ""}" data-modal="${i}">${esc(a.label)}</button>`).join("")}</div></div></div>`;
 }
 function modal(title, body, actions) { S.ui.modal = { title, body, actions }; render(); }
 
@@ -662,6 +984,17 @@ function tickClocks() {
     el.style.width = Math.max(0, Math.min(100, ((until - t) / total) * 100)) + "%";
   });
   document.querySelectorAll("span[data-until]").forEach((el) => { el.textContent = Math.max(0, Math.ceil((+el.dataset.until - t) / 1000)) + " s"; });
+  // relógios longos (estreias do Mercado): h:mm:ss ou m:ss; nos últimos 30 s ficam vermelhos
+  document.querySelectorAll("[data-clock]").forEach((el) => {
+    const s = Math.max(0, Math.ceil((+el.dataset.clock - t) / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), p = (n) => String(n).padStart(2, "0");
+    el.textContent = s ? (h >= 48 ? `${Math.floor(h / 24)} dias` : h ? `${h}:${p(m)}:${p(s % 60)}` : `${m}:${p(s % 60)}`) : "agora…";
+    el.classList.toggle("hot", s <= MC.extendWindowSec);
+  });
+  // relógio holandês: o preço cai na tela com a mesma conta do servidor
+  document.querySelectorAll("[data-dutch]").forEach((el) => {
+    const [start, floor, from, until] = el.dataset.dutch.split("|").map(Number);
+    el.textContent = mny(MK.dutchPrice({ startPrice: start, minBid: floor, reserve: 0, startsAt: from, endsAt: until }, t));
+  });
 }
 function loop() { tickClocks(); placeFx(); requestAnimationFrame(loop); }
 
@@ -977,7 +1310,35 @@ $app.addEventListener("click", async (e) => {
     const i = document.getElementById("donv"); if (i) i.value = donValue();
     return syncDonate();
   }
+  if (d.mtab) { S.mtab = d.mtab; store.set("ml-mtab", d.mtab); S.mode = "market"; render(); window.scrollTo(0, 0); return; }
   if (d.acctTab) { S.acct.tab = d.acctTab; S.ui.err = ""; render(); document.getElementById("au-name")?.focus(); return; }
+  if (d.catf) { S.ui.catFilter = d.catf; return render(); }
+  if (d.list) return openListForm(d.list);
+  if (d.lfFormat && listDraft) { listDraft.format = d.lfFormat; listDraft.err = ""; return render(); }
+  if (d.lfWhen && listDraft) { listDraft.schedule = d.lfWhen === "later"; return render(); }
+  if (d.unlist) {
+    const r = await N.call("market:unlist", { id: d.unlist });
+    return r.error ? toast(r.error, true) : toast("Anúncio retirado. A cópia continua na sua coleção.");
+  }
+  if (d.dutchBuy) {
+    const r = await N.call("market:bid", { id: d.dutchBuy });
+    return r.error ? toast(r.error, true) : toast(`Comprado por ${mny(r.price)}!`);
+  }
+  if (d.admOpen) return adminCall("admin:openEstreia", { event: d.admOpen }, "Estreia aberta.");
+  if (d.admCancel) return adminCall("admin:cancelAuction", { id: d.admCancel }, "Leilão cancelado; os lances voltaram para as carteiras.");
+  if (d.admClose) return adminCall("admin:closeAuction", { id: d.admClose }, (r) => (r.result && r.result.winner ? `Encerrada: ${r.result.winnerName} levou por ${mny(r.result.price)}.` : "Encerrada sem lances."));
+  if (d.mstep) {
+    const i = document.getElementById("mbid-" + d.aid); if (!i) return;
+    i.value = Math.max(+i.min, (Math.floor(+i.value) || 0) + +d.mstep); bidDrafts[d.aid] = i.value; return;
+  }
+  if (d.sell) {
+    const c = ((S.market || {}).collection || []).find((x) => x.id === d.sell); if (!c) return;
+    return modal(`Vender ${c.film.title} para a Casa?`, `<p class="hint">A Casa paga ${mny(c.buyback)} pela ${esc(c.label)} (${Math.round(MC.buybackPct * 100)}% do valor de referência, ${mny(c.value)}). A cópia volta para o estoque da Casa e pode sair numa próxima estreia.</p>`,
+      [{ label: "Ficar com ela" }, { label: `Vender por ${mny(c.buyback)}`, cls: "go", run: async () => {
+        const r = await N.call("market:sell", { copy: c.id });
+        if (r.error) toast(r.error, true); else toast(`Vendida para a Casa por ${mny(r.price)}.`);
+      } }]);
+  }
   if (d.emoji) {
     const el = document.getElementById("chatText"); if (!el) return;
     const a = el.selectionStart ?? el.value.length, z = el.selectionEnd ?? a;
@@ -1003,10 +1364,20 @@ $app.addEventListener("click", async (e) => {
     case "home":
       if (screen() === "live") return modal("Sair da transmissão?", `<p class="hint">${S.mode === "online" ? "Você pode voltar depois com o mesmo código, no mesmo lugar." : "O leilão local fica salvo neste aparelho."}</p>`, [{ label: "Continuar aqui" }, { label: "Sair", cls: "go", run: () => { if (S.mode === "local") { S.mode = null; render(); } else leave(); } }]);
       if (S.mode === "local" && !S.local) { S.mode = null; return render(); }
-      if (S.mode === "market") { S.mode = null; S.ui.err = ""; return render(); }
+      if (S.mode === "market") { S.mode = null; S.ui.err = ""; render(); return loadShowcase(); }
       return;
     case "create": return createRoom();
     case "market": return openMarket();
+    case "market-join": if (!S.me) S.acct.tab = "register"; if (d.after) { S.mtab = d.after; store.set("ml-mtab", d.after); } return openMarket();
+    case "market-login": S.acct.tab = "login"; return openMarket();
+    case "adm-refresh": return loadAccounts();
+    case "adm-season": { const g = document.getElementById("adm-season").value; return adminCall("admin:season", { genre: g }, (r) => `Temporada: ${r.season.genre}.`); }
+    case "refill": {
+      if (S.catalog) { S.catalog.refilling = true; render(); }
+      const r = await N.call("admin:refillCatalog");
+      if (r.error) toast(r.error, true); else toast(r.added ? `A Casa cadastrou ${r.added} ${r.added === 1 ? "filme" : "filmes"}.` : "Nenhum filme novo desta vez.");
+      return loadCatalog();
+    }
     case "logout":
       await N.call("auth:logout");
       signedOut(); return render();
@@ -1075,6 +1446,19 @@ $app.addEventListener("submit", async (e) => {
     if (!S.name) { S.name = r.me.name; store.set("ml-name", S.name); }
     render(); return refreshMarket();
   }
+  if (id === "admGrant") {
+    const name = document.getElementById("adm-name").value.trim(), amount = Math.floor(+document.getElementById("adm-amount").value);
+    return adminCall("admin:grant", { name, amount }, (r) => `${mny(amount)} para ${r.name}.`);
+  }
+  if (id && id.startsWith("bidForm-")) {
+    const aid = id.slice(8), el = document.getElementById("mbid-" + aid);
+    const r = await N.call("market:bid", { id: aid, amount: Math.floor(+(el && el.value)) });
+    if (r.error) return toast(r.error, true);
+    delete bidDrafts[aid];
+    if (r.house) return toast(`A Casa cobriu seu lance com ${mny(r.high)}. Para levar, passe do lance dela.`, true);
+    const secret = ((S.auctions && S.auctions.players) || []).some((a) => a.id === aid && (a.format === "sealed" || a.format === "vickrey"));
+    return toast(secret ? "Lance secreto enviado! Ninguém vê o valor até o fim; ele fica reservado na sua carteira." : "Lance dado! O valor fica reservado até o fim do leilão.");
+  }
   if (id === "pwForm") {
     const a = S.acct;
     const r = await N.call("auth:password", { old: a.pwOld, new: a.pwNew });
@@ -1104,6 +1488,12 @@ $app.addEventListener("input", (e) => {
   if (t.id === "code") { t.value = t.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); S.joinCode = t.value; return; }
   if (t.id === "bidv") { const st = cur(); if (st) S.ui.bidDraft = { lot: st.idx, v: +t.value }; }
   if (t.id === "donv") { S.ui.donate.v = +t.value; return syncDonate(); }
+  if (t.id && t.id.startsWith("mbid-")) { bidDrafts[t.id.slice(5)] = t.value; return; }
+  if (t.id && t.id.startsWith("lf-") && listDraft) {
+    const k = t.id.slice(3);
+    listDraft[k] = t.type === "checkbox" ? t.checked : t.value;
+    if (k === "featured") render();   // o custo muda na hora
+  }
   if (t.id === "donText") { S.ui.donate.text = t.value; return; }
 });
 $app.addEventListener("change", (e) => {
@@ -1133,9 +1523,11 @@ N.on("chat", (m) => { S.chat.push(m); if (S.chat.length > 120) S.chat.shift(); r
 N.on("react", (r) => fxReact(r.e));
 N.on("kicked", () => { store.del("ml-session"); S.mode = null; S.st = null; S.code = null; render(); toast("Você foi removido da sala.", true); });
 N.on("market:me", (d) => { S.market = d; S.me = d.me; render(); });
+N.on("market:auctions", (d) => { S.auctions = d; if (S.mode === "market") { render(); loadAccounts(); loadRanking(); } });
+N.on("market:notice", (d) => toast(d.text));
 N.on("auth:out", () => { signedOut(); render(); toast("Sua conta saiu deste aparelho. Entre de novo.", true); });
 N.on("status", () => { if (S.mode === "online" || S.mode === "market") { const el = document.querySelector(".topbar .conn"); if (el) el.className = "conn " + N.status; } if (!S.mode) render(); });
-N.on("open", async () => {
+N.on("open", async () => { if (!S.mode || (S.mode === "market" && !S.auth)) loadShowcase();
   if (S.auth) { await resumeAuth(); if (S.mode === "market" && S.me) refreshMarket(); }
   if (S.mode === "online" && S.code && S.st) {
     const r = await N.call("room:join", { code: S.code, name: S.name || "Espectador", token });
@@ -1143,6 +1535,8 @@ N.on("open", async () => {
   }
 });
 N.on("lost", () => { if (S.mode === "online") toast("Conexão perdida. Reconectando…", true); });
+
+setInterval(() => { if (N.status === "on" && !document.hidden && (screen() === "home" || (S.mode === "market" && !S.me))) loadShowcase(); }, 20000);
 
 /* ---------- loop local (relógios dos lotes no modo mesmo aparelho) ---------- */
 setInterval(() => {

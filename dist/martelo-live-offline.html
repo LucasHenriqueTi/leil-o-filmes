@@ -51,7 +51,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .topbar .wrap { display: flex; align-items: center; gap: 12px; padding-block: 10px; min-height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; cursor: pointer; }
 .brand .word { font-family: var(--display); font-weight: 800; font-size: 19px; letter-spacing: -0.02em; }
-.onair { display: inline-flex; align-items: center; gap: 6px; background: var(--live); color: #fff; font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: 0.04em; padding: 4px 8px 4px 7px; border-radius: 6px; }
+.onair { white-space: nowrap; flex: none; display: inline-flex; align-items: center; gap: 6px; background: var(--live); color: #fff; font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: 0.04em; padding: 4px 8px 4px 7px; border-radius: 6px; }
 .onair::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: blink 1.6s infinite; }
 .onair.idle { background: var(--raise); color: var(--mute); }
 .onair.idle::before { background: var(--faint); animation: none; }
@@ -482,6 +482,155 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .chip-acct .avatar { background: var(--coin); }
 .chip-acct .nm { color: var(--coin); font-weight: 600; white-space: nowrap; }
 @media (max-width: 560px) { .chip-acct .nm { display: none; } .chip-acct { padding-right: 3px; } }
+.market .span { grid-column: 1 / -1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+/* estreias da Casa */
+.auctions { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 10px; }
+.auction { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--rar) 7%, var(--surface)); border: 1px solid color-mix(in srgb, var(--rar) 45%, var(--line)); min-width: 0; }
+.auction .ahead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.auction .ev { font-family: var(--display); font-weight: 700; font-size: 14px; }
+.auction .clock { font-family: var(--display); font-weight: 800; font-size: 18px; color: var(--ink); }
+.auction .clock.hot { color: var(--live); animation: blink 1s infinite; }
+.auction .abody { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 12px; align-items: center; }
+@media (max-width: 420px) { .auction .abody { grid-template-columns: minmax(0, 1fr); } }
+.auction .aread { display: flex; flex-direction: column; gap: 2px; }
+.auction .aread .label { font-size: 12px; }
+.auction .aread b { font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1; color: var(--coin); }
+.auction .actl { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bid-form { display: flex; gap: 6px; }
+.bid-form .stepper { flex: 1 1 120px; }
+.bid-form .stepper button { width: 36px; }
+.bid-form .stepper input { font-size: 18px; }
+/* leilões dos jogadores e coleção */
+.auction.featured { box-shadow: 0 0 0 1px color-mix(in srgb, var(--coin) 55%, transparent), 0 10px 30px color-mix(in srgb, var(--coin) 12%, transparent); }
+.auction .ev small { font-family: var(--body); font-weight: 500; font-size: 12px; color: var(--mute); }
+.auction .clock-wrap { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.citem { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cact { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.cact .btn { padding: 7px 12px; font-size: 13px; }
+.modal.wide { width: min(640px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; }
+.modal .check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.modal .check input { width: 18px; height: 18px; accent-color: var(--coin); }
+.modal .cost { margin: 0; font-weight: 600; color: var(--coin); }
+.modal select.input { appearance: auto; }
+/* pontuação, temporada e ranking */
+.scorebox { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--mint) 8%, var(--ground)); border: 1px solid color-mix(in srgb, var(--mint) 35%, var(--line)); }
+.scorebox > div:first-child { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.scorebox > div:first-child b { font-family: var(--display); font-weight: 800; font-size: 28px; color: var(--mint); line-height: 1; }
+.scorebox .chips, .rank-row .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip.bonus { background: color-mix(in srgb, var(--mint) 14%, transparent); border-color: color-mix(in srgb, var(--mint) 40%, transparent); }
+.chip.bonus b { color: var(--mint); }
+.chip.hot { background: color-mix(in srgb, var(--live) 16%, transparent); border-color: color-mix(in srgb, var(--live) 45%, transparent); color: #ffb3c0; }
+.season { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-radius: var(--r-md); background: linear-gradient(90deg, color-mix(in srgb, var(--live) 18%, var(--ground)), var(--ground)); border: 1px solid color-mix(in srgb, var(--live) 40%, var(--line)); font-size: 14px; }
+.ranking { display: flex; flex-direction: column; gap: 6px; }
+.rank-row { display: grid; grid-template-columns: 34px minmax(80px, 0.6fr) auto minmax(0, 2fr) auto; gap: 10px; align-items: center; padding: 8px 12px; border-radius: var(--r-sm); background: var(--ground); border: 1px solid var(--line); }
+.rank-row.me { border-color: color-mix(in srgb, var(--mint) 60%, var(--line)); }
+.rank-row .pos { font-family: var(--display); font-weight: 800; color: var(--coin); }
+.rank-row .total { font-family: var(--display); font-size: 18px; color: var(--mint); }
+@media (max-width: 640px) { .rank-row { grid-template-columns: 30px minmax(0, 1fr) auto; } .rank-row .chips, .rank-row > .hint { grid-column: 2 / -1; } }
+/* ---------- Mercado: abas no topo ---------- */
+.mtabs { border-top: 1px solid var(--line); }
+.mtabs .wrap { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.mtabs .wrap::-webkit-scrollbar { display: none; }
+.mtab { display: inline-flex; align-items: center; gap: 7px; flex: none; border: 0; background: none; padding: 11px 12px 10px; cursor: pointer; font-weight: 600; font-size: 14px; color: var(--mute); border-bottom: 2px solid transparent; }
+.mtab:hover { color: var(--ink); }
+.mtab[aria-current="page"] { color: var(--ink); border-bottom-color: var(--coin); }
+.mtab .badge { min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--raise); color: var(--ink); font-size: 11px; font-weight: 700; text-align: center; }
+.mtab[aria-current="page"] .badge { background: var(--coin); color: var(--coin-ink); }
+.market.tabbed { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
+.mgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 860px) { .mgrid { grid-template-columns: minmax(0, 1fr); } }
+.mgrid .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* entrar / criar conta: formulário + o que está acontecendo */
+.market.auth { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.market.auth .auth-panel { grid-column: auto; width: auto; justify-self: stretch; }
+@media (max-width: 900px) { .market.auth { grid-template-columns: minmax(0, 1fr); } }
+.auth-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.benefits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.benefits li { display: flex; gap: 12px; align-items: flex-start; }
+.benefits li > span { font-size: 20px; line-height: 1.2; }
+.benefits b { font-size: 14px; }
+.benefits p { margin: 2px 0 0; font-size: 13px; color: var(--mute); }
+
+/* painel: saudação, números e destaques */
+.hello h1 { font-family: var(--display); font-weight: 800; font-size: clamp(24px, 3.4vw, 34px); letter-spacing: -0.02em; }
+.hello p { margin-top: 4px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 860px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 14px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); cursor: pointer; min-width: 0; transition: border-color 0.15s, transform 0.06s; }
+.stat:hover { border-color: var(--mute); }
+.stat:active { transform: translateY(1px); }
+.stat .label { font-size: 12px; }
+.stat b { font-family: var(--display); font-weight: 800; font-size: clamp(20px, 2.4vw, 28px); line-height: 1.1; }
+.stat .hint { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stat.coin b { color: var(--coin); } .stat.mint b { color: var(--mint); } .stat.live b { color: var(--live); }
+.live-now h2 { display: flex; align-items: center; gap: 10px; }
+.minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); gap: 8px; }
+.mini { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; align-items: center; text-align: left; padding: 8px 12px 8px 8px; border-radius: var(--r-md); border: 1px solid var(--line); border-left: 3px solid var(--rar); background: var(--ground); cursor: pointer; min-width: 0; }
+.mini:hover { border-color: color-mix(in srgb, var(--rar) 60%, var(--line)); }
+.mini .mp .poster { border-radius: 6px; }
+.mini .mi { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mini .ev { font-size: 12px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini .t { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini .tags { display: flex; gap: 6px; align-items: center; }
+.mini .mr { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; }
+.mini .mr .clock { font-family: var(--display); font-weight: 800; font-size: 13px; }
+.mini .mr .clock.hot { color: var(--live); }
+.mini .mr b { font-family: var(--display); font-weight: 800; font-size: 18px; color: var(--coin); }
+.mini .mr .hint { font-size: 11px; }
+.rank-mini { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rank-mini li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 12px; border-radius: var(--r-sm); background: var(--ground); border: 1px solid var(--line); }
+.rank-mini li.me { border-color: color-mix(in srgb, var(--mint) 60%, var(--line)); }
+.rank-mini .pos { font-family: var(--display); font-weight: 800; color: var(--coin); font-size: 15px; }
+.rank-mini b:not(.total) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-mini .total { font-family: var(--display); color: var(--mint); }
+.strip { display: grid; grid-auto-flow: column; grid-auto-columns: 112px; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.tile { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.tile .poster { outline: 2px solid color-mix(in srgb, var(--rar) 70%, transparent); outline-offset: -2px; }
+.tile .t { font-size: 12px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tile .tags { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+.tile .tags .rar { font-size: 9px; padding: 2px 6px; }
+.tile .tags b { font-family: var(--display); font-size: 13px; color: var(--rar); }
+
+/* vitrine do Mercado na tela inicial */
+.showcase { display: flex; flex-direction: column; gap: 14px; padding: clamp(16px, 2.6vw, 26px); border-radius: var(--r-lg); border: 1px solid color-mix(in srgb, var(--coin) 40%, var(--line));
+  background: radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--coin) 14%, var(--surface)), var(--surface) 55%); }
+.sc-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.sc-head h2 { font-family: var(--display); font-weight: 800; font-size: clamp(24px, 3.6vw, 38px); letter-spacing: -0.03em; line-height: 1.05; margin-top: 10px; }
+.sc-head .lede { margin: 8px 0 0; max-width: 58ch; color: var(--mute); font-size: 16px; }
+.sc-head .lede b { color: var(--coin); }
+.sc-cta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sc-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--mute); }
+.sc-stats b { font-family: var(--display); color: var(--ink); font-size: 18px; margin-right: 4px; }
+.showcase .panel { background: color-mix(in srgb, var(--ground) 60%, var(--surface)); }
+
+/* ferramentas do admin */
+.adm-row { display: flex; gap: 4px; align-items: center; border-top: 1px dashed var(--line); padding-top: 6px; }
+.adm-row .btn { padding: 4px 8px; font-size: 13px; }
+.admin-panel { border-style: dashed; }
+.accs { display: flex; flex-direction: column; gap: 6px; }
+.acc-row { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 2fr); gap: 12px; align-items: start; padding: 8px 10px; border-radius: var(--r-sm); background: var(--ground); border: 1px solid var(--line); font-size: 14px; }
+.acc-row .copies { line-height: 1.9; }
+.acc-row .copies small { color: var(--mute); }
+@media (max-width: 640px) { .acc-row { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+.lead-ok { margin: 0; font-size: 14px; font-weight: 600; color: var(--mint); }
+.mfilm .sell { padding: 2px 0; font-size: 12px; color: var(--coin); }
+/* raridade: comum, incomum, raro, épico, lendário, obra de arte */
+.r-comum { --rar: #a99cc4; } .r-incomum { --rar: var(--mint); } .r-raro { --rar: #7aa7ff; }
+.r-epico { --rar: #b48cff; } .r-lendario { --rar: var(--coin); } .r-obra { --rar: #fff3c4; }
+.rar { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; color: var(--rar); border: 1px solid color-mix(in srgb, var(--rar) 55%, transparent); background: color-mix(in srgb, var(--rar) 14%, transparent); white-space: nowrap; }
+.rar.r-obra { color: #fff; border-color: transparent; background: linear-gradient(var(--raise), var(--raise)) padding-box, conic-gradient(#ff4f6d, #ffd166, #4be3b0, #7aa7ff, #b48cff, #ff4f6d) border-box; border: 2px solid transparent; }
+.seal { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--mint) 18%, transparent); color: var(--mint); white-space: nowrap; }
+.mlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 8px; }
+.mfilm { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 10px; border-radius: var(--r-md); background: var(--ground); border: 1px solid var(--line); border-left: 3px solid var(--rar); min-width: 0; }
+.mfilm.r-obra { border-left-width: 3px; border-image: linear-gradient(#ff4f6d, #ffd166, #4be3b0, #7aa7ff, #b48cff) 1; }
+.mfilm .meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mfilm .meta b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mfilm .tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.mfilm .ref { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.mfilm .ref b { font-family: var(--display); font-size: 20px; color: var(--rar); }
+.mfilm .ref .hint b { font-family: inherit; font-size: inherit; color: var(--ink); }
+.mfilm .serial { font-family: var(--display); font-weight: 700; font-size: 12px; color: var(--ink); }
 .temp-pass { font-family: var(--display); font-size: 26px; letter-spacing: 0.08em; margin: 0; color: var(--coin); user-select: all; }
 
 /* ---------- emojis no chat ---------- */
@@ -990,6 +1139,10 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
   return {
+    testMode: true,           // testes: a cada início renova o catálogo (exemplos + filmes novos) e abre as 3 estreias na hora. Desligue em produção.
+    bootBatch: 12,            // filmes novos buscados a cada início no modo de teste
+    currency: "M$",           // o dinheiro do Mercado não é o R$ da partida rápida
+
     /* ---------- carteira ---------- */
     signupBonus: 30,          // boas-vindas ao criar a conta (0 = nada)
     allowance: 30,            // mesada semanal, igual para todos
@@ -1004,7 +1157,80 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
     sessionDays: 90,          // quanto tempo o login fica salvo no aparelho
     loginTries: 5,            // tentativas erradas antes de bloquear
     loginWindowMin: 5,        // por quantos minutos o bloqueio vale
-    ledgerView: 30            // lançamentos mostrados no extrato
+    ledgerView: 30,           // lançamentos mostrados no extrato
+
+    /* ---------- raridade ---------- */
+    // da mais comum para a mais rara; a faixa é a última com `min` <= nota de referência
+    // (e com pelo menos `requireScores` notas, quando a faixa exige)
+    rarities: [
+      { key: "comum", name: "Comum", min: 0, copies: 20, minBid: 1 },
+      { key: "incomum", name: "Incomum", min: 6.5, copies: 10, minBid: 3 },
+      { key: "raro", name: "Raro", min: 7.3, copies: 5, minBid: 6 },
+      { key: "epico", name: "Épico", min: 8.0, copies: 3, minBid: 10 },
+      { key: "lendario", name: "Lendário", min: 8.5, copies: 1, minBid: 15 },
+      { key: "obra", name: "Obra de Arte", min: 9.5, copies: 1, minBid: 25, requireScores: 3 }
+    ],
+    minScores: 2,             // notas (de IMDb, Metacritic e Rotten Tomatoes) para o filme entrar no Mercado
+    // peso de cada fonte na média: o Tomatometer do RT é a % de críticas positivas, não uma nota,
+    // e puxa a média para cima (87% não quer dizer nota 8,7); por isso vale metade
+    scoreWeights: { imdb: 1, metacritic: 1, rt: 0.5 },
+    unanimityMaxSpread: 1.0,  // selo "Unanimidade": maior nota - menor nota até isto
+    garimpoBelowLinks: 30,    // Garimpo = filme com menos páginas que isto na Wikipédia (com 40, mais da metade do sorteio subia de faixa)
+    garimpoBoost: 1,          // faixas que o Garimpo sobe
+    garimpoCap: "epico",      // o Garimpo não leva acima desta faixa
+
+    /* ---------- catálogo (a Casa cadastra sozinha) ---------- */
+    catalogMinLinks: 20,      // fama mínima para a Casa sortear um filme
+    catalogTarget: 40,        // a Casa mantém pelo menos isto de filmes com cópias ainda por emitir
+    catalogBatch: 80,         // candidatos testados por rodada
+    catalogRefreshHours: 6,
+
+    /* ---------- valor de referência e recompra da Casa ---------- */
+    refValueFactor: 2,        // valor base = lance mínimo da raridade × isto
+    refValueSales: 5,         // as últimas vendas entram na média junto com o valor base
+    buybackPct: 0.4,          // a Casa recompra por esta fração do valor de referência
+    // trava: a Casa nunca recompra acima do lance mínimo da faixa (senão comprar barato numa estreia
+    // e revender para a Casa daria lucro sem fim)
+
+    /* ---------- estreias da Casa (emitem as cópias) ---------- */
+    // every: "day" | "week" (weekday: 0 = domingo) | "month" (day: dia do mês); hora no fuso tzOffsetMin
+    estreias: [
+      { key: "day", name: "Estreia do dia", every: "day", hour: 20, bands: ["comum", "incomum"], minutes: 15 },
+      { key: "week", name: "Estreia da semana", every: "week", weekday: 6, hour: 20, bands: ["raro", "epico"], minutes: 30 },
+      { key: "month", name: "Estreia do mês", every: "month", day: 1, hour: 20, bands: ["lendario", "obra"], minutes: 60 }
+    ],
+    extendWindowSec: 30,      // lance nos últimos 30 s...
+    extendBySec: 30,          // ...soma mais 30 s ao relógio (Aberto: estreias e leilões dos jogadores)
+
+    /* ---------- leilões dos jogadores ---------- */
+    userFormats: ["open", "sealed", "vickrey", "dutch"],   // Aberto, Lance secreto, Secreto de 2º preço, Relógio holandês
+    userDurations: [5, 15, 60, 360, 1440, 4320],           // minutos que o dono pode escolher (5 min a 3 dias)
+    maxScheduleDays: 7,       // até quantos dias à frente dá para agendar o início
+    saleFeePct: 0.08,         // taxa de venda paga por quem vende (arredondada; sai de circulação)
+    listingFee: 2,            // taxa fixa para anunciar, não volta
+    featureFee: 5,            // taxa para pôr o leilão na vitrine (com aviso para todos)
+    featureFreeFrom: "epico", // desta raridade para cima, a vitrine é de graça
+    maxActiveUserAuctions: 6, // leilões de jogadores anunciados (agendados ou abertos) ao mesmo tempo, somando todos
+    maxActivePerUser: 2,
+    dutchMaxStart: 1000,      // preço inicial máximo do relógio holandês
+
+    /* ---------- competitividade ---------- */
+    rarityCaps: { lendario: 2, obra: 1 },   // teto de cópias por jogador (conta as que tem e os lances na frente)
+    ghostBuyer: true,         // a Casa compete nas estreias com um teto escondido: abaixo dele, ela cobre o lance
+    ghostPct: 0.9,            // teto da Casa = valor de referência × isto
+
+    /* ---------- pontuação da coleção ---------- */
+    // pontos = soma das notas de referência dos filmes (cada filme conta uma vez) + bônus de conjunto + temporada
+    collectionBonuses: {
+      series: { name: "Trilogia", n: 3, pts: 8 },          // 3 filmes da mesma série
+      director: { name: "Mesmo diretor", n: 3, pts: 5 },
+      decade: { name: "Mesma década", n: 4, pts: 3 },
+      genre: { name: "Mesmo gênero", n: 4, pts: 3 }         // gênero principal (o primeiro da lista)
+    },
+    // temporada: a cada mês um gênero desta lista está em alta (sorteio fixo pelo mês)
+    seasonGenres: ["Ação", "Aventura", "Comédia", "Drama", "Ficção científica", "Terror", "Suspense", "Romance", "Animação", "Crimes", "Fantasia", "Mistério"],
+    seasonPts: 2,             // pontos extras por filme do gênero em alta
+    seasonValueBoost: 1.25    // o valor de referência dos filmes do gênero em alta sobe isto
   };
 });
 </script>
@@ -1014,6 +1240,8 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
    (serializável em JSON). O tempo entra sempre como parâmetro `now` (ms).
    Senhas e tokens nunca passam por aqui: o servidor entrega só o hash.
    Toda movimentação de dinheiro gera um lançamento no extrato (`ledger`).
+   Filmes do Mercado têm nota de referência congelada, raridade e tiragem limitada
+   de cópias numeradas; cada cópia guarda o dono e o histórico.
    ============================================================ */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory(require("./market-config.js"));
@@ -1022,12 +1250,13 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
   "use strict";
 
   const DAY = 864e5, WEEK = 7 * DAY;
-  const KINDS = { signup: "Boas-vindas", allowance: "Mesada semanal", fee: "Taxa", sale: "Venda", buyback: "Venda para a Casa", donate: "Donate", prize: "Prêmio", admin: "Ajuste do admin" };
+  const KINDS = { signup: "Boas-vindas", allowance: "Mesada semanal", fee: "Taxa", sale: "Venda", buyback: "Venda para a Casa", donate: "Donate", prize: "Prêmio", admin: "Ajuste do admin", estreia: "Estreia da Casa", purchase: "Compra em leilão" };
 
   /* ---------- utilidades ---------- */
   const cleanName = (n) => String(n || "").replace(/\s+/g, " ").trim().slice(0, 18);
   const nameKey = (n) => cleanName(n).toLowerCase();
   const isAmount = (v) => Number.isInteger(v) && v >= 1;
+  const money = (n) => `${CONFIG.currency} ${n}`;   // moeda do Mercado (não é o R$ da partida rápida)
 
   /* ---------- criação ---------- */
   function create() {
@@ -1118,7 +1347,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
     const u = eco.users[uid];
     if (!u) return "Conta não encontrada.";
     if (!isAmount(amount)) return "Valor inválido.";
-    if (amount > u.wallet.free) return `Saldo insuficiente: você tem R$ ${u.wallet.free} livres.`;
+    if (amount > u.wallet.free) return `Saldo insuficiente: você tem ${money(u.wallet.free)} livres.`;
     u.wallet.free -= amount;
     entry(eco, uid, -amount, kind, now, ref); eco.seq++;
     return null;
@@ -1128,7 +1357,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
     const u = eco.users[uid];
     if (!u) return "Conta não encontrada.";
     if (!isAmount(amount)) return "Valor inválido.";
-    if (amount > u.wallet.free) return `Saldo insuficiente: você tem R$ ${u.wallet.free} livres.`;
+    if (amount > u.wallet.free) return `Saldo insuficiente: você tem ${money(u.wallet.free)} livres.`;
     u.wallet.free -= amount; u.wallet.reserved += amount; eco.seq++;
     return null;
   }
@@ -1165,6 +1394,555 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
     return paid;
   }
 
+  /* ---------- notas e raridade ---------- */
+  const SOURCES = { imdb: "IMDb", metacritic: "Metacritic", rt: "Rotten Tomatoes" };
+  // "8.8/10", "74/100" e "87%" viram 0 a 10
+  function parseScore(txt) {
+    const a = String(txt).match(/(\d+(?:[.,]\d+)?)\s*\/\s*(\d+)/);
+    if (a) return clampScore(parseFloat(a[1].replace(",", ".")) / parseFloat(a[2]) * 10);
+    const p = String(txt).match(/(\d+(?:[.,]\d+)?)\s*%/);
+    if (p) return clampScore(parseFloat(p[1].replace(",", ".")) / 10);
+    return null;
+  }
+  const clampScore = (v) => (Number.isFinite(v) && v >= 0 && v <= 10 ? Math.round(v * 100) / 100 : null);
+  const round1 = (v) => Math.round(v * 10) / 10;
+  const scoreOf = (scores, k) => (scores && scores[k] != null && scores[k] !== "" ? clampScore(+scores[k]) : null);
+  // nota de referência: média ponderada das notas disponíveis (scoreWeights); null se houver menos que o mínimo.
+  // A Unanimidade compara as notas como vieram, sem peso.
+  function refRating(scores, cfg) {
+    cfg = cfg || CONFIG;
+    const W = cfg.scoreWeights || {}, vals = [];
+    let sum = 0, wsum = 0;
+    Object.keys(SOURCES).forEach((k) => {
+      const v = scoreOf(scores, k), w = W[k] == null ? 1 : W[k];
+      if (v == null) return;
+      vals.push(v); sum += v * w; wsum += w;
+    });
+    if (vals.length < cfg.minScores || !(wsum > 0)) return null;
+    const spread = round1(Math.max(...vals) - Math.min(...vals));
+    return { ref: round1(sum / wsum), n: vals.length, spread, unanimous: spread <= cfg.unanimityMaxSpread };
+  }
+  const rarityIndex = (key, cfg) => (cfg || CONFIG).rarities.findIndex((r) => r.key === key);
+  function rarityOf(ref, garimpo, n, cfg) {
+    cfg = cfg || CONFIG;
+    const R = cfg.rarities, fits = (i) => !(R[i].requireScores > n);
+    let base = 0;
+    R.forEach((r, i) => { if (ref >= r.min && fits(i)) base = i; });
+    if (!garimpo) return R[base].key;
+    // o Garimpo sobe até o teto, mas nunca rebaixa
+    let up = Math.max(base, Math.min(base + cfg.garimpoBoost, rarityIndex(cfg.garimpoCap, cfg)));
+    while (up > base && !fits(up)) up--;
+    return R[up].key;
+  }
+  const rarity = (key, cfg) => (cfg || CONFIG).rarities[rarityIndex(key, cfg)] || null;
+  // correções manuais (public/market-films.js) por cima do que veio do Wikidata
+  function applyOverrides(film, overrides) {
+    const o = overrides && overrides[film.id];
+    if (!o) return film;
+    return Object.assign({}, film, o.film || {}, { scores: Object.assign({}, film.scores, o.scores || {}) });
+  }
+
+  /* ---------- catálogo e cópias ---------- */
+  const IMDB = /^tt\d{5,10}$/;
+  const str = (v, n) => String(v == null ? "" : v).slice(0, n);
+  function addFilm(eco, f, now, cfg) {
+    cfg = cfg || CONFIG;
+    if (!f || !IMDB.test(f.id)) return "Código do IMDb inválido.";
+    if (eco.films[f.id]) return "Esse filme já está no Mercado.";
+    const r = refRating(f.scores, cfg);
+    if (!r) return `O filme precisa de pelo menos ${cfg.minScores} notas para entrar no Mercado.`;
+    const scores = {};
+    Object.keys(SOURCES).forEach((k) => { const v = scoreOf(f.scores, k); if (v != null) scores[k] = v; });
+    const links = Math.max(0, Math.floor(+f.links || 0)), garimpo = links > 0 && links < cfg.garimpoBelowLinks;
+    const key = rarityOf(r.ref, garimpo, r.n, cfg);
+    const img = typeof f.img === "string" && /^https:\/\/upload\.wikimedia\.org\//.test(f.img) ? f.img.slice(0, 600) : null;
+    eco.films[f.id] = {
+      id: f.id, title: str(f.title, 140) || "Sem título", orig: str(f.orig, 140), year: Math.floor(+f.year) || "", dir: str(f.dir, 140),
+      g: (Array.isArray(f.g) ? f.g : []).slice(0, 8).map((x) => str(x, 32)), img, wiki: str(f.wiki, 200), links, series: str(f.series, 140),
+      scores, ref: r.ref, spread: r.spread, unanimous: r.unanimous, garimpo, rarity: key,
+      supply: rarity(key, cfg).copies, minted: 0, addedAt: now
+    };
+    eco.seq++;
+    return null;
+  }
+  const ownerOk = (eco, who) => who === "house" || !!eco.users[who];
+  // a cópia nasce com o próximo número da tiragem
+  function mintCopy(eco, filmId, owner, now) {
+    const f = eco.films[filmId];
+    if (!f) return "Filme fora do Mercado.";
+    if (f.minted >= f.supply) return `Todas as ${f.supply} cópias de ${f.title} já foram emitidas.`;
+    if (!ownerOk(eco, owner)) return "Dono inválido.";
+    const serial = ++f.minted, id = `${filmId}#${serial}`;
+    eco.copies[id] = { id, film: filmId, serial, owner, history: [{ at: now, from: null, to: owner, price: 0, kind: "mint" }] };
+    eco.seq++;
+    return null;
+  }
+  // troca de dono; o dinheiro é movido à parte (na mesma mutação do servidor)
+  function transferCopy(eco, copyId, to, price, kind, now) {
+    const c = eco.copies[copyId];
+    if (!c) return "Cópia não encontrada.";
+    if (!ownerOk(eco, to)) return "Dono inválido.";
+    if (to === c.owner) return "A cópia já é desse dono.";
+    if (!(Number.isInteger(price) && price >= 0)) return "Preço inválido.";
+    c.history.push({ at: now, from: c.owner, to, price, kind });
+    c.owner = to; eco.seq++;
+    return null;
+  }
+  const copyLabel = (eco, c) => `cópia ${c.serial}/${eco.films[c.film].supply}`;
+  const filmCard = (f) => ({ id: f.id, title: f.title, orig: f.orig, year: f.year, dir: f.dir, g: f.g, img: f.img, wiki: f.wiki, series: f.series || "", scores: f.scores, ref: f.ref, spread: f.spread, unanimous: f.unanimous, garimpo: f.garimpo, rarity: f.rarity, supply: f.supply, minted: f.minted });
+  const byRarity = (a, b) => rarityIndex(b.rarity) - rarityIndex(a.rarity) || b.ref - a.ref || a.title.localeCompare(b.title);
+  function collectionOf(eco, uid, now) {
+    return Object.values(eco.copies).filter((c) => c.owner === uid)
+      .map((c) => ({ id: c.id, serial: c.serial, label: copyLabel(eco, c), history: c.history, film: filmCard(eco.films[c.film]),
+        value: refValue(eco, c.film, null, now), buyback: buybackPrice(eco, c.film, null, now), listed: (activeFor(eco, c.id) || {}).id || null }))
+      .sort((a, b) => byRarity(a.film, b.film) || a.serial - b.serial);
+  }
+  function catalogView(eco) {
+    const house = {};
+    Object.values(eco.copies).forEach((c) => { if (c.owner === "house") house[c.film] = (house[c.film] || 0) + 1; });
+    return Object.values(eco.films).map((f) => Object.assign(filmCard(f), { left: f.supply - f.minted, house: house[f.id] || 0, addedAt: f.addedAt || 0 })).sort(byRarity);
+  }
+  const openFilms = (eco) => Object.values(eco.films).filter((f) => f.minted < f.supply).length;
+  // Nota e raridade congelam na primeira cópia emitida; antes disso, seguem a fórmula atual
+  // (assim, mudar pesos ou faixas no config vale para os filmes que ainda não têm cópias).
+  function refreeze(eco, cfg) {
+    cfg = cfg || CONFIG;
+    let n = 0;
+    Object.values(eco.films).forEach((f) => {
+      if (f.minted > 0) return;
+      const r = refRating(f.scores, cfg);
+      if (!r) return;
+      const key = rarityOf(r.ref, f.garimpo, r.n, cfg);
+      if (f.ref !== r.ref || f.rarity !== key) n++;
+      Object.assign(f, { ref: r.ref, spread: r.spread, unanimous: r.unanimous, rarity: key, supply: rarity(key, cfg).copies });
+    });
+    if (n) eco.seq++;
+    return n;
+  }
+  // tira do catálogo os filmes sem cópias e sem estreia aberta, menos os que devem ficar;
+  // as estreias encerradas sem venda desses filmes saem junto (não sobra histórico apontando para o nada)
+  function pruneCatalog(eco, keep) {
+    const busy = new Set(Object.values(eco.auctions).filter((a) => a.status === "open").map((a) => a.film));
+    let n = 0;
+    Object.values(eco.films).forEach((f) => { if (f.minted === 0 && !busy.has(f.id) && !(keep && keep.has(f.id))) { delete eco.films[f.id]; n++; } });
+    Object.values(eco.auctions).forEach((a) => { if (!eco.films[a.film]) delete eco.auctions[a.id]; });
+    if (n) eco.seq++;
+    return n;
+  }
+
+  /* ---------- valor de referência e recompra da Casa ---------- */
+  // valor base (lance mínimo × fator) na média com as últimas vendas de verdade do filme;
+  // filme do gênero em alta na temporada vale mais
+  function refValue(eco, filmId, cfg, now) {
+    cfg = cfg || CONFIG;
+    const f = eco.films[filmId];
+    if (!f) return 0;
+    const base = rarity(f.rarity, cfg).minBid * cfg.refValueFactor;
+    const sales = [];
+    Object.values(eco.copies).forEach((c) => { if (c.film === filmId) c.history.forEach((h) => { if (h.price > 0 && h.kind !== "mint" && h.kind !== "buyback") sales.push(h); }); });
+    const last = sales.sort((a, b) => b.at - a.at).slice(0, cfg.refValueSales);
+    const v = Math.round((base + last.reduce((a, h) => a + h.price, 0)) / (1 + last.length));
+    return now != null && inSeason(eco, f, now, cfg) ? Math.round(v * cfg.seasonValueBoost) : v;
+  }
+
+  /* ---------- temporada: a cada mês um gênero está em alta ---------- */
+  const monthKey = (now, cfg) => { const L = new Date(now + cfg.tzOffsetMin * 60e3); return `${L.getUTCFullYear()}-${String(L.getUTCMonth() + 1).padStart(2, "0")}`; };
+  // sorteio fixo pelo mês (todo mundo vê o mesmo gênero); o admin pode trocar para testar
+  function season(eco, now, cfg) {
+    cfg = cfg || CONFIG;
+    now = now == null ? Date.now() : now;
+    const key = monthKey(now, cfg), off = cfg.tzOffsetMin * 60e3, L = new Date(now + off);
+    const over = eco.house && eco.house.season && eco.house.season.month === key ? eco.house.season.genre : null;
+    let h = 0; for (const ch of "temporada-" + key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return { genre: over || cfg.seasonGenres[h % cfg.seasonGenres.length], month: key, override: !!over,
+      endsAt: Date.UTC(L.getUTCFullYear(), L.getUTCMonth() + 1, 1) - off };
+  }
+  const inSeason = (eco, f, now, cfg) => (f.g || []).includes(season(eco, now, cfg).genre);
+  function setSeason(eco, genre, now, cfg) {
+    cfg = cfg || CONFIG;
+    if (genre && !cfg.seasonGenres.includes(genre)) return "Gênero fora da lista da temporada.";
+    eco.house.season = genre ? { month: monthKey(now, cfg), genre } : null;
+    eco.seq++;
+    return null;
+  }
+
+  /* ---------- pontuação da coleção e ranking ---------- */
+  const decadeOf = (y) => (+y ? `anos ${Math.floor(+y / 10) * 10}` : "");
+  function collectionScore(eco, uid, now, cfg) {
+    cfg = cfg || CONFIG;
+    const films = [...new Set(Object.values(eco.copies).filter((c) => c.owner === uid).map((c) => c.film))].map((id) => eco.films[id]).filter(Boolean);
+    const base = Math.round(films.reduce((a, f) => a + f.ref, 0) * 10) / 10;
+    const groups = { series: (f) => f.series, director: (f) => f.dir, decade: (f) => decadeOf(f.year), genre: (f) => (f.g || [])[0] };
+    const bonuses = [];
+    Object.entries(cfg.collectionBonuses).forEach(([kind, b]) => {
+      const count = {};
+      films.forEach((f) => { const k = groups[kind](f); if (k) count[k] = (count[k] || 0) + 1; });
+      Object.entries(count).forEach(([label, n]) => { if (n >= b.n) bonuses.push({ kind, name: b.name, label, n, pts: b.pts }); });
+    });
+    const s = season(eco, now, cfg), hot = films.filter((f) => (f.g || []).includes(s.genre)).length;
+    if (hot) bonuses.push({ kind: "season", name: "Temporada", label: s.genre, n: hot, pts: hot * cfg.seasonPts });
+    const extra = bonuses.reduce((a, b) => a + b.pts, 0);
+    return { films: films.length, base, bonuses, total: Math.round((base + extra) * 10) / 10 };
+  }
+  function rankingView(eco, now, cfg) {
+    return Object.values(eco.users).map((u) => Object.assign({ id: u.id, name: u.name }, collectionScore(eco, u.id, now, cfg)))
+      .sort((a, b) => b.total - a.total || b.films - a.films || a.name.localeCompare(b.name));
+  }
+
+  // vitrine pública (tela inicial, sem login): só o que já é público dentro do Mercado
+  function showcase(eco, now, cfg) {
+    cfg = cfg || CONFIG;
+    const A = auctionsView(eco, null, 0), films = catalogView(eco);
+    return {
+      open: A.open, featured: A.players.filter((a) => a.status === "open" && a.featured).slice(0, 3), next: A.next,
+      ranking: rankingView(eco, now, cfg).slice(0, 5).map((r) => ({ name: r.name, total: r.total, films: r.films })),
+      recent: films.slice().sort((a, b) => b.addedAt - a.addedAt || rarityIndex(b.rarity) - rarityIndex(a.rarity)).slice(0, 10),
+      season: season(eco, now, cfg),
+      stats: { accounts: Object.keys(eco.users).length, films: films.length, copies: Object.values(eco.copies).filter((c) => c.owner !== "house").length }
+    };
+  }
+
+  /* ---------- teto de cópias por raridade ---------- */
+  // conta as cópias que a pessoa tem e os leilões em que ela está na frente (ou tem lance secreto)
+  function capCheck(eco, uid, rarityKey, exceptAid, cfg) {
+    cfg = cfg || CONFIG;
+    const cap = (cfg.rarityCaps || {})[rarityKey];
+    if (!cap) return null;
+    const owned = Object.values(eco.copies).filter((c) => c.owner === uid && eco.films[c.film].rarity === rarityKey).length;
+    const pending = Object.values(eco.auctions).filter((a) => a.id !== exceptAid && a.status === "open" && a.rarity === rarityKey && (a.highBy === uid || (a.sealed || {})[uid])).length;
+    return owned + pending >= cap ? `Teto do Mercado: no máximo ${cap} ${cap === 1 ? "cópia" : "cópias"} ${rarity(rarityKey, cfg).name} por jogador (contando os lances na frente).` : null;
+  }
+  // a Casa nunca paga mais que o lance mínimo da faixa: sem lucro em comprar barato e revender para ela
+  function buybackPrice(eco, filmId, cfg, now) {
+    cfg = cfg || CONFIG;
+    const f = eco.films[filmId];
+    if (!f) return 0;
+    const minBid = rarity(f.rarity, cfg).minBid;
+    return Math.max(1, Math.min(Math.floor(refValue(eco, filmId, cfg, now) * cfg.buybackPct), Math.max(1, minBid - 1)));
+  }
+  function sellToHouse(eco, uid, copyId, now, cfg) {
+    const c = eco.copies[copyId];
+    if (!c || c.owner !== uid) return "Essa cópia não é sua.";
+    if (activeFor(eco, copyId)) return "Essa cópia está anunciada num leilão.";
+    const price = buybackPrice(eco, c.film, cfg, now), f = eco.films[c.film];
+    transferCopy(eco, copyId, "house", price, "buyback", now);
+    credit(eco, uid, price, "buyback", now, `${f.title} (${copyLabel(eco, c)})`);
+    return null;
+  }
+
+  /* ---------- estreias: a Casa leiloa uma cópia por evento ---------- */
+  // próximo horário do evento (dia, semana ou mês) depois de `now`, no fuso do config
+  function nextEstreia(ev, now, cfg) {
+    cfg = cfg || CONFIG;
+    const off = cfg.tzOffsetMin * 60e3, L = new Date(now + off);
+    const at = (y, m, d) => Date.UTC(y, m, d, ev.hour || 0) - off;
+    let t;
+    if (ev.every === "month") {
+      t = at(L.getUTCFullYear(), L.getUTCMonth(), ev.day || 1);
+      if (t <= now) t = at(L.getUTCFullYear(), L.getUTCMonth() + 1, ev.day || 1);
+    } else {
+      t = at(L.getUTCFullYear(), L.getUTCMonth(), L.getUTCDate());
+      if (ev.every === "week") t += ((ev.weekday - L.getUTCDay() + 7) % 7) * DAY;
+      if (t <= now) t += ev.every === "week" ? WEEK : DAY;
+    }
+    return t;
+  }
+  // sorteia um filme das faixas do evento que ainda tenha cópia para emitir ou cópia no estoque da Casa
+  function pickLot(eco, bands, rng) {
+    const busy = new Set(Object.values(eco.auctions).filter((a) => a.kind === "house" && a.status === "open").map((a) => a.film));
+    const stock = {};
+    Object.values(eco.copies).forEach((c) => { if (c.owner === "house") (stock[c.film] = stock[c.film] || []).push(c.id); });
+    const cands = Object.values(eco.films).filter((f) => bands.includes(f.rarity) && !busy.has(f.id) && (f.minted < f.supply || stock[f.id]))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    if (!cands.length) return null;
+    const f = cands[Math.floor((rng || Math.random)() * cands.length)];
+    return { film: f.id, copy: stock[f.id] ? stock[f.id].sort()[0] : null };
+  }
+  function openAuction(eco, ev, lot, now) {
+    const f = eco.films[lot.film];
+    if (!f) return "Filme fora do Mercado.";
+    eco.auctionSeq = (eco.auctionSeq || 0) + 1;
+    const id = "a" + eco.auctionSeq;
+    eco.auctions[id] = { id, kind: "house", event: ev.key, eventName: ev.name, film: f.id, copy: lot.copy || null, rarity: f.rarity, minBid: rarity(f.rarity).minBid,
+      startsAt: now, endsAt: now + ev.minutes * 60e3, high: 0, highBy: null, bids: [], extended: 0, status: "open", result: null };
+    eco.seq++;
+    return id;
+  }
+  // abre as estreias que chegaram na hora e agenda as próximas; devolve os leilões abertos
+  function openDueEstreias(eco, now, cfg, rng) {
+    cfg = cfg || CONFIG;
+    eco.house.next = eco.house.next || {};
+    const opened = [];
+    cfg.estreias.forEach((ev) => {
+      if (!eco.house.next[ev.key]) { eco.house.next[ev.key] = nextEstreia(ev, now, cfg); eco.seq++; }
+      if (now < eco.house.next[ev.key]) return;
+      const lot = pickLot(eco, ev.bands, rng);
+      if (lot) opened.push(openAuction(eco, ev, lot, now));
+      eco.house.next[ev.key] = nextEstreia(ev, now, cfg); eco.seq++;
+    });
+    return opened;
+  }
+  // modo de teste: cancela as estreias abertas (devolvendo os lances) e abre uma de cada agora
+  function restartEstreias(eco, now, cfg, rng) {
+    cfg = cfg || CONFIG;
+    Object.values(eco.auctions).forEach((a) => { if (a.status === "open" && a.kind === "house") cancelAuction(eco, a.id, now); });
+    eco.house.next = {};
+    const opened = [];
+    cfg.estreias.forEach((ev) => {
+      const lot = pickLot(eco, ev.bands, rng);
+      if (lot) opened.push(openAuction(eco, ev, lot, now));
+      eco.house.next[ev.key] = nextEstreia(ev, now, cfg);
+    });
+    eco.seq++;
+    return opened;
+  }
+  // admin: abre agora uma estreia do tipo pedido (sem mexer na agenda)
+  function openEstreiaNow(eco, key, now, cfg, rng) {
+    cfg = cfg || CONFIG;
+    const ev = cfg.estreias.find((x) => x.key === key);
+    if (!ev) return { error: "Estreia desconhecida." };
+    const lot = pickLot(eco, ev.bands, rng);
+    if (!lot) return { error: `Não há filme livre para a ${ev.name.toLowerCase()} (faixas ${ev.bands.map((b) => rarity(b, cfg).name).join(" e ")}).` };
+    return { id: openAuction(eco, ev, lot, now) };
+  }
+  // admin: visão de todas as contas para conferir carteiras e coleções
+  function accountsView(eco) {
+    return Object.values(eco.users).map((u) => ({ id: u.id, name: u.name, admin: u.admin, wallet: Object.assign({}, u.wallet),
+      copies: collectionOf(eco, u.id).map((c) => ({ id: c.id, title: c.film.title, rarity: c.film.rarity, label: c.label })) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  /* ---------- leilões dos jogadores ---------- */
+  const FORMATS = {
+    open: { name: "Aberto", desc: "Lances à vista, sempre maiores. Lance no fim prorroga o relógio." },
+    sealed: { name: "Lance secreto", desc: "Cada um dá um lance escondido (pode trocar até o fim). O maior leva e paga o próprio lance." },
+    vickrey: { name: "Secreto de 2º preço", desc: "Lances escondidos. O maior leva, mas paga o valor do segundo maior lance." },
+    dutch: { name: "Relógio holandês", desc: "O preço começa alto e cai até o mínimo. O primeiro a comprar leva." }
+  };
+  const isActive = (a) => a.status === "open" || a.status === "scheduled";
+  const activeFor = (eco, copyId) => Object.values(eco.auctions).find((a) => isActive(a) && a.copy === copyId) || null;
+  const freeFeature = (key, cfg) => rarityIndex(key, cfg) >= rarityIndex(cfg.featureFreeFrom, cfg);
+  const listingCost = (eco, copyId, featured, cfg) => {
+    cfg = cfg || CONFIG;
+    const c = eco.copies[copyId], f = c && eco.films[c.film];
+    return cfg.listingFee + (f && featured && !freeFeature(f.rarity, cfg) ? cfg.featureFee : 0);
+  };
+  // anuncia uma cópia da coleção: cobra a taxa de abertura (e a de vitrine), trava a cópia até o fim
+  function listCopy(eco, uid, o, now, cfg) {
+    cfg = cfg || CONFIG;
+    const u = eco.users[uid], c = eco.copies[o.copy];
+    if (!u) return { error: "Conta não encontrada." };
+    if (!c || c.owner !== uid) return { error: "Essa cópia não é sua." };
+    if (activeFor(eco, c.id)) return { error: "Essa cópia já está anunciada." };
+    if (!FORMATS[o.format] || !cfg.userFormats.includes(o.format)) return { error: "Formato inválido." };
+    const minutes = Math.floor(+o.minutes);
+    if (!cfg.userDurations.includes(minutes)) return { error: "Duração inválida." };
+    const startsAt = o.startsAt ? Math.floor(+o.startsAt) : now;
+    if (!(startsAt >= now - 5 * 60e3 && startsAt <= now + cfg.maxScheduleDays * DAY)) return { error: `O início precisa ser entre agora e daqui a ${cfg.maxScheduleDays} dias.` };
+    const active = Object.values(eco.auctions).filter((a) => a.kind === "user" && isActive(a));
+    if (active.length >= cfg.maxActiveUserAuctions) return { error: `O Mercado já tem ${cfg.maxActiveUserAuctions} leilões de jogadores anunciados. Espere um terminar.` };
+    if (active.filter((a) => a.seller === uid).length >= cfg.maxActivePerUser) return { error: `Cada jogador pode ter até ${cfg.maxActivePerUser} leilões anunciados ao mesmo tempo.` };
+    const f = eco.films[c.film], minBid = rarity(f.rarity, cfg).minBid;
+    const reserve = o.reserve ? Math.floor(+o.reserve) : 0;
+    if (!(reserve >= 0 && reserve <= cfg.dutchMaxStart)) return { error: "Preço de reserva inválido." };
+    let startPrice = 0;
+    if (o.format === "dutch") {
+      startPrice = Math.floor(+o.startPrice);
+      const floor = Math.max(minBid, reserve);
+      if (!(startPrice > floor && startPrice <= cfg.dutchMaxStart)) return { error: `No relógio, o preço inicial precisa ser maior que ${money(floor)} e no máximo ${money(cfg.dutchMaxStart)}.` };
+    }
+    const free = freeFeature(f.rarity, cfg), featured = free || !!o.featured;
+    const fee = listingCost(eco, c.id, featured, cfg);
+    if (fee > u.wallet.free) return { error: `Anunciar custa ${money(fee)} e você tem ${money(u.wallet.free)} livres.` };
+    const ref = `${f.title} (${copyLabel(eco, c)})`;
+    if (cfg.listingFee > 0) debit(eco, uid, cfg.listingFee, "fee", now, "anúncio: " + ref);
+    if (fee > cfg.listingFee) debit(eco, uid, fee - cfg.listingFee, "fee", now, "vitrine: " + ref);
+    const st = Math.max(startsAt, now);
+    eco.auctionSeq = (eco.auctionSeq || 0) + 1;
+    const id = "a" + eco.auctionSeq;
+    eco.auctions[id] = { id, kind: "user", seller: uid, format: o.format, film: f.id, copy: c.id, rarity: f.rarity, minBid, reserve, startPrice, featured,
+      startsAt: st, endsAt: st + minutes * 60e3, high: 0, highBy: null, bids: [], sealed: {}, extended: 0, status: st > now ? "scheduled" : "open", result: null, createdAt: now };
+    eco.seq++;
+    return { id };
+  }
+  // o dono desiste: só antes de ter lance (a taxa de anúncio não volta)
+  function unlist(eco, uid, aid, now) {
+    const a = eco.auctions[aid];
+    if (!a || a.kind !== "user" || a.seller !== uid) return "Esse anúncio não é seu.";
+    if (!isActive(a)) return "Esse leilão já terminou.";
+    if (a.highBy || Object.keys(a.sealed || {}).length) return "Já tem lance: o leilão vai até o fim.";
+    return cancelAuction(eco, aid, now);
+  }
+  // relógio holandês: cai em linha reta do preço inicial até o mínimo (lance mínimo da raridade ou o que o dono pediu)
+  const dutchFloor = (a) => Math.max(a.minBid, a.reserve || 0);
+  function dutchPrice(a, now) {
+    const t = Math.min(1, Math.max(0, (now - a.startsAt) / Math.max(1, a.endsAt - a.startsAt)));
+    return Math.max(dutchFloor(a), Math.round(a.startPrice - (a.startPrice - dutchFloor(a)) * t));
+  }
+  function dutchBuy(eco, a, uid, now) {
+    const price = dutchPrice(a, now), u = eco.users[uid];
+    if (price > u.wallet.free) return `O preço agora é ${money(price)} e você tem ${money(u.wallet.free)} livres.`;
+    reserve(eco, uid, price);
+    a.high = price; a.highBy = uid; a.bids.push({ uid, v: price, at: now });
+    return closeAuction(eco, a.id, now);
+  }
+  // lance secreto (1º ou 2º preço): o valor fica reservado e dá para trocar até o fim; empate fica com quem mandou antes
+  function sealedBid(eco, a, uid, v) {
+    const u = eco.users[uid], old = a.sealed[uid];
+    if (!(v >= a.minBid)) return `O lance mínimo é ${money(a.minBid)}.`;
+    if (v - (old ? old.v : 0) > u.wallet.free) return `Saldo insuficiente: você tem ${money(u.wallet.free)} livres.`;
+    if (old) release(eco, uid, old.v);
+    reserve(eco, uid, v);
+    return { v, keepAt: !!old && old.v === v };
+  }
+
+  // lance: no Aberto precisa cobrir o mínimo (ou o maior lance + 1) com saldo livre; o valor fica reservado
+  // e o lance anterior volta para quem foi superado. Lance no fim prorroga o relógio.
+  // Nos outros formatos dos jogadores, o mesmo pedido vira lance secreto ou compra no relógio.
+  function bid(eco, aid, uid, amount, now, cfg) {
+    cfg = cfg || CONFIG;
+    const a = eco.auctions[aid];
+    if (a && a.status === "scheduled") return "Esse leilão ainda não começou.";
+    if (!a || a.status !== "open") return "Esse leilão não está aberto.";
+    if (now >= a.endsAt) return "Esse leilão já terminou.";
+    const u = eco.users[uid];
+    if (!u) return "Conta não encontrada.";
+    if (a.seller === uid) return "Você não pode dar lance no próprio leilão.";
+    const capErr = capCheck(eco, uid, a.rarity, a.id, cfg);
+    if (capErr) return capErr;
+    if (a.format === "dutch") return dutchBuy(eco, a, uid, now);
+    if (a.format === "sealed" || a.format === "vickrey") {
+      const r = sealedBid(eco, a, uid, Math.floor(+amount));
+      if (typeof r === "string") return r;
+      a.sealed[uid] = { v: r.v, at: r.keepAt ? a.sealed[uid].at : now };
+      eco.seq++;
+      return null;
+    }
+    if (a.highBy === uid) return "Seu lance já está na frente.";
+    const v = Math.floor(+amount), min = a.highBy ? a.high + 1 : a.minBid;
+    if (!(v >= min)) return `O lance mínimo agora é ${money(min)}.`;
+    if (v > u.wallet.free) return `Saldo insuficiente: você tem ${money(u.wallet.free)} livres.`;
+    if (a.highBy && a.highBy !== "house") release(eco, a.highBy, a.high);
+    a.bids.push({ uid, v, at: now });
+    if (a.endsAt - now <= cfg.extendWindowSec * 1000) { a.endsAt += cfg.extendBySec * 1000; a.extended++; }
+    // comprador fantasma: nas estreias, abaixo do teto escondido a Casa cobre na hora com +1
+    const ceiling = a.kind === "house" && cfg.ghostBuyer ? ghostCeiling(eco, a, now, cfg) : 0;
+    if (v < ceiling) {
+      a.high = v + 1; a.highBy = "house"; a.bids.push({ uid: "house", v: v + 1, at: now });
+    } else {
+      reserve(eco, uid, v);
+      a.high = v; a.highBy = uid;
+    }
+    eco.seq++;
+    return null;
+  }
+  const ghostCeiling = (eco, a, now, cfg) => Math.max(a.minBid, Math.round(refValue(eco, a.film, cfg, now) * cfg.ghostPct));
+  const releaseAll = (eco, a) => {
+    if (a.highBy && a.highBy !== "house") release(eco, a.highBy, a.high);
+    Object.entries(a.sealed || {}).forEach(([uid, b]) => release(eco, uid, b.v));
+  };
+  function cancelAuction(eco, aid, now) {
+    const a = eco.auctions[aid];
+    if (!a || !isActive(a)) return "Esse leilão não está aberto.";
+    releaseAll(eco, a);
+    a.status = "canceled"; a.closedAt = now; a.result = { winner: null, price: 0 };
+    eco.seq++;
+    return null;
+  }
+  // leilão de jogador: quem vence paga com o reservado; o dono recebe o preço menos a taxa de venda;
+  // sem lance ou abaixo da reserva secreta, a cópia fica com o dono e os lances voltam
+  function closeUser(eco, a, now, cfg) {
+    let winner = null, price = 0, top = 0, reveal = null;
+    if (a.format === "sealed" || a.format === "vickrey") {
+      const bids = Object.entries(a.sealed).map(([uid, b]) => ({ uid, v: b.v, at: b.at })).sort((x, y) => y.v - x.v || x.at - y.at);
+      reveal = bids.map((b) => ({ uid: b.uid, v: b.v }));
+      bids.forEach((b) => release(eco, b.uid, b.v));
+      if (bids[0]) {
+        top = bids[0].v;
+        if (top >= (a.reserve || 0)) {
+          winner = bids[0].uid;
+          price = a.format === "sealed" ? top : Math.min(top, Math.max(bids[1] ? bids[1].v : a.minBid, a.reserve || 0, a.minBid));
+          reserve(eco, winner, price);
+        }
+      }
+    } else if (a.highBy) {
+      top = a.high;
+      if (a.high >= (a.reserve || 0)) { winner = a.highBy; price = a.high; } else release(eco, a.highBy, a.high);
+    }
+    const f = eco.films[a.film], c = eco.copies[a.copy], ref = `${f.title} (${copyLabel(eco, c)})`;
+    let fee = 0;
+    if (winner) {
+      capture(eco, winner, price, "purchase", now, ref);
+      transferCopy(eco, c.id, winner, price, "sale", now);
+      credit(eco, a.seller, price, "sale", now, ref);
+      fee = Math.min(price, Math.round(price * cfg.saleFeePct));
+      if (fee > 0) debit(eco, a.seller, fee, "fee", now, "taxa de venda: " + ref);
+    }
+    a.status = "closed"; a.closedAt = now;
+    a.result = { winner, price, fee, copy: winner ? c.id : null, reserveMissed: !winner && top > 0, reveal };
+    eco.seq++;
+    return null;
+  }
+  // fecha: o vencedor paga com o dinheiro reservado (sai de circulação) e recebe a cópia
+  function closeAuction(eco, aid, now, cfg) {
+    cfg = cfg || CONFIG;
+    const a = eco.auctions[aid];
+    if (!a || !isActive(a)) return "Esse leilão não está aberto.";
+    if (a.kind === "user") return closeUser(eco, a, now, cfg);
+    // sem lance, ou a Casa (comprador fantasma) terminou na frente: nada é emitido
+    if (!a.highBy || a.highBy === "house") { a.status = "closed"; a.closedAt = now; a.result = { winner: null, price: 0, house: a.highBy === "house" }; eco.seq++; return null; }
+    const f = eco.films[a.film];
+    let cid = a.copy && eco.copies[a.copy] && eco.copies[a.copy].owner === "house" ? a.copy : null;
+    if (!cid) {
+      if (mintCopy(eco, a.film, "house", now)) return cancelAuction(eco, aid, now);   // tiragem esgotada: devolve o lance
+      cid = `${a.film}#${f.minted}`;
+    }
+    capture(eco, a.highBy, a.high, "estreia", now, `${f.title} (${copyLabel(eco, eco.copies[cid])})`);
+    transferCopy(eco, cid, a.highBy, a.high, "estreia", now);
+    a.status = "closed"; a.closedAt = now; a.result = { winner: a.highBy, price: a.high, copy: cid };
+    eco.seq++;
+    return null;
+  }
+  // fecha os leilões vencidos; devolve os ids fechados
+  function tickAuctions(eco, now) {
+    return Object.values(eco.auctions).filter((a) => a.status === "open" && now >= a.endsAt).map((a) => (closeAuction(eco, a.id, now), a.id));
+  }
+  // leilões agendados que chegaram na hora de abrir; devolve os ids
+  function startDue(eco, now) {
+    const ids = Object.values(eco.auctions).filter((a) => a.status === "scheduled" && now >= a.startsAt).map((a) => a.id);
+    ids.forEach((id) => { eco.auctions[id].status = "open"; });
+    if (ids.length) eco.seq++;
+    return ids;
+  }
+  const dueAuctions = (eco, now, cfg) => Object.values(eco.auctions).some((a) => (a.status === "open" && now >= a.endsAt) || (a.status === "scheduled" && now >= a.startsAt))
+    || (cfg || CONFIG).estreias.some((ev) => !(eco.house.next || {})[ev.key] || now >= eco.house.next[ev.key]);
+  // o que cada um pode ver: a reserva secreta só para o dono; lances secretos só depois do fim (cada um vê o seu)
+  function auctionView(eco, a, viewer) {
+    const f = eco.films[a.film], nameOf = (id) => (id === "house" ? "Casa" : (eco.users[id] || {}).name || "Alguém");
+    const serial = a.copy ? eco.copies[a.copy].serial : isActive(a) ? f.minted + 1 : null;
+    const fmt = a.format || "open", secret = fmt === "sealed" || fmt === "vickrey", seller = !!viewer && a.seller === viewer;
+    const v = { id: a.id, kind: a.kind, event: a.event || null, eventName: a.eventName || null, film: filmCard(f), lot: serial ? `cópia ${serial}/${f.supply}` : "",
+      fromStock: a.kind === "house" && !!a.copy, format: fmt, formatName: FORMATS[fmt].name, seller: a.seller || null, sellerName: a.seller ? nameOf(a.seller) : null, isSeller: seller,
+      featured: !!a.featured, minBid: a.minBid, startsAt: a.startsAt, endsAt: a.endsAt, extended: a.extended || 0, status: a.status, closedAt: a.closedAt || null,
+      high: secret ? 0 : a.high, highBy: secret ? null : a.highBy, highName: !secret && a.highBy ? nameOf(a.highBy) : null,
+      mine: !!viewer && (secret ? !!(a.sealed || {})[viewer] : a.highBy === viewer), bids: secret ? Object.keys(a.sealed || {}).length : a.bids.length,
+      hasReserve: fmt !== "dutch" && (a.reserve || 0) > 0, reserve: seller || fmt === "dutch" ? a.reserve || 0 : null,
+      result: a.result && Object.assign({}, a.result, { winnerName: a.result.winner ? nameOf(a.result.winner) : null,
+        reveal: a.result.reveal ? a.result.reveal.map((b) => ({ name: nameOf(b.uid), v: b.v, me: b.uid === viewer })) : null }) };
+    if (secret) v.myBid = viewer && a.sealed[viewer] ? a.sealed[viewer].v : null;
+    if (fmt === "dutch") Object.assign(v, { startPrice: a.startPrice, floor: dutchFloor(a) });
+    return v;
+  }
+  // estreias abertas (mais raras no topo), leilões dos jogadores (vitrine primeiro) e as últimas encerradas
+  function auctionsView(eco, viewer, recent) {
+    const all = Object.values(eco.auctions);
+    const open = all.filter((a) => a.kind === "house" && a.status === "open").sort((a, b) => rarityIndex(b.rarity) - rarityIndex(a.rarity) || a.endsAt - b.endsAt);
+    const players = all.filter((a) => a.kind === "user" && isActive(a))
+      .sort((a, b) => (b.featured - a.featured) || (a.status === b.status ? 0 : a.status === "open" ? -1 : 1) || a.startsAt - b.startsAt || a.endsAt - b.endsAt);
+    const done = all.filter((a) => !isActive(a)).sort((a, b) => b.closedAt - a.closedAt).slice(0, recent == null ? 8 : recent);
+    return { open: open.map((a) => auctionView(eco, a, viewer)), players: players.map((a) => auctionView(eco, a, viewer)),
+      recent: done.map((a) => auctionView(eco, a, viewer)), next: Object.assign({}, eco.house.next || {}) };
+  }
+
   /* ---------- leitura ---------- */
   const supply = (eco) => Object.values(eco.users).reduce((a, u) => a + u.wallet.free + u.wallet.reserved, 0);
   function view(eco, uid) {
@@ -1181,7 +1959,13 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 
   return { CONFIG, KINDS, WEEK, cleanName, nameKey, create, nextCycle, findByName, checkName, addUser, setAuth,
     addSession, sessionUser, revokeSession, revokeSessions, pruneSessions,
-    credit, debit, reserve, release, capture, tick, supply, view, ledgerOf, balanceFromLedger };
+    credit, debit, reserve, release, capture, tick, supply, view, ledgerOf, balanceFromLedger,
+    SOURCES, parseScore, refRating, rarityOf, rarity, rarityIndex, applyOverrides,
+    addFilm, mintCopy, transferCopy, copyLabel, collectionOf, catalogView, openFilms, refreeze, pruneCatalog,
+    money, refValue, buybackPrice, sellToHouse,
+    FORMATS, listCopy, unlist, listingCost, dutchPrice, startDue,
+    season, setSeason, collectionScore, rankingView, showcase, capCheck, ghostCeiling,
+    nextEstreia, pickLot, openAuction, openEstreiaNow, accountsView, openDueEstreias, restartEstreias, bid, cancelAuction, closeAuction, tickAuctions, dueAuctions, auctionView, auctionsView };
 });
 </script>
 <script>/* ============================================================
@@ -1661,6 +2445,7 @@ const GROUP_TAG = E.GROUP_TAG;
 /* ---------- utilidades ---------- */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const brl = (n) => "R$ " + Number(n || 0).toLocaleString("pt-BR");
+const mny = (n) => MC.currency + " " + Number(n || 0).toLocaleString("pt-BR");   // dinheiro do Mercado (separado do R$ da partida rápida)
 const pts = (n) => Number(n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const rid = (n) => { const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, (b) => "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[b % 62]).join(""); };
 const hue = (str) => { let h = 0; for (const c of String(str)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
@@ -1686,7 +2471,8 @@ const S = {
   ui: { err: "", showDraw: false, drawing: false, drawMsg: "", search: [], searchMsg: "", preparing: false, sealedOpen: null, synOpen: false, modal: null, toast: null, joining: false, donate: { v: 1, text: "" }, emojiOpen: false },
   sound: store.get("ml-sound") !== false,
   auth: store.get("ml-auth") || null, me: null, market: null,   // Mercado: token da conta, conta e carteira
-  acct: { tab: "login", name: "", pass: "", busy: false, pwOld: "", pwNew: "" },
+  acct: { tab: "register", name: "", pass: "", busy: false, pwOld: "", pwNew: "" },
+  mtab: store.get("ml-mtab") || "painel", showcase: null,   // Mercado: aba aberta e vitrine pública
   fold: Object.assign({ info: true, donate: true, rules: true }, store.get("ml-fold") || {}), // painéis escondidos (os três começam fechados)
   lastTop: null, zoom: {}
 };
@@ -1697,7 +2483,7 @@ if (S.local) S.mode = "local";
 
 const cur = () => (S.mode === "online" ? S.st : S.local);
 const isHost = () => S.mode === "local" || (!!S.you && S.you === S.host);
-const now = () => (S.mode === "online" ? N.now() : Date.now());
+const now = () => (S.mode === "online" || S.mode === "market" ? N.now() : Date.now());
 const pl = (id) => { const st = cur(); return st && st.players.find((p) => p.id === id); };
 const nameOf = (id) => (pl(id) || {}).name || "Alguém";
 const colorOf = (id) => (pl(id) || {}).color || "#a99cc4";
@@ -1745,14 +2531,33 @@ function topbar() {
     ${online && S.code ? `<span class="chip-code">Sala <b>${esc(S.code)}</b><button data-act="copy-link">Copiar convite</button></span>
       <span class="viewers num" title="Pessoas conectadas na sala">${eye}${S.viewers}</span>` : ""}
     ${S.mode === "local" ? `<span class="hint">Mesmo aparelho</span>` : ""}
-    ${S.me && S.mode !== "market" ? `<button class="chip-acct num" data-act="market" title="Abrir o Mercado"><span class="avatar sm">${initial(S.me.name)}</span><span class="nm">${esc(S.me.name)} · ${brl(S.me.wallet.free)}</span></button>` : ""}
+    ${S.me ? `<button class="chip-acct num" ${S.mode === "market" ? `data-mtab="carteira"` : `data-act="market"`} title="${S.mode === "market" ? "Carteira" : "Abrir o Mercado"}"><span class="avatar sm">${initial(S.me.name)}</span><span class="nm">${esc(S.me.name)} · ${mny(S.me.wallet.free)}</span></button>` : ""}
     ${online ? `<span class="conn ${N.status}" title="${{ on: "Conectado", connecting: "Reconectando…", unavailable: "Servidor indisponível", off: "Desconectado" }[N.status]}"></span>` : ""}
-  </div></header>`;
+  </div>${S.mode === "market" && S.me ? marketTabs(S.me) : ""}</header>`;
 }
 
 /* ============================================================
    INÍCIO
    ============================================================ */
+/* ---------- vitrine do Mercado na tela inicial: o que está acontecendo, para convidar a entrar ---------- */
+function marketShowcase() {
+  const sc = S.showcase;
+  if (!N.available || !sc) return "";
+  const live = sc.open.concat(sc.featured), st = sc.stats;
+  return `<section class="showcase">
+    <div class="sc-head"><div><span class="onair">MERCADO AO VIVO</span><h2>Monte uma coleção que fica salva.</h2>
+      <p class="lede">Estreias com cópias numeradas, coleções que valem pontos e um ranking da galera. ${S.me ? "Seus filmes e sua carteira esperam por você." : `Crie sua conta e ganhe <b>${mny(MC.signupBonus)}</b> para começar, mais ${mny(MC.allowance)} toda semana.`}</p></div>
+      <div class="sc-cta"><button class="btn coin big" data-act="market-join">${S.me ? "Abrir o Mercado" : `Criar conta e ganhar ${mny(MC.signupBonus)}`}</button>${S.me ? "" : `<button class="btn quiet" data-act="market-login">Já tenho conta</button>`}</div></div>
+    <div class="sc-stats"><span><b class="num">${st.accounts}</b> ${st.accounts === 1 ? "colecionador" : "colecionadores"}</span><span><b class="num">${st.films}</b> filmes no catálogo</span><span><b class="num">${st.copies}</b> ${st.copies === 1 ? "cópia" : "cópias"} com dono</span><span><b class="num">${live.length}</b> ${live.length === 1 ? "leilão aberto" : "leilões abertos"}</span></div>
+    ${seasonBanner(sc.season)}
+    <div class="mgrid">${liveNow(live, sc.next, "join")}${mpanel("", "🏆 Ranking", rankList(sc.ranking))}</div>
+    ${sc.recent.length ? mpanel("", "Chegaram ao catálogo", filmStrip(sc.recent)) : ""}
+  </section>`;
+}
+async function loadShowcase() {
+  const r = await N.call("market:showcase");
+  if (!r.error) { S.showcase = r; S.showcaseAt = Date.now(); if (screen() === "home" || (S.mode === "market" && !S.me)) render(); }
+}
 const DEMO_FILM = C.BASE.find((f) => f.id === "tt1375666") || C.BASE[0];
 function renderHome() {
   const onlineOk = N.available && N.status !== "unavailable";
@@ -1786,6 +2591,7 @@ function renderHome() {
         <div class="scrub"><div class="track"><div class="fill demo-fill"></div></div></div>
       </div>
     </section>
+    ${marketShowcase()}
     <section>
       <h2 class="section-title">Três jeitos de leiloar</h2>
       <div class="formats">
@@ -1838,7 +2644,7 @@ function playersPanel() {
     const list = S.setup.localPlayers.map((n, i) => `<div class="prow"><span class="avatar sm" style="background:${E.COLORS[i % E.COLORS.length]}">${initial(n)}</span>
       <input class="input" id="lp-${i}" data-lp="${i}" value="${esc(n)}" maxlength="18" placeholder="Jogador ${i + 1}">
       <button class="x" data-rmlp="${i}" aria-label="Remover jogador" ${S.setup.localPlayers.length <= 2 ? "disabled" : ""}>×</button></div>`).join("");
-    return panel("players", "Jogadores", `<div class="plist">${list}</div>
+    return mpanel("players", "Jogadores", `<div class="plist">${list}</div>
       <button class="btn ghost" data-act="addlp" ${S.setup.localPlayers.length >= E.MAX_PLAYERS ? "disabled" : ""}>Adicionar jogador</button>
       <p class="hint">Todos jogam neste aparelho, passando a vez. No Lance secreto, cada um digita escondido.</p>`, `<span class="hint num">${S.setup.localPlayers.length} de ${E.MAX_PLAYERS}</span>`);
   }
@@ -1853,7 +2659,7 @@ function playersPanel() {
       <span class="link">${esc(link)}</span>
       <div class="toolbar"><button class="btn" data-act="copy-link">Copiar link de convite</button><button class="btn ghost" data-act="copy-code">Copiar código</button></div></div>`,
     `<span class="hint">Código <b>${esc(S.code)}</b></span>`)
-    + panel("players", "Na sala", `<div class="plist">${rows}</div>
+    + mpanel("players", "Na sala", `<div class="plist">${rows}</div>
     ${S.you ? "" : `<p class="hint">Você está assistindo. Lances ficam com quem entrou como jogador.</p>`}`, `<span class="hint num">${st.players.length} de ${E.MAX_PLAYERS}</span>`);
 }
 /* ---------- doação na sala (estilo donate de live) ---------- */
@@ -2198,51 +3004,350 @@ function renderFinal() {
    MERCADO: conta, carteira e coleção que ficam salvas
    ============================================================ */
 const fmtWhen = (t) => new Date(t).toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+/* ---------- Mercado: abas no topo e uma tela por assunto ---------- */
+const MTABS = [["painel", "Painel", "🏠"], ["estreias", "Estreias", "🎟️"], ["leiloes", "Leilões", "🔨"], ["colecao", "Coleção", "🎞️"],
+  ["catalogo", "Catálogo", "📚"], ["ranking", "Ranking", "🏆"], ["carteira", "Carteira", "👛"], ["admin", "Admin", "🛠️"]];
+function marketTabs(me) {
+  const A = S.auctions || {}, m = S.market || {};
+  const badge = { estreias: (A.open || []).length, leiloes: (A.players || []).length, colecao: (m.collection || []).length };
+  return `<nav class="mtabs" aria-label="Mercado"><div class="wrap">${MTABS.filter(([k]) => k !== "admin" || me.admin).map(([k, l, i]) =>
+    `<button type="button" class="mtab" data-mtab="${k}" aria-current="${S.mtab === k ? "page" : "false"}"><span aria-hidden="true">${i}</span>${l}${badge[k] ? `<span class="badge num">${badge[k]}</span>` : ""}</button>`).join("")}</div></nav>`;
+}
+// painel sem botão de esconder: dentro das abas cada tela já tem um assunto só
+function mpanel(key, title, body, extra, cls) {
+  return `<section class="panel ${cls || ""}"><div class="panel-head"><h2>${title}</h2>${extra || ""}</div>${body}</section>`;
+}
+const BENEFITS = () => [
+  ["🎁", `${mny(MC.signupBonus)} de boas-vindas`, `e mais ${mny(MC.allowance)} de mesada toda semana, igual para todos.`],
+  ["🎟️", "Estreias com cópias numeradas", "Uma por dia, uma por semana e uma por mês, cada vez mais raras. A Casa disputa junto."],
+  ["🏆", "Coleção que vale pontos", "Trilogias, diretores e o gênero da temporada dão bônus. Suba no ranking da galera."],
+  ["🔨", "Revenda entre jogadores", "Anuncie suas cópias em quatro formatos de leilão, com reserva secreta."]
+];
 function renderMarket() {
   const a = S.acct;
   if (!S.me) {
-    const reg = a.tab === "register";
-    return `<main class="wrap market"><section class="panel auth-panel">
-      <div><h1 class="market-title">Mercado</h1><p class="hint">Sua carteira e sua coleção de filmes ficam salvas entre as partidas.</p></div>
-      <div class="seg" role="group" aria-label="Entrar ou criar conta">
-        <button type="button" data-acct-tab="login" aria-pressed="${!reg}">Entrar</button>
-        <button type="button" data-acct-tab="register" aria-pressed="${reg}">Criar conta</button></div>
-      <form class="entry" id="authForm">
-        <div class="field"><label for="au-name">Nome</label><input class="input" id="au-name" maxlength="18" autocomplete="username" value="${esc(a.name)}"></div>
-        <div class="field"><label for="au-pass">Senha</label><input class="input" id="au-pass" type="password" maxlength="200" autocomplete="${reg ? "new-password" : "current-password"}" value="${esc(a.pass)}"></div>
-        ${reg ? `<p class="hint">Pelo menos ${MC.passwordMin} caracteres. Se esquecer, um admin gera uma senha temporária para você.</p>` : ""}
-        ${S.ui.err ? `<p class="err">${esc(S.ui.err)}</p>` : ""}
-        <button class="btn go big" type="submit" ${a.busy ? "disabled" : ""}>${a.busy ? "Um momento…" : reg ? "Criar conta" : "Entrar"}</button>
-      </form>
-      <button class="btn quiet" data-act="home">Voltar ao início</button>
-    </section></main>`;
+    const reg = a.tab === "register", sc = S.showcase;
+    return `<main class="wrap market auth">
+      <section class="panel auth-panel">
+        <div><h1 class="market-title">${reg ? "Crie sua conta no Mercado" : "Entre no Mercado"}</h1><p class="hint">Sua carteira e sua coleção de filmes ficam salvas entre as partidas.</p></div>
+        <div class="seg" role="group" aria-label="Entrar ou criar conta">
+          <button type="button" data-acct-tab="register" aria-pressed="${reg}">Criar conta</button>
+          <button type="button" data-acct-tab="login" aria-pressed="${!reg}">Já tenho conta</button></div>
+        <form class="entry" id="authForm">
+          <div class="field"><label for="au-name">Nome</label><input class="input" id="au-name" maxlength="18" autocomplete="username" value="${esc(a.name)}"></div>
+          <div class="field"><label for="au-pass">Senha</label><input class="input" id="au-pass" type="password" maxlength="200" autocomplete="${reg ? "new-password" : "current-password"}" value="${esc(a.pass)}"></div>
+          ${reg ? `<p class="hint">Pelo menos ${MC.passwordMin} caracteres. Se esquecer, um admin gera uma senha temporária para você.</p>` : ""}
+          ${S.ui.err ? `<p class="err">${esc(S.ui.err)}</p>` : ""}
+          <button class="btn ${reg ? "coin" : "go"} big" type="submit" ${a.busy ? "disabled" : ""}>${a.busy ? "Um momento…" : reg ? `Criar conta e ganhar ${mny(MC.signupBonus)}` : "Entrar"}</button>
+        </form>
+        <ul class="benefits">${BENEFITS().map(([i, t, d]) => `<li><span aria-hidden="true">${i}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></li>`).join("")}</ul>
+      </section>
+      <aside class="auth-side">${sc ? liveNow(sc.open.concat(sc.featured), sc.next, "join") + (sc.ranking.length ? mpanel("", "Ranking agora", rankList(sc.ranking)) : "") : ""}</aside>
+    </main>`;
   }
-  const m = S.market || { me: S.me, ledger: [], collection: [] }, me = m.me, w = me.wallet;
-  const rows = m.ledger.map((e) => `<div class="lrow"><span>${esc(MK.KINDS[e.kind] || e.kind)}${e.ref ? ` <small>${esc(e.ref)}</small>` : ""}</span><span class="when">${esc(new Date(e.at).toLocaleDateString("pt-BR"))}</span><b class="num ${e.delta < 0 ? "out" : "in"}">${e.delta < 0 ? "−" : "+"}${brl(Math.abs(e.delta))}</b></div>`).join("");
-  return `<main class="wrap market">
-    <div class="col">
-      ${panel("wallet", `Carteira de ${esc(me.name)}${me.admin ? ` <span class="pill top">admin</span>` : ""}`,
-        `<div class="bal"><span class="label">Saldo livre</span><b class="num">${brl(w.free)}</b>${w.reserved ? `<span class="hint num">Mais ${brl(w.reserved)} reservados em lances</span>` : ""}</div>
-        <p class="hint">Próxima mesada de ${brl(MC.allowance)}: ${esc(fmtWhen(me.nextAllowanceAt))}.</p>`,
-        `<button class="btn quiet" data-act="logout">Sair da conta</button>`, "wallet")}
-      ${panel("collection", "Coleção", m.collection.length ? "" : `<div class="curtain"><div><b>Nenhum filme ainda</b><p>Seus filmes chegam pelos leilões do Mercado.</p></div></div>`)}
+  const m = S.market || { me: S.me, ledger: [], collection: [] }, me = m.me;
+  const tab = S.mtab === "admin" && !me.admin ? "painel" : S.mtab;
+  const views = {
+    painel: () => dashboard(m, me),
+    estreias: () => auctionsPanel(me),
+    leiloes: () => playersPanel(me) || mpanel("players", "Leilões dos jogadores", `<p class="hint">Carregando…</p>`),
+    colecao: () => collectionPanel(m),
+    catalogo: () => catalogPanel(me),
+    ranking: () => rankingPanel(me) || mpanel("ranking", "Ranking de colecionadores", `<p class="hint">Carregando…</p>`),
+    carteira: () => walletView(m, me),
+    admin: () => adminPanel(me)
+  };
+  return `<main class="wrap market tabbed">${(views[tab] || views.painel)()}</main>`;
+}
+
+/* ---------- Painel: o resumo do Mercado para quem entrou ---------- */
+function stat(tab, label, value, sub, cls) {
+  return `<button type="button" class="stat ${cls || ""}" data-mtab="${tab}"><span class="label">${label}</span><b class="num">${value}</b><span class="hint">${sub || ""}</span></button>`;
+}
+function dashboard(m, me) {
+  const w = me.wallet, s = m.score || { total: 0, bonuses: [] }, R = S.ranking, A = S.auctions || { open: [], players: [], next: {} };
+  const pos = R ? R.ranking.findIndex((r) => r.id === me.id) + 1 : 0;
+  const live = A.open.concat((A.players || []).filter((a) => a.status === "open")), leading = live.filter((a) => a.mine);
+  const recent = S.catalog ? S.catalog.films.slice().sort((x, y) => (y.addedAt || 0) - (x.addedAt || 0)).slice(0, 10) : [];
+  const caps = (m.caps || []).map((c) => `${rarName(c.rarity)} ${c.owned}/${c.cap}`).join(" · ");
+  return `<section class="hello"><h1>Olá, ${esc(me.name)}</h1><p class="hint">Próxima mesada de ${mny(MC.allowance)}: ${esc(fmtWhen(me.nextAllowanceAt))}.</p></section>
+    <div class="stats">
+      ${stat("carteira", "Saldo livre", mny(w.free), w.reserved ? `+ ${mny(w.reserved)} reservados em lances` : "pronto para dar lance", "coin")}
+      ${stat("ranking", "Pontos", pts(s.total), pos ? `${pos}º de ${R.ranking.length} no ranking` : "monte sua coleção", "mint")}
+      ${stat("colecao", "Coleção", `${m.collection.length} ${m.collection.length === 1 ? "cópia" : "cópias"}`, caps ? `teto: ${caps}` : "")}
+      ${stat("estreias", "Ao vivo agora", `${live.length} ${live.length === 1 ? "leilão" : "leilões"}`, leading.length ? `você está na frente em ${leading.length}` : "dê o primeiro lance", "live")}
     </div>
+    ${seasonBanner(R && R.season)}
+    ${liveNow(live, A.next, "tab")}
+    <div class="mgrid">
+      ${mpanel("", "Top do ranking", R ? rankList(R.ranking.slice(0, 5), me.id) : `<p class="hint">Carregando…</p>`, `<button class="btn quiet" data-mtab="ranking">Ver tudo</button>`)}
+      ${mpanel("", "Chegaram ao catálogo", recent.length ? filmStrip(recent) : `<p class="hint">Carregando…</p>`, `<button class="btn quiet" data-mtab="catalogo">Ver catálogo</button>`)}
+    </div>`;
+}
+// leilões abertos em formato compacto: no Mercado leva à aba certa; na tela inicial convida a entrar
+function miniAuction(a, mode) {
+  const f = a.film, user = a.kind === "user", fmt = a.format || "open", secret = fmt === "sealed" || fmt === "vickrey";
+  const price = fmt === "dutch" ? `<b class="num" data-dutch="${a.startPrice}|${a.floor}|${a.startsAt}|${a.endsAt}">${mny(a.startPrice)}</b>`
+    : secret ? `<b class="num">${a.bids} ${a.bids === 1 ? "lance" : "lances"}</b>` : `<b class="num">${mny(a.highBy ? a.high : a.minBid)}</b>`;
+  const who = user ? `${FMT_ICO[fmt]} ${esc(a.formatName)} · ${esc(a.sellerName)}` : `${EVENT_ICON[a.event] || "🎬"} ${esc(a.eventName)}`;
+  const goto = mode === "join" ? `data-act="market-join" data-after="${user ? "leiloes" : "estreias"}"` : `data-mtab="${user ? "leiloes" : "estreias"}"`;
+  return `<button type="button" class="mini r-${esc(f.rarity)}" ${goto}>
+    <span class="mp">${poster(f)}</span>
+    <span class="mi"><span class="ev">${who}</span><b class="t">${esc(f.title)}</b><span class="tags">${rarBadge(f.rarity)}<span class="hint num">${esc(a.lot)}</span></span></span>
+    <span class="mr"><span class="clock num" data-clock="${a.endsAt}"></span>${price}<span class="hint">${fmt === "dutch" ? "preço agora" : secret ? "secretos" : a.highBy ? (a.highBy === "house" ? "da Casa" : a.mine ? "seu lance" : "maior lance") : "lance mínimo"}</span></span>
+  </button>`;
+}
+function liveNow(list, next, mode) {
+  const nx = MC.estreias.filter((ev) => next && next[ev.key]).map((ev) => `${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}: ${esc(fmtWhen(next[ev.key]))}`);
+  return `<section class="panel live-now"><div class="panel-head"><h2><span class="onair">AO VIVO</span> Acontecendo agora</h2>${mode === "tab" ? `<button class="btn quiet" data-mtab="estreias">Ver estreias</button>` : ""}</div>
+    ${list.length ? `<div class="minis">${list.slice(0, 6).map((a) => miniAuction(a, mode)).join("")}</div>` : `<p class="hint">Nenhum leilão aberto neste momento.</p>`}
+    ${nx.length ? `<p class="hint">Próximas estreias: ${nx.join(" · ")}</p>` : ""}</section>`;
+}
+function rankList(rows, meId) {
+  if (!rows.length) return `<p class="hint">Ninguém tem filmes ainda. A primeira cópia já põe você no topo.</p>`;
+  return `<ol class="rank-mini">${rows.map((r, i) => `<li class="${r.id && r.id === meId ? "me" : ""}"><span class="pos num">${["🥇", "🥈", "🥉"][i] || i + 1 + "º"}</span><b>${esc(r.name)}</b><span class="hint num">${r.films} ${r.films === 1 ? "filme" : "filmes"}</span><b class="num total">${pts(r.total)}</b></li>`).join("")}</ol>`;
+}
+function filmStrip(list) {
+  return `<div class="strip">${list.map((f) => `<div class="tile r-${esc(f.rarity)}">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}<span class="t">${esc(f.title)}</span><span class="tags">${rarBadge(f.rarity)}<b class="num">${pts(f.ref)}</b></span></div>`).join("")}</div>`;
+}
+
+/* ---------- Coleção e Carteira ---------- */
+function collectionPanel(m) {
+  const body = scoreBox(m) + (m.collection.length
+    ? `<div class="mlist">${m.collection.map((c) => `<div class="citem">${filmRow(c.film, `<span class="serial num">${esc(c.label)}</span>`)}
+        <div class="cact">${c.listed
+          ? `<span class="pill top">anunciada</span><button class="btn quiet" data-mtab="leiloes">Ver no painel de leilões</button>`
+          : `<button class="btn" data-list="${esc(c.id)}">Anunciar</button><button class="btn ghost num" data-sell="${esc(c.id)}" title="A Casa paga ${Math.round(MC.buybackPct * 100)}% do valor de referência (${mny(c.value)})">Vender para a Casa · ${mny(c.buyback)}</button>`}</div></div>`).join("")}</div>`
+    : `<div class="curtain"><div><b>Nenhum filme ainda</b><p>Suas cópias chegam pelas estreias da Casa e pelos leilões dos jogadores.</p></div><button class="btn coin" data-mtab="estreias">Ver estreias</button></div>`);
+  return mpanel("collection", "Coleção", body, m.collection.length ? `<span class="hint num">${m.collection.length} ${m.collection.length === 1 ? "cópia" : "cópias"}</span>` : "");
+}
+function walletView(m, me) {
+  const a = S.acct, w = me.wallet;
+  const rows = m.ledger.map((e) => `<div class="lrow"><span>${esc(MK.KINDS[e.kind] || e.kind)}${e.ref ? ` <small>${esc(e.ref)}</small>` : ""}</span><span class="when">${esc(new Date(e.at).toLocaleDateString("pt-BR"))}</span><b class="num ${e.delta < 0 ? "out" : "in"}">${e.delta < 0 ? "−" : "+"}${mny(Math.abs(e.delta))}</b></div>`).join("");
+  return `<div class="mgrid">
     <div class="col">
-      ${panel("ledger", "Extrato", `<div class="ledger">${rows || `<p class="hint">Nenhuma movimentação ainda.</p>`}</div>`)}
-      ${panel("account", "Conta", `<form class="acct-form" id="pwForm">
+      ${mpanel("wallet", `Carteira de ${esc(me.name)}${me.admin ? ` <span class="pill top">admin</span>` : ""}`,
+        `<div class="bal"><span class="label">Saldo livre</span><b class="num">${mny(w.free)}</b>${w.reserved ? `<span class="hint num">Mais ${mny(w.reserved)} reservados em lances</span>` : ""}</div>
+        <p class="hint">Próxima mesada de ${mny(MC.allowance)}: ${esc(fmtWhen(me.nextAllowanceAt))}.</p>`,
+        `<button class="btn quiet" data-act="logout">Sair da conta</button>`, "wallet")}
+      ${mpanel("account", "Conta", `<form class="acct-form" id="pwForm">
           <input class="input" id="pw-old" type="password" placeholder="Senha atual" autocomplete="current-password" value="${esc(a.pwOld)}">
           <input class="input" id="pw-new" type="password" placeholder="Senha nova" autocomplete="new-password" value="${esc(a.pwNew)}">
           <button class="btn" type="submit">Trocar senha</button></form>
         ${me.admin ? `<form class="acct-form" id="resetForm" autocomplete="off"><input class="input" id="rs-name" maxlength="18" placeholder="Nome da conta"><button class="btn" type="submit">Gerar senha temporária</button></form>
           <p class="hint">A pessoa sai da conta em todos os aparelhos e entra com a senha temporária.</p>` : ""}`)}
     </div>
-  </main>`;
+    ${mpanel("ledger", "Extrato", `<div class="ledger">${rows || `<p class="hint">Nenhuma movimentação ainda.</p>`}</div>`)}
+  </div>`;
+}
+/* ---------- pontuação da coleção, tetos, temporada e ranking ---------- */
+const BONUS_ICO = { series: "🎞️", director: "🎬", decade: "📅", genre: "🎭", season: "🔥" };
+const bonusChips = (s) => s.bonuses.map((b) => `<span class="chip bonus" title="${esc(b.name)}: ${b.n} filmes">${BONUS_ICO[b.kind] || "★"} ${esc(b.name)}: ${esc(b.label)} <b class="num">+${pts(b.pts)}</b></span>`).join("");
+function scoreBox(m) {
+  const s = m.score, caps = (m.caps || []).map((c) => `${esc(rarName(c.rarity))}: <b class="num">${c.owned} de ${c.cap}</b>`).join(" · ");
+  if (!s) return "";
+  return `<div class="scorebox"><div><span class="label">Pontos da coleção</span><b class="num">${pts(s.total)}</b>
+      <span class="hint num">${pts(s.base)} das notas${s.bonuses.length ? " + bônus" : ""}</span></div>
+    ${s.bonuses.length ? `<div class="chips">${bonusChips(s)}</div>` : `<p class="hint">Bônus: 3 filmes da mesma série (+${MC.collectionBonuses.series.pts}), do mesmo diretor (+${MC.collectionBonuses.director.pts}), 4 da mesma década ou do mesmo gênero (+${MC.collectionBonuses.decade.pts}) e filmes do gênero da temporada.</p>`}
+    ${caps ? `<p class="hint">Teto por jogador: ${caps}</p>` : ""}</div>`;
+}
+function seasonBanner(s) {
+  s = s || (S.ranking && S.ranking.season);
+  if (!s) return "";
+  return `<div class="season">🔥 <span>Temporada: <b>${esc(s.genre)}</b> em alta até ${esc(new Date(s.endsAt - 1).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }))}. Cada filme do gênero vale +${MC.seasonPts} pontos e ${Math.round((MC.seasonValueBoost - 1) * 100)}% a mais no valor de referência.</span>${s.override ? `<span class="pill top">escolhido pelo admin</span>` : ""}</div>`;
+}
+function rankingPanel(me) {
+  const R = S.ranking;
+  if (!R) return "";
+  const rows = R.ranking.map((r, i) => `<div class="rank-row ${r.id === me.id ? "me" : ""}"><span class="pos num">${i + 1}º</span><b>${esc(r.name)}</b>
+    <span class="hint num">${r.films} ${r.films === 1 ? "filme" : "filmes"}</span><span class="chips">${bonusChips(r)}</span><b class="num total">${pts(r.total)}</b></div>`).join("");
+  return mpanel("ranking", "Ranking de colecionadores", `${seasonBanner()}<p class="hint">Pontos = soma das notas de referência dos seus filmes (cada filme conta uma vez) + bônus de conjunto + temporada.</p><div class="ranking">${rows}</div>`);
+}
+async function loadRanking() {
+  const r = await N.call("market:ranking");
+  if (!r.error) { S.ranking = r; render(); }
+}
+
+/* ---------- catálogo do Mercado: raridade, notas e tiragem ---------- */
+const hotGenre = () => (S.ranking && S.ranking.season ? S.ranking.season.genre : null);
+const rarName = (k) => (MK.rarity(k) || {}).name || k;
+const rarBadge = (k) => `<span class="rar r-${esc(k)}">${esc(rarName(k))}</span>`;
+const filmScores = (f) => Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null).map(([k, n]) => `${n} ${pts(f.scores[k])}`).join(" · ");
+function filmRow(f, side) {
+  return `<div class="mfilm r-${esc(f.rarity)}"><div class="ph">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}</div>
+    <div class="meta"><b>${esc(f.title)}</b><span class="hint">${esc(f.year)}${f.dir ? " · " + esc(f.dir) : ""}</span>
+      <div class="tags">${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal" title="As notas quase não discordam">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip" title="Pouco lembrado: subiu uma raridade">Garimpo</span>` : ""}${hotGenre() && (f.g || []).includes(hotGenre()) ? `<span class="chip hot" title="Gênero da temporada: vale mais pontos e mais no valor de referência">🔥 em alta</span>` : ""}</div>
+      <span class="hint num">${esc(filmScores(f))}</span></div>
+    <div class="ref"><b class="num">${pts(f.ref)}</b>${side || ""}</div></div>`;
+}
+function catalogPanel(me) {
+  const c = S.catalog;
+  const admin = me.admin ? `<button class="btn quiet" data-act="refill" ${c && c.refilling ? "disabled" : ""}>Atualizar agora</button>` : "";
+  if (!c) return mpanel("catalog", "Filmes do Mercado", `<p class="hint">Carregando o catálogo…</p>`, admin);
+  const flt = S.ui.catFilter || "all", count = {};
+  c.films.forEach((f) => (count[f.rarity] = (count[f.rarity] || 0) + 1));
+  const opts = [["all", `Todos (${c.films.length})`], ...MC.rarities.slice().reverse().filter((r) => count[r.key]).map((r) => [r.key, `${r.name} (${count[r.key]})`])];
+  const list = c.films.filter((f) => flt === "all" || f.rarity === flt);
+  const copies = (f) => `<span class="hint num">${f.minted} de ${f.supply} ${f.supply === 1 ? "cópia emitida" : "cópias emitidas"}</span>`;
+  const body = !c.films.length
+    ? `<div class="curtain"><div><b>${c.refilling ? "A Casa está escolhendo os filmes…" : "Catálogo vazio"}</b><p>A Casa sorteia filmes com pelo menos ${MC.minScores} notas (IMDb, Metacritic ou Rotten Tomatoes) e cadastra sozinha.</p></div></div>`
+    : `<p class="hint">Cada filme tem uma tiragem limitada de cópias numeradas, definida pela raridade. A nota de referência é a média das notas disponíveis.</p>
+       <div class="seg" role="group" aria-label="Filtrar por raridade">${opts.map(([k, l]) => `<button type="button" data-catf="${k}" aria-pressed="${flt === k}">${esc(l)}</button>`).join("")}</div>
+       <div class="mlist">${list.map((f) => filmRow(f, copies(f))).join("")}</div>`;
+  return mpanel("catalog", "Filmes do Mercado", body, admin);
+}
+/* ---------- estreias da Casa: leilões que emitem as cópias ---------- */
+const EVENT_ICON = { day: "🎟️", week: "🎬", month: "🏆" };
+const bidDrafts = {};   // valor digitado em cada leilão (sobrevive ao re-render)
+const FMT_ICO = { open: "🔨", sealed: "✉️", vickrey: "🥈", dutch: "⏱️" };
+const bidBox = (a, min, label, start) => `<form class="bid-form" id="bidForm-${esc(a.id)}"><div class="stepper"><button type="button" data-mstep="-1" data-aid="${esc(a.id)}" aria-label="Diminuir">−</button>
+    <input id="mbid-${esc(a.id)}" type="number" inputmode="numeric" min="${min}" value="${Math.max(min, Math.floor(+bidDrafts[a.id]) || start || min)}" aria-label="Valor do lance"><button type="button" data-mstep="1" data-aid="${esc(a.id)}" aria-label="Aumentar">+</button></div>
+    <button class="btn coin" type="submit">${label}</button></form>`;
+// cartão de leilão: estreia da Casa ou leilão de jogador, em qualquer formato
+function auctionCard(a, me) {
+  const f = a.film, fmt = a.format || "open", user = a.kind === "user", scheduled = a.status === "scheduled";
+  const free = `seu saldo livre ${mny(me.wallet.free)}`;
+  let read, ctl;
+  if (fmt === "dutch") {
+    read = `<span class="label">Preço agora</span><b class="num" data-dutch="${a.startPrice}|${a.floor}|${a.startsAt}|${a.endsAt}">${mny(a.startPrice)}</b><span class="hint num">cai até ${mny(a.floor)}</span>`;
+    ctl = `<button class="btn coin" data-dutch-buy="${esc(a.id)}" ${scheduled || a.isSeller ? "disabled" : ""}>Comprar agora</button><p class="hint">O primeiro a comprar leva pelo preço da hora · ${free}</p>`;
+  } else if (fmt === "sealed" || fmt === "vickrey") {
+    read = `<span class="label">${FMT_ICO[fmt]} ${esc(a.formatName)}</span><b class="num">${a.bids} ${a.bids === 1 ? "lance" : "lances"}</b><span class="hint">${fmt === "vickrey" ? "quem vence paga o 2º maior lance" : "quem vence paga o próprio lance"}</span>`;
+    ctl = `${a.myBid ? `<p class="lead-ok">Seu lance secreto: ${mny(a.myBid)}. Dá para trocar até o fim.</p>` : ""}${bidBox(a, a.minBid, a.myBid ? "Trocar lance" : "Lance secreto", a.myBid)}<p class="hint num">Mínimo ${mny(a.minBid)} · ${free}</p>`;
+  } else {
+    const min = a.highBy ? a.high + 1 : a.minBid;
+    read = `<span class="label">${a.highBy ? "Maior lance" : "Lance mínimo"}</span><b class="num">${mny(a.highBy ? a.high : a.minBid)}</b>
+      <span class="hint">${a.highBy ? (a.mine ? "é seu" : a.highBy === "house" ? "da Casa" : `de ${esc(a.highName)}`) : "ninguém deu lance ainda"}</span>`;
+    ctl = a.mine ? `<p class="lead-ok">Seu lance está na frente. Se alguém passar, o dinheiro volta para você na hora.</p>`
+      : `${bidBox(a, min, "Dar lance")}<p class="hint num">Mínimo ${mny(min)} · ${free}</p>`;
+  }
+  if (a.isSeller) {
+    ctl = `<p class="lead-ok">Seu leilão${a.reserve ? `, com reserva secreta de ${mny(a.reserve)}` : ""}.</p>
+      ${a.bids || a.highBy ? `<p class="hint">Já tem lance: vai até o fim.</p>` : `<button class="btn quiet" data-unlist="${esc(a.id)}">Desistir (a taxa de anúncio não volta)</button>`}`;
+  } else if (scheduled) ctl = `<p class="hint">Abre ${esc(fmtWhen(a.startsAt))}. Os lances valem a partir daí.</p>`;
+  const head = user
+    ? `<span class="ev">${FMT_ICO[fmt]} ${esc(a.formatName)} <small>de ${esc(a.sellerName)}</small></span>`
+    : `<span class="ev">${EVENT_ICON[a.event] || "🎬"} ${esc(a.eventName)}</span>`;
+  return `<article class="auction r-${esc(f.rarity)} ${a.featured ? "featured" : ""}">
+    <div class="ahead">${head}<span class="clock-wrap">${scheduled ? `<span class="hint">abre em</span> <span class="clock num" data-clock="${a.startsAt}"></span>` : `<span class="clock num" data-clock="${a.endsAt}"></span>`}</span></div>
+    ${filmRow(f, `<span class="serial num">${esc(a.lot)}</span>${a.fromStock ? `<span class="hint">volta do estoque da Casa</span>` : ""}${a.featured ? `<span class="pill top">vitrine</span>` : ""}`)}
+    <div class="abody"><div class="aread">${read}</div><div class="actl">${ctl}</div></div>
+    ${a.highBy === "house" ? `<p class="hint">🏠 A Casa disputa as estreias com um teto escondido: para levar, passe do lance dela. Se ela terminar na frente, a cópia não sai.</p>` : ""}
+    ${a.hasReserve && !a.isSeller ? `<p class="hint">🔒 Tem preço de reserva secreto: abaixo dele, a cópia não é vendida.</p>` : ""}
+    ${a.extended ? `<p class="hint num">Prorrogada ${a.extended}× por lances no fim.</p>` : ""}
+    ${me.admin ? `<div class="adm-row"><span class="hint">Admin:</span><button class="btn quiet" data-adm-close="${esc(a.id)}">Encerrar agora</button><button class="btn quiet" data-adm-cancel="${esc(a.id)}">Cancelar</button></div>` : ""}
+  </article>`;
+}
+// resultado de um leilão encerrado, com os lances secretos revelados
+function resultText(a) {
+  const r = a.result || {};
+  const who = r.winner ? `${esc(r.winnerName)} levou por <b class="num">${mny(r.price)}</b>` : a.status === "canceled" ? "cancelado" : r.reserveMissed ? "não atingiu a reserva" : "sem lances";
+  const rev = r.reveal && r.reveal.length ? `<br><small>lances: ${r.reveal.map((b) => `${esc(b.name)} ${mny(b.v)}`).join(", ")}</small>` : "";
+  return `<span class="hint">${a.kind === "user" ? `${FMT_ICO[a.format]} de ${esc(a.sellerName)} · ` : ""}${who}${rev}</span>`;
+}
+/* ---------- leilões dos jogadores: vitrine e lista ---------- */
+function playersPanel(me) {
+  const A = S.auctions;
+  if (!A) return "";
+  const P = A.players || [], feat = P.filter((a) => a.featured), rest = P.filter((a) => !a.featured);
+  const body = `<p class="hint">Qualquer um anuncia uma cópia da coleção pelo botão <b>Anunciar</b>. Anunciar custa ${mny(MC.listingFee)}; a vitrine (com aviso para todos) custa mais ${mny(MC.featureFee)}, e é de graça para ${esc(rarName(MC.featureFreeFrom))} ou mais raro. Quem vende paga ${Math.round(MC.saleFeePct * 100)}% do preço.</p>
+    ${feat.length ? `<span class="label">⭐ Vitrine</span><div class="auctions">${feat.map((a) => auctionCard(a, me)).join("")}</div>` : ""}
+    ${rest.length ? `<span class="label">Anunciados</span><div class="auctions">${rest.map((a) => auctionCard(a, me)).join("")}</div>` : ""}
+    ${P.length ? "" : `<div class="curtain"><div><b>Nenhum leilão de jogador agora</b><p>Anuncie uma cópia da sua coleção para os outros darem lance.</p></div></div>`}`;
+  return mpanel("players", "Leilões dos jogadores", body, P.length ? `<span class="pill in">${P.length} ${P.length === 1 ? "anúncio" : "anúncios"}</span>` : "");
+}
+/* ---------- anunciar uma cópia: formulário num modal que sobrevive aos re-renders ---------- */
+let listDraft = null;
+const toLocalInput = (t) => { const d = new Date(t - new Date(t).getTimezoneOffset() * 60e3); return d.toISOString().slice(0, 16); };
+function durName(m) { return m < 60 ? `${m} min` : m < 1440 ? `${m / 60} h` : `${m / 1440} ${m === 1440 ? "dia" : "dias"}`; }
+function listFormHtml() {
+  const d = listDraft, c = ((S.market || {}).collection || []).find((x) => x.id === d.copy);
+  if (!c) return `<p class="hint">Essa cópia não está mais na sua coleção.</p>`;
+  const r = MC.rarities.find((x) => x.key === c.film.rarity), freeFeat = MK.rarityIndex(c.film.rarity) >= MK.rarityIndex(MC.featureFreeFrom);
+  const cost = MC.listingFee + (d.featured && !freeFeat ? MC.featureFee : 0), dutch = d.format === "dutch";
+  return `${filmRow(c.film, `<span class="serial num">${esc(c.label)}</span>`)}
+    <div class="field"><span class="label">Formato</span><div class="seg" role="group">${MC.userFormats.map((k) => `<button type="button" data-lf-format="${k}" aria-pressed="${d.format === k}">${FMT_ICO[k]} ${esc(MK.FORMATS[k].name)}</button>`).join("")}</div>
+      <p class="hint">${esc(MK.FORMATS[d.format].desc)}</p></div>
+    <div class="grid-3">
+      <div class="field"><label for="lf-minutes">Duração</label><select class="input" id="lf-minutes">${MC.userDurations.map((m) => `<option value="${m}" ${+d.minutes === m ? "selected" : ""}>${durName(m)}</option>`).join("")}</select></div>
+      <div class="field"><span class="label">Início</span><div class="seg" role="group"><button type="button" data-lf-when="now" aria-pressed="${!d.schedule}">Agora</button><button type="button" data-lf-when="later" aria-pressed="${!!d.schedule}">Agendar</button></div></div>
+      ${d.schedule ? `<div class="field"><label for="lf-start">Começa em</label><input class="input" id="lf-start" type="datetime-local" value="${esc(d.start)}"></div>` : ""}
+    </div>
+    <div class="grid-3">
+      ${dutch ? `<div class="field"><label for="lf-startPrice">Preço inicial</label><input class="input num" id="lf-startPrice" type="number" min="${r.minBid + 1}" value="${esc(d.startPrice)}"></div>` : ""}
+      <div class="field"><label for="lf-reserve">${dutch ? "Preço mínimo (o relógio para aqui)" : "Reserva secreta (opcional)"}</label><input class="input num" id="lf-reserve" type="number" min="0" placeholder="${dutch ? r.minBid : "sem reserva"}" value="${esc(d.reserve)}"></div>
+    </div>
+    <p class="hint">Lance mínimo da raridade ${esc(r.name)}: ${mny(r.minBid)}. ${dutch ? "Todos veem o preço caindo até o mínimo." : "A reserva fica escondida: abaixo dela, a cópia continua sua e os lances voltam."}</p>
+    <label class="check"><input type="checkbox" id="lf-featured" ${d.featured || freeFeat ? "checked" : ""} ${freeFeat ? "disabled" : ""}> Pôr na vitrine e avisar todo mundo ${freeFeat ? "(de graça para esta raridade)" : `(+${mny(MC.featureFee)})`}</label>
+    <p class="cost num">Custa ${mny(cost)} para anunciar (não volta). Se vender, você recebe o preço menos ${Math.round(MC.saleFeePct * 100)}%.</p>
+    ${d.err ? `<p class="err">${esc(d.err)}</p>` : ""}`;
+}
+function openListForm(copyId) {
+  listDraft = { copy: copyId, format: "open", minutes: 60, schedule: false, start: toLocalInput(Date.now() + 3600e3), reserve: "", startPrice: "", featured: false, err: "" };
+  showListModal();
+}
+function showListModal() {
+  S.ui.modal = { title: "Anunciar cópia", body: listFormHtml, cls: "wide", actions: [{ label: "Cancelar", run: () => { listDraft = null; } }, { label: "Anunciar", cls: "go", run: submitListing }] };
+  render();
+}
+async function submitListing() {
+  const d = listDraft; if (!d) return;
+  const r = await N.call("market:list", { copy: d.copy, format: d.format, minutes: +d.minutes, startsAt: d.schedule ? new Date(d.start).getTime() : null,
+    reserve: d.reserve === "" ? 0 : +d.reserve, startPrice: +d.startPrice, featured: d.featured });
+  if (r.error) { d.err = r.error; return showListModal(); }   // reabre com o erro, sem perder o que foi preenchido
+  listDraft = null; toast(d.schedule ? "Leilão agendado." : "Leilão aberto!");
+}
+// ferramentas de teste: abrir estreias, dar M$ e conferir carteiras e coleções de todas as contas
+function adminPanel(me) {
+  if (!me.admin) return "";
+  const accs = S.adminAccounts || [];
+  const rows = accs.map((u) => `<div class="acc-row"><b>${esc(u.name)}${u.admin ? ` <span class="pill top">admin</span>` : ""}</b>
+    <span class="num">${mny(u.wallet.free)} livres${u.wallet.reserved ? ` · ${mny(u.wallet.reserved)} reservados` : ""}</span>
+    <span class="copies">${u.copies.length ? u.copies.map((c) => `${rarBadge(c.rarity)} ${esc(c.title)} <small class="num">${esc(c.label)}</small>`).join("<br>") : `<span class="hint">sem cópias</span>`}</span></div>`).join("");
+  return mpanel("admin", "Ferramentas do admin", `<p class="hint">Para testar: abra estreias fora da agenda, encerre antes do tempo (o vencedor recebe a cópia na hora) e confira abaixo a carteira e a coleção de cada conta.</p>
+    <div class="toolbar"><span class="label">Abrir estreia agora:</span>${MC.estreias.map((ev) => `<button class="btn" data-adm-open="${esc(ev.key)}">${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}</button>`).join("")}</div>
+    <form class="acct-form" id="admGrant" autocomplete="off"><input class="input" id="adm-name" maxlength="18" placeholder="Nome da conta"><input class="input num" id="adm-amount" type="number" min="1" max="10000" placeholder="M$"><button class="btn" type="submit">Dar M$</button></form>
+    <div class="panel-head"><span class="label">Contas (${accs.length})</span><button class="btn quiet" data-act="adm-refresh">Atualizar</button></div>
+    <div class="accs">${rows || `<p class="hint">Carregando…</p>`}</div>
+    <div class="toolbar"><span class="label">Temporada deste mês:</span><select class="input" id="adm-season" style="width:auto"><option value="">Sorteio do mês</option>${MC.seasonGenres.map((g) => `<option ${S.ranking && S.ranking.season && S.ranking.season.override && S.ranking.season.genre === g ? "selected" : ""}>${esc(g)}</option>`).join("")}</select><button class="btn" data-act="adm-season">Trocar</button></div>`, "", "admin-panel");
+}
+async function loadAccounts() {
+  if (!S.me || !S.me.admin) return;
+  const r = await N.call("admin:accounts");
+  if (!r.error) { S.adminAccounts = r.accounts; render(); }
+}
+async function adminCall(t, d, okMsg) {
+  const r = await N.call(t, d);
+  if (r.error) return toast(r.error, true);
+  toast(typeof okMsg === "function" ? okMsg(r) : okMsg);
+  loadAccounts();
+}
+function auctionsPanel(me) {
+  const A = S.auctions;
+  if (!A) return mpanel("auctions", "Estreias da Casa", `<p class="hint">Carregando as estreias…</p>`);
+  const next = MC.estreias.filter((ev) => A.next[ev.key]).map((ev) => `${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}: ${esc(fmtWhen(A.next[ev.key]))}`);
+  const recent = A.recent.slice(0, 4).map((a) => filmRow(a.film, resultText(a)));
+  const body = `<p class="hint">Cada estreia leiloa uma cópia. Lance nos últimos ${MC.extendWindowSec} s soma mais ${MC.extendBySec} s ao relógio. O lance fica reservado na sua carteira; se alguém passar, ele volta na hora. Quem vence paga e recebe a cópia.</p>
+    ${A.open.length ? `<div class="auctions">${A.open.map((a) => auctionCard(a, me)).join("")}</div>` : `<div class="curtain"><div><b>Nenhuma estreia aberta agora</b><p>A Casa abre uma por dia, uma por semana e uma por mês.</p></div></div>`}
+    ${next.length ? `<p class="hint">Próximas: ${next.join(" · ")}</p>` : ""}
+    ${recent.length ? `<span class="label">Últimos leilões encerrados</span><div class="mlist">${recent.join("")}</div>` : ""}`;
+  return mpanel("auctions", "Estreias da Casa", body, A.open.length ? `<span class="pill in">${A.open.length} ${A.open.length === 1 ? "aberta" : "abertas"}</span>` : "");
+}
+async function loadAuctions() {
+  const r = await N.call("market:auctions");
+  if (!r.error) { S.auctions = r; render(); }
+}
+async function loadCatalog() {
+  const r = await N.call("market:catalog");
+  if (r.error) return;
+  S.catalog = r; render();
+  if (r.refilling && S.mode === "market") setTimeout(loadCatalog, 4000);
 }
 async function openMarket() {
   S.mode = "market"; S.ui.err = ""; render();
   N.connect(); await waitOpen();
   if (S.auth && !S.me) await resumeAuth();
-  if (S.me) refreshMarket();
+  if (S.me) refreshMarket(); else loadShowcase();   // sem conta: a vitrine ao lado do formulário
 }
 async function resumeAuth() {
   const r = await N.call("auth:resume", { session: S.auth });
@@ -2252,9 +3357,9 @@ async function resumeAuth() {
 }
 async function refreshMarket() {
   const r = await N.call("market:me");
-  if (!r.error) { S.market = r; S.me = r.me; render(); }
+  if (!r.error) { S.market = r; S.me = r.me; render(); loadCatalog(); loadAuctions(); loadAccounts(); loadRanking(); }
 }
-function signedOut() { S.auth = null; S.me = null; S.market = null; store.del("ml-auth"); }
+function signedOut() { S.auth = null; S.me = null; S.market = null; S.catalog = null; S.auctions = null; S.adminAccounts = null; S.ranking = null; store.del("ml-auth"); }
 
 /* ============================================================
    RENDER
@@ -2297,7 +3402,8 @@ function renderToast() {
 }
 function modalHtml() {
   const m = S.ui.modal; if (!m) return "";
-  return `<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true"><h3>${esc(m.title)}</h3>${m.body}<div class="toolbar" style="justify-content:flex-end">${m.actions.map((a, i) => `<button class="btn ${a.cls || ""}" data-modal="${i}">${esc(a.label)}</button>`).join("")}</div></div></div>`;
+  // body pode ser uma função: o conteúdo é montado de novo a cada render, a partir do estado (formulários)
+  return `<div class="modal-bg"><div class="modal ${m.cls || ""}" role="dialog" aria-modal="true"><h3>${esc(m.title)}</h3>${typeof m.body === "function" ? m.body() : m.body}<div class="toolbar" style="justify-content:flex-end">${m.actions.map((a, i) => `<button class="btn ${a.cls || ""}" data-modal="${i}">${esc(a.label)}</button>`).join("")}</div></div></div>`;
 }
 function modal(title, body, actions) { S.ui.modal = { title, body, actions }; render(); }
 
@@ -2310,6 +3416,17 @@ function tickClocks() {
     el.style.width = Math.max(0, Math.min(100, ((until - t) / total) * 100)) + "%";
   });
   document.querySelectorAll("span[data-until]").forEach((el) => { el.textContent = Math.max(0, Math.ceil((+el.dataset.until - t) / 1000)) + " s"; });
+  // relógios longos (estreias do Mercado): h:mm:ss ou m:ss; nos últimos 30 s ficam vermelhos
+  document.querySelectorAll("[data-clock]").forEach((el) => {
+    const s = Math.max(0, Math.ceil((+el.dataset.clock - t) / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), p = (n) => String(n).padStart(2, "0");
+    el.textContent = s ? (h >= 48 ? `${Math.floor(h / 24)} dias` : h ? `${h}:${p(m)}:${p(s % 60)}` : `${m}:${p(s % 60)}`) : "agora…";
+    el.classList.toggle("hot", s <= MC.extendWindowSec);
+  });
+  // relógio holandês: o preço cai na tela com a mesma conta do servidor
+  document.querySelectorAll("[data-dutch]").forEach((el) => {
+    const [start, floor, from, until] = el.dataset.dutch.split("|").map(Number);
+    el.textContent = mny(MK.dutchPrice({ startPrice: start, minBid: floor, reserve: 0, startsAt: from, endsAt: until }, t));
+  });
 }
 function loop() { tickClocks(); placeFx(); requestAnimationFrame(loop); }
 
@@ -2625,7 +3742,35 @@ $app.addEventListener("click", async (e) => {
     const i = document.getElementById("donv"); if (i) i.value = donValue();
     return syncDonate();
   }
+  if (d.mtab) { S.mtab = d.mtab; store.set("ml-mtab", d.mtab); S.mode = "market"; render(); window.scrollTo(0, 0); return; }
   if (d.acctTab) { S.acct.tab = d.acctTab; S.ui.err = ""; render(); document.getElementById("au-name")?.focus(); return; }
+  if (d.catf) { S.ui.catFilter = d.catf; return render(); }
+  if (d.list) return openListForm(d.list);
+  if (d.lfFormat && listDraft) { listDraft.format = d.lfFormat; listDraft.err = ""; return render(); }
+  if (d.lfWhen && listDraft) { listDraft.schedule = d.lfWhen === "later"; return render(); }
+  if (d.unlist) {
+    const r = await N.call("market:unlist", { id: d.unlist });
+    return r.error ? toast(r.error, true) : toast("Anúncio retirado. A cópia continua na sua coleção.");
+  }
+  if (d.dutchBuy) {
+    const r = await N.call("market:bid", { id: d.dutchBuy });
+    return r.error ? toast(r.error, true) : toast(`Comprado por ${mny(r.price)}!`);
+  }
+  if (d.admOpen) return adminCall("admin:openEstreia", { event: d.admOpen }, "Estreia aberta.");
+  if (d.admCancel) return adminCall("admin:cancelAuction", { id: d.admCancel }, "Leilão cancelado; os lances voltaram para as carteiras.");
+  if (d.admClose) return adminCall("admin:closeAuction", { id: d.admClose }, (r) => (r.result && r.result.winner ? `Encerrada: ${r.result.winnerName} levou por ${mny(r.result.price)}.` : "Encerrada sem lances."));
+  if (d.mstep) {
+    const i = document.getElementById("mbid-" + d.aid); if (!i) return;
+    i.value = Math.max(+i.min, (Math.floor(+i.value) || 0) + +d.mstep); bidDrafts[d.aid] = i.value; return;
+  }
+  if (d.sell) {
+    const c = ((S.market || {}).collection || []).find((x) => x.id === d.sell); if (!c) return;
+    return modal(`Vender ${c.film.title} para a Casa?`, `<p class="hint">A Casa paga ${mny(c.buyback)} pela ${esc(c.label)} (${Math.round(MC.buybackPct * 100)}% do valor de referência, ${mny(c.value)}). A cópia volta para o estoque da Casa e pode sair numa próxima estreia.</p>`,
+      [{ label: "Ficar com ela" }, { label: `Vender por ${mny(c.buyback)}`, cls: "go", run: async () => {
+        const r = await N.call("market:sell", { copy: c.id });
+        if (r.error) toast(r.error, true); else toast(`Vendida para a Casa por ${mny(r.price)}.`);
+      } }]);
+  }
   if (d.emoji) {
     const el = document.getElementById("chatText"); if (!el) return;
     const a = el.selectionStart ?? el.value.length, z = el.selectionEnd ?? a;
@@ -2651,10 +3796,20 @@ $app.addEventListener("click", async (e) => {
     case "home":
       if (screen() === "live") return modal("Sair da transmissão?", `<p class="hint">${S.mode === "online" ? "Você pode voltar depois com o mesmo código, no mesmo lugar." : "O leilão local fica salvo neste aparelho."}</p>`, [{ label: "Continuar aqui" }, { label: "Sair", cls: "go", run: () => { if (S.mode === "local") { S.mode = null; render(); } else leave(); } }]);
       if (S.mode === "local" && !S.local) { S.mode = null; return render(); }
-      if (S.mode === "market") { S.mode = null; S.ui.err = ""; return render(); }
+      if (S.mode === "market") { S.mode = null; S.ui.err = ""; render(); return loadShowcase(); }
       return;
     case "create": return createRoom();
     case "market": return openMarket();
+    case "market-join": if (!S.me) S.acct.tab = "register"; if (d.after) { S.mtab = d.after; store.set("ml-mtab", d.after); } return openMarket();
+    case "market-login": S.acct.tab = "login"; return openMarket();
+    case "adm-refresh": return loadAccounts();
+    case "adm-season": { const g = document.getElementById("adm-season").value; return adminCall("admin:season", { genre: g }, (r) => `Temporada: ${r.season.genre}.`); }
+    case "refill": {
+      if (S.catalog) { S.catalog.refilling = true; render(); }
+      const r = await N.call("admin:refillCatalog");
+      if (r.error) toast(r.error, true); else toast(r.added ? `A Casa cadastrou ${r.added} ${r.added === 1 ? "filme" : "filmes"}.` : "Nenhum filme novo desta vez.");
+      return loadCatalog();
+    }
     case "logout":
       await N.call("auth:logout");
       signedOut(); return render();
@@ -2723,6 +3878,19 @@ $app.addEventListener("submit", async (e) => {
     if (!S.name) { S.name = r.me.name; store.set("ml-name", S.name); }
     render(); return refreshMarket();
   }
+  if (id === "admGrant") {
+    const name = document.getElementById("adm-name").value.trim(), amount = Math.floor(+document.getElementById("adm-amount").value);
+    return adminCall("admin:grant", { name, amount }, (r) => `${mny(amount)} para ${r.name}.`);
+  }
+  if (id && id.startsWith("bidForm-")) {
+    const aid = id.slice(8), el = document.getElementById("mbid-" + aid);
+    const r = await N.call("market:bid", { id: aid, amount: Math.floor(+(el && el.value)) });
+    if (r.error) return toast(r.error, true);
+    delete bidDrafts[aid];
+    if (r.house) return toast(`A Casa cobriu seu lance com ${mny(r.high)}. Para levar, passe do lance dela.`, true);
+    const secret = ((S.auctions && S.auctions.players) || []).some((a) => a.id === aid && (a.format === "sealed" || a.format === "vickrey"));
+    return toast(secret ? "Lance secreto enviado! Ninguém vê o valor até o fim; ele fica reservado na sua carteira." : "Lance dado! O valor fica reservado até o fim do leilão.");
+  }
   if (id === "pwForm") {
     const a = S.acct;
     const r = await N.call("auth:password", { old: a.pwOld, new: a.pwNew });
@@ -2752,6 +3920,12 @@ $app.addEventListener("input", (e) => {
   if (t.id === "code") { t.value = t.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); S.joinCode = t.value; return; }
   if (t.id === "bidv") { const st = cur(); if (st) S.ui.bidDraft = { lot: st.idx, v: +t.value }; }
   if (t.id === "donv") { S.ui.donate.v = +t.value; return syncDonate(); }
+  if (t.id && t.id.startsWith("mbid-")) { bidDrafts[t.id.slice(5)] = t.value; return; }
+  if (t.id && t.id.startsWith("lf-") && listDraft) {
+    const k = t.id.slice(3);
+    listDraft[k] = t.type === "checkbox" ? t.checked : t.value;
+    if (k === "featured") render();   // o custo muda na hora
+  }
   if (t.id === "donText") { S.ui.donate.text = t.value; return; }
 });
 $app.addEventListener("change", (e) => {
@@ -2781,9 +3955,11 @@ N.on("chat", (m) => { S.chat.push(m); if (S.chat.length > 120) S.chat.shift(); r
 N.on("react", (r) => fxReact(r.e));
 N.on("kicked", () => { store.del("ml-session"); S.mode = null; S.st = null; S.code = null; render(); toast("Você foi removido da sala.", true); });
 N.on("market:me", (d) => { S.market = d; S.me = d.me; render(); });
+N.on("market:auctions", (d) => { S.auctions = d; if (S.mode === "market") { render(); loadAccounts(); loadRanking(); } });
+N.on("market:notice", (d) => toast(d.text));
 N.on("auth:out", () => { signedOut(); render(); toast("Sua conta saiu deste aparelho. Entre de novo.", true); });
 N.on("status", () => { if (S.mode === "online" || S.mode === "market") { const el = document.querySelector(".topbar .conn"); if (el) el.className = "conn " + N.status; } if (!S.mode) render(); });
-N.on("open", async () => {
+N.on("open", async () => { if (!S.mode || (S.mode === "market" && !S.auth)) loadShowcase();
   if (S.auth) { await resumeAuth(); if (S.mode === "market" && S.me) refreshMarket(); }
   if (S.mode === "online" && S.code && S.st) {
     const r = await N.call("room:join", { code: S.code, name: S.name || "Espectador", token });
@@ -2791,6 +3967,8 @@ N.on("open", async () => {
   }
 });
 N.on("lost", () => { if (S.mode === "online") toast("Conexão perdida. Reconectando…", true); });
+
+setInterval(() => { if (N.status === "on" && !document.hidden && (screen() === "home" || (S.mode === "market" && !S.me))) loadShowcase(); }, 20000);
 
 /* ---------- loop local (relógios dos lotes no modo mesmo aparelho) ---------- */
 setInterval(() => {

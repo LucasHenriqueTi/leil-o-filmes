@@ -11,7 +11,7 @@ const PORT = 3999;
 const DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ml-online-"));
 const DATA = path.join(DATA_DIR, "market.json");
 function startServer() {
-  const p = spawn(process.execPath, [path.join(__dirname, "..", "server.js")], { env: { ...process.env, PORT: String(PORT), ML_DATA: DATA, ML_ADMINS: "" }, stdio: ["ignore", "pipe", "inherit"] });
+  const p = spawn(process.execPath, [path.join(__dirname, "..", "server.js")], { env: { ...process.env, PORT: String(PORT), ML_DATA: DATA, ML_ADMINS: "", ML_FILMS: "off" }, stdio: ["ignore", "pipe", "inherit"] });
   p.ready = new Promise((r) => p.stdout.on("data", (b) => /rodando/.test(String(b)) && r()));
   return p;
 }
@@ -182,6 +182,82 @@ class Client {
     const me = await T.call("market:me");
     assert.strictEqual(me.ledger[0].kind, "signup"); assert.deepStrictEqual(me.collection, []);
 
+    // catálogo do Mercado (buscas desligadas no teste: ML_FILMS=off)
+    assert.ok((await BAD.call("market:catalog")).error, "catálogo só para quem entrou");
+    const cat = await T.call("market:catalog");
+    assert.ok(cat.ok && Array.isArray(cat.films), "catálogo responde");
+    assert.ok((await U2.call("admin:refillCatalog")).error, "só admin atualiza o catálogo");
+    assert.ok(/desligadas/.test((await U1.call("admin:refillCatalog")).error), "sem buscas no teste");
+    assert.ok(cat.films.some((f) => f.rarity === "obra"), "filmes de exemplo no catálogo mesmo sem internet");
+
+    // estreias da Casa: no modo de teste, as 3 abrem a cada início
+    let au = await U1.call("market:auctions");
+    for (let i = 0; i < 30 && au.open.length < 3; i++) { await sleep(100); au = await U1.call("market:auctions"); }
+    assert.deepStrictEqual(au.open.map((a) => a.event).sort(), ["day", "month", "week"], "estreias do dia, da semana e do mês");
+    const dayA = au.open.find((a) => a.event === "day");
+    assert.ok((await U1.call("market:bid", { id: dayA.id, amount: dayA.minBid - 1 })).error, "abaixo do mínimo");
+    // comprador fantasma: o teto escondido da Casa é maior que o lance mínimo, então ela cobre o primeiro lance
+    let rb = await U1.call("market:bid", { id: dayA.id, amount: dayA.minBid });
+    assert.ok(rb.ok && rb.house && rb.high === dayA.minBid + 1, "a Casa cobre com +1: " + JSON.stringify(rb));
+    assert.strictEqual((await U1.call("market:me")).me.wallet.reserved, 0, "lance coberto pela Casa não fica reservado");
+    let won = dayA.minBid;
+    while (rb.house) { won = rb.high + 1; rb = await U1.call("market:bid", { id: dayA.id, amount: won }); }
+    assert.strictEqual((await U1.call("market:me")).me.wallet.reserved, won, "acima do teto da Casa, o lance fica reservado");
+    assert.ok((await U2.call("market:bid", { id: dayA.id, amount: won })).error, "precisa passar o maior lance");
+    assert.ok((await U1.call("market:sell", { copy: "tt0068646#1" })).error, "só vende cópia que é sua");
+
+    // ferramentas de admin: encerrar antes do tempo entrega a cópia na hora
+    assert.ok((await U2.call("admin:closeAuction", { id: dayA.id })).error, "só admin encerra");
+    assert.ok((await U2.call("admin:accounts")).error, "só admin vê as contas");
+    const closed = await U1.call("admin:closeAuction", { id: dayA.id });
+    assert.ok(closed.ok && closed.result.winnerName === "Cibele" && closed.result.price === won, "encerrar agora: " + JSON.stringify(closed));
+    const meWin = await U1.call("market:me");
+    assert.deepStrictEqual([meWin.me.wallet.free, meWin.me.wallet.reserved], [MC.signupBonus - won, 0], "pagou com o reservado");
+    assert.strictEqual(meWin.collection.length, 1, "a cópia entrou na coleção");
+    assert.strictEqual(meWin.collection[0].film.id, dayA.film.id);
+    // pontuação, ranking e temporada
+    assert.ok(meWin.score.total > 0 && meWin.score.base === meWin.collection[0].film.ref, "pontos da coleção: " + JSON.stringify(meWin.score));
+    assert.ok(meWin.caps.some((c) => c.rarity === "lendario" && c.cap === 2), "tetos por raridade no market:me");
+    const rk = await U2.call("market:ranking");
+    assert.strictEqual(rk.ranking[0].name, "Cibele", "ranking de colecionadores");
+    assert.ok(MC.seasonGenres.includes(rk.season.genre), "temporada do mês");
+    assert.ok((await U2.call("admin:season", { genre: "Drama" })).error, "só admin troca a temporada");
+    assert.strictEqual((await U1.call("admin:season", { genre: "Drama" })).season.genre, "Drama");
+    assert.ok((await U1.call("admin:season", { genre: "Faroeste" })).error, "gênero fora da lista");
+    assert.strictEqual((await U1.call("admin:season", { genre: "" })).season.override, false, "volta ao sorteio do mês");
+    assert.ok((await U1.call("admin:grant", { name: "andré", amount: 50 })).ok, "dar M$");
+    assert.ok((await U1.call("admin:grant", { name: "andré", amount: 0 })).error, "valor inválido");
+    const accs = (await U1.call("admin:accounts")).accounts;
+    assert.strictEqual(accs.find((u) => u.name === "André").wallet.free, MC.signupBonus + 50, "André recebeu");
+    assert.strictEqual(accs.find((u) => u.name === "Cibele").copies.length, 1, "admin vê a coleção de cada conta");
+    const opened = await U1.call("admin:openEstreia", { event: "day" });
+    assert.ok(opened.ok, "abrir estreia agora: " + JSON.stringify(opened));
+    assert.ok((await U1.call("admin:openEstreia", { event: "ano" })).error, "estreia desconhecida");
+    assert.ok((await U2.call("market:bid", { id: opened.id, amount: 20 })).ok);
+    assert.ok((await U1.call("admin:cancelAuction", { id: opened.id })).ok, "cancelar");
+    assert.strictEqual((await U2.call("market:me")).me.wallet.reserved, 0, "cancelar devolve o lance");
+    const paid = won;
+
+    // leilão de jogador: Cibele anuncia a cópia que ganhou, André dá lance, o admin encerra
+    const copyId = meWin.collection[0].id;
+    assert.ok((await U2.call("market:list", { copy: copyId, format: "open", minutes: 15 })).error, "só o dono anuncia");
+    assert.ok((await U1.call("market:list", { copy: copyId, format: "open", minutes: 7 })).error, "duração inválida");
+    const listed = await U1.call("market:list", { copy: copyId, format: "open", minutes: 15, reserve: 0 });
+    assert.ok(listed.ok, "anunciar: " + JSON.stringify(listed));
+    assert.ok((await U1.call("market:sell", { copy: copyId })).error, "anunciada não vai para a Casa");
+    const pl = (await U2.call("market:auctions")).players;
+    assert.strictEqual(pl.length, 1, "aparece para os outros");
+    assert.strictEqual(pl[0].sellerName, "Cibele");
+    assert.ok((await U1.call("market:bid", { id: listed.id, amount: 50 })).error, "não dá lance no próprio leilão");
+    assert.ok((await U2.call("market:bid", { id: listed.id, amount: 12 })).ok, "André dá lance");
+    const sellerBefore = (await U1.call("market:me")).me.wallet.free;
+    const sold = await U1.call("admin:closeAuction", { id: listed.id });
+    assert.deepStrictEqual([sold.result.winnerName, sold.result.price, sold.result.fee], ["André", 12, 1], "vendido com taxa de 8%");
+    assert.strictEqual((await U1.call("market:me")).me.wallet.free, sellerBefore + 11, "vendedor recebe 12 - 1");
+    const andre = await U2.call("market:me");
+    assert.deepStrictEqual([andre.collection.length, andre.collection[0].id], [1, copyId], "a cópia foi para o André");
+    const cibWallet = (await U1.call("market:me")).me.wallet;
+
     // admin gera senha temporária; a conta sai das conexões abertas
     assert.ok((await U2.call("admin:reset", { name: "Cibele" })).error, "só admin reseta");
     const reset = await U1.call("admin:reset", { name: "andré" });
@@ -204,9 +280,14 @@ class Client {
     srv = startServer(); await srv.ready;
     const Z = new Client("z"); await Z.connect();
     assert.ok((await Z.call("auth:login", { name: "André", password: "novasenha1" })).ok, "senha nova sobreviveu");
+    assert.strictEqual((await Z.call("market:me")).collection[0].id, copyId, "a cópia comprada de outro jogador sobreviveu ao reinício");
     const z = await Z.call("auth:resume", { session: L.session });
     assert.strictEqual(z.me.name, "Cibele", "sessão sobreviveu");
-    assert.strictEqual(z.me.wallet.free, MC.signupBonus, "saldo sobreviveu");
+    assert.deepStrictEqual(z.me.wallet, cibWallet, "saldo sobreviveu");
+    assert.ok(cibWallet.free === MC.signupBonus - paid - MC.listingFee + 11, "pagou a estreia e a taxa de anúncio, recebeu a venda");
+    let au2 = await Z.call("market:auctions");
+    for (let i = 0; i < 30 && au2.open.length < 3; i++) { await sleep(100); au2 = await Z.call("market:auctions"); }
+    assert.ok(au2.open.every((a) => !au.open.some((b) => b.id === a.id)), "estreias novas a cada início");
     assert.ok((await Z.call("auth:resume", { session: r1.session })).error, "token revogado continua revogado");
     console.log("ok Mercado sobrevive ao reinício do servidor");
     console.log("Todos os testes online passaram.");
