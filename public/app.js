@@ -39,6 +39,7 @@ const S = {
   sound: store.get("ml-sound") !== false,
   auth: store.get("ml-auth") || null, me: null, market: null,   // Mercado: token da conta, conta e carteira
   acct: { tab: "login", name: "", pass: "", busy: false, pwOld: "", pwNew: "" },
+  fold: Object.assign({ info: true, donate: true, rules: true }, store.get("ml-fold") || {}), // painéis escondidos (os três começam fechados)
   lastTop: null, zoom: {}
 };
 const saveSetup = () => store.set("ml-setup", S.setup);
@@ -71,7 +72,13 @@ function zoomable(f, extra) {
   S.zoom[key] = Object.assign({}, f, extra || {});
   return `<button type="button" class="zoom" data-zoom="${key}" aria-label="Ampliar pôster de ${esc(f.title)}">${poster(f)}</button>`;
 }
-const scoreChip = (f) => { const r = C.ratingInfo(f); return r ? `<span class="chip score">★ ${pts(r.v)} ${esc(r.src)}</span>` : ""; };
+
+/* ---------- painel que esconde: o título vira botão e o conteúdo só é montado aberto ---------- */
+const foldBtn = (key, title) => `<button type="button" class="fold" data-fold="${key}" aria-expanded="${!S.fold[key]}"><span class="chev" aria-hidden="true"></span>${title}</button>`;
+function panel(key, title, body, extra, cls) {
+  const closed = !!S.fold[key];
+  return `<section class="panel ${cls || ""} ${closed ? "folded" : ""}"><div class="panel-head">${foldBtn(key, `<h2>${title}</h2>`)}${extra || ""}</div>${closed ? "" : body}</section>`;
+}
 
 /* ---------- ícones ---------- */
 const eye = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -126,7 +133,7 @@ function renderHome() {
         <div class="hud top"><span class="onair">AO VIVO</span><span class="tag">Lote 3 de 10</span><span class="tag fmt-tag">🔨 Aberto</span></div>
         <div class="content">${poster(DEMO_FILM)}
           <div class="info"><h2 class="title">${esc(DEMO_FILM.title)}</h2><div class="orig">${esc(DEMO_FILM.orig)} (${DEMO_FILM.year})</div>
-            <div class="chips">${scoreChip(DEMO_FILM)}<span class="chip">${esc(DEMO_FILM.dir)}</span><span class="chip">Ficção científica</span></div>
+            <div class="chips"><span class="chip">${esc(DEMO_FILM.dir)}</span><span class="chip">Ficção científica</span></div>
             <p class="synopsis">Um ladrão que invade sonhos recebe a missão inversa: plantar uma ideia na mente de alguém. Quanto mais fundo a equipe desce, mais difícil fica saber o que é real.</p></div></div>
         <div class="scrub"><div class="track"><div class="fill demo-fill"></div></div></div>
       </div>
@@ -143,7 +150,7 @@ function renderHome() {
       <div class="formats">
         <div class="fmt extra"><span class="ico">📈</span><b>Mercado de gêneros</b><p>Os três gêneros mais comprados na partida dão bônus no fim: +3, +2 e +1 ponto por filme.</p></div>
         <div class="fmt extra"><span class="ico">🕵️</span><b>Missões secretas</b><p>Cada jogador recebe um objetivo escondido, como ter 2 filmes de terror. Cumpriu, ganha pontos.</p></div>
-        <div class="fmt extra"><span class="ico">⭐</span><b>Pontuação</b><p>Cada filme vale a nota dele no IMDb (ou Metacritic e Rotten Tomatoes). Empate vai para quem guardou mais dinheiro.</p></div>
+        <div class="fmt extra"><span class="ico">⭐</span><b>Dois jeitos de ganhar</b><p>As notas ficam escondidas durante a live. No fim, vence quem somar mais nota no IMDb, e a galera, assistindo ou jogando, vota na melhor coleção.</p></div>
       </div>
     </section>
   </main>`;
@@ -161,8 +168,7 @@ function switchBtn(attrs, on, title, desc, disabled) {
 function rulesPanel() {
   const r = rules(), host = isHost(), ro = !host;
   const fmts = Object.entries(E.FORMATS).map(([k, f]) => switchBtn(`data-fmt="${k}"`, r.formats.includes(k), `${FMT_ICON[k]} ${f.name}`, f.desc, ro)).join("");
-  return `<section class="panel">
-    <div class="panel-head"><h2>Regras</h2>${ro ? `<span class="hint">Definidas por ${esc(nameOf(S.host))}</span>` : ""}</div>
+  return panel("rules", "Regras", `
     <div class="grid-3">
       <div class="field"><label for="r-money">Dinheiro inicial</label><div class="money"><span>R$</span><input class="input num" id="r-money" type="number" min="1" max="9999" value="${r.money}" ${ro ? "disabled" : ""}></div></div>
       <div class="field"><label for="r-max">Filmes por jogador</label><input class="input num" id="r-max" type="number" min="1" max="50" value="${r.maxFilms}" ${ro ? "disabled" : ""}></div>
@@ -176,18 +182,17 @@ function rulesPanel() {
     <div class="field"><span class="label">Tempo por vez no Aberto</span>${seg("turnSeconds", [[0, "Sem limite"], [10, "10 s"], [20, "20 s"], [40, "40 s"]], r.turnSeconds, ro)}</div>
     <div class="field"><span class="label">Tempo do Lance secreto</span>${seg("sealedSeconds", [[0, "Sem limite"], [15, "15 s"], [25, "25 s"], [45, "45 s"]], r.sealedSeconds, ro)}</div>
     <div class="field"><span class="label">Velocidade do Relógio holandês</span>${seg("dutchStepMs", [[1400, "Lento"], [900, "Normal"], [500, "Rápido"]], r.dutchStepMs, ro)}</div>
-    <div class="field"><span class="label">Próximo lote</span>${seg("autoNextSeconds", [[0, "Quando o host mandar"], [5, "Sozinho em 5 s"], [8, "Em 8 s"], [15, "Em 15 s"]], r.autoNextSeconds, ro)}</div>
-  </section>`;
+    <div class="field"><span class="label">Próximo lote</span>${seg("autoNextSeconds", [[0, "Quando o host mandar"], [5, "Sozinho em 5 s"], [8, "Em 8 s"], [15, "Em 15 s"]], r.autoNextSeconds, ro)}</div>`,
+    ro ? `<span class="hint">Definidas por ${esc(nameOf(S.host))}</span>` : "");
 }
 function playersPanel() {
   if (S.mode === "local") {
     const list = S.setup.localPlayers.map((n, i) => `<div class="prow"><span class="avatar sm" style="background:${E.COLORS[i % E.COLORS.length]}">${initial(n)}</span>
       <input class="input" id="lp-${i}" data-lp="${i}" value="${esc(n)}" maxlength="18" placeholder="Jogador ${i + 1}">
       <button class="x" data-rmlp="${i}" aria-label="Remover jogador" ${S.setup.localPlayers.length <= 2 ? "disabled" : ""}>×</button></div>`).join("");
-    return `<section class="panel"><div class="panel-head"><h2>Jogadores</h2><span class="hint num">${S.setup.localPlayers.length} de ${E.MAX_PLAYERS}</span></div>
-      <div class="plist">${list}</div>
+    return panel("players", "Jogadores", `<div class="plist">${list}</div>
       <button class="btn ghost" data-act="addlp" ${S.setup.localPlayers.length >= E.MAX_PLAYERS ? "disabled" : ""}>Adicionar jogador</button>
-      <p class="hint">Todos jogam neste aparelho, passando a vez. No Lance secreto, cada um digita escondido.</p></section>`;
+      <p class="hint">Todos jogam neste aparelho, passando a vez. No Lance secreto, cada um digita escondido.</p>`, `<span class="hint num">${S.setup.localPlayers.length} de ${E.MAX_PLAYERS}</span>`);
   }
   const st = S.st, link = location.origin + "/sala/" + S.code;
   const rows = st.players.map((p) => `<div class="prow"><span class="avatar sm" style="background:${p.color}">${initial(p.name)}</span>
@@ -196,14 +201,12 @@ function playersPanel() {
     ${p.id === S.host ? `<span class="crown" title="Comanda a sala">♛</span>` : ""}
     <span class="conn ${p.connected ? "on" : ""}" title="${p.connected ? "Conectado" : "Desconectado"}"></span>
     ${isHost() && p.id !== S.you ? `<button class="x" data-kick="${p.id}" aria-label="Remover ${esc(p.name)}">×</button>` : ""}</div>`).join("");
-  return `<section class="panel">
-    <div class="invite"><span class="hint">Código da sala</span><span class="code">${esc(S.code)}</span>
+  return panel("info", "Informações da sala", `<div class="invite"><span class="hint">Código da sala</span><span class="code">${esc(S.code)}</span>
       <span class="link">${esc(link)}</span>
-      <div class="toolbar"><button class="btn" data-act="copy-link">Copiar link de convite</button><button class="btn ghost" data-act="copy-code">Copiar código</button></div></div>
-    <div class="panel-head"><h2>Na sala</h2><span class="hint num">${st.players.length} de ${E.MAX_PLAYERS}</span></div>
-    <div class="plist">${rows}</div>
-    ${S.you ? "" : `<p class="hint">Você está assistindo. Lances ficam com quem entrou como jogador.</p>`}
-  </section>`;
+      <div class="toolbar"><button class="btn" data-act="copy-link">Copiar link de convite</button><button class="btn ghost" data-act="copy-code">Copiar código</button></div></div>`,
+    `<span class="hint">Código <b>${esc(S.code)}</b></span>`)
+    + panel("players", "Na sala", `<div class="plist">${rows}</div>
+    ${S.you ? "" : `<p class="hint">Você está assistindo. Lances ficam com quem entrou como jogador.</p>`}`, `<span class="hint num">${st.players.length} de ${E.MAX_PLAYERS}</span>`);
 }
 /* ---------- doação na sala (estilo donate de live) ---------- */
 function donateMax() { const me = S.you && pl(S.you); return me ? E.donateLeft(S.st, me) : 0; }
@@ -216,8 +219,7 @@ function donatePanel() {
   if (S.mode !== "online" || !S.you || !pl(S.you)) return "";
   const me = pl(S.you), max = donateMax(), v = donValue(), r = rules();
   const quick = [1, 2, 5, 10].map((d) => `<button type="button" data-dquick="${d}" ${d > max ? "disabled" : ""}>${brl(d)}</button>`).join("") + `<button type="button" data-dquick="${max}" ${max < 1 ? "disabled" : ""}>Tudo</button>`;
-  return `<section class="panel donate-panel">
-    <div class="panel-head"><h2>Mandar um donate</h2><span class="hint num">Mínimo R$ 1</span></div>
+  return panel("donate", "Mandar um donate", `
     <p class="hint">Aparece na tela de todo mundo, com som. Cada real a mais deixa o alerta mais exagerado. O valor sai do seu dinheiro inicial.</p>
     <div class="bidrow"><div class="stepper"><button type="button" data-dstep="-1" aria-label="Diminuir">−</button>
       <input id="donv" type="number" inputmode="numeric" min="1" max="${max}" value="${v}" aria-label="Valor da doação" ${max < 1 ? "disabled" : ""}><button type="button" data-dstep="1" aria-label="Aumentar">+</button></div></div>
@@ -225,8 +227,8 @@ function donatePanel() {
     <div class="don-preview" id="donPreview">${donPreview(v)}</div>
     <input class="input" id="donText" maxlength="80" placeholder="Mensagem do donate (opcional)" value="${esc(S.ui.donate.text)}" autocomplete="off">
     <div class="actions"><button class="btn" data-act="donate-test">Testar só para mim</button><button class="btn coin big" id="donBtn" data-act="donate" ${max < 1 ? "disabled" : ""}>Doar ${brl(v)}</button></div>
-    <p class="hint num">${me.donated ? `Você já doou ${brl(me.donated)}. ` : ""}Você começa o leilão com ${brl(Math.max(1, r.money - (me.donated || 0)))}.</p>
-  </section>`;
+    <p class="hint num">${me.donated ? `Você já doou ${brl(me.donated)}. ` : ""}Você começa o leilão com ${brl(Math.max(1, r.money - (me.donated || 0)))}.</p>`,
+    `<span class="hint num">Mínimo R$ 1</span>`, "donate-panel");
 }
 function syncDonate() {
   const v = donValue(), btn = document.getElementById("donBtn"), pv = document.getElementById("donPreview");
@@ -236,7 +238,7 @@ function syncDonate() {
 function lotsPanel() {
   const s = S.setup, u = S.ui;
   if (S.mode === "online" && !isHost()) {
-    return `<section class="panel"><h2>Lotes</h2><div class="curtain"><div><b>Filmes escondidos</b><p>${esc(nameOf(S.host))} está montando os lotes. Cada filme só aparece quando o lote dele entrar no ar.</p></div></div></section>`;
+    return panel("lots", "Lotes", `<div class="curtain"><div><b>Filmes escondidos</b><p>${esc(nameOf(S.host))} está montando os lotes. Cada filme só aparece quando o lote dele entrar no ar.</p></div></div>`);
   }
   const modeBtn = (k, t, d) => `<button type="button" class="mode" data-lotmode="${k}" aria-pressed="${s.lotMode === k}"><b>${t}</b><span>${d}</span></button>`;
   const catalog = [...C.BASE, ...s.custom];
@@ -263,9 +265,9 @@ function lotsPanel() {
     if (u.searchMsg) body += `<p class="hint">${esc(u.searchMsg)}</p>`;
     if (u.search.length) body += `<div class="results">${u.search.map((f, i) => { const inCat = catalog.some((x) => x.id === f.id); return `<div class="result"><div class="ph">${poster(f)}</div><div class="meta"><b>${esc(f.title)}</b><span>${esc(f.year)}${f.r ? ` · ★ ${pts(f.r)}` : ""}</span></div><button class="btn" data-add="${i}" ${inCat ? "disabled" : ""}>${inCat ? "Adicionado" : "Adicionar"}</button></div>`; }).join("")}</div>`;
   }
-  return `<section class="panel"><h2>Lotes</h2>
+  return panel("lots", "Lotes", `
     <div class="modes">${modeBtn("random", "Aleatório", "Sorteia de milhares")}${modeBtn("genre", "Por categoria", "Sorteia dos gêneros escolhidos")}${modeBtn("pick", "Escolher", "Você marca cada filme")}</div>
-    ${body}</section>`;
+    ${body}`, `<span class="hint num">${n} ${n === 1 ? "filme" : "filmes"}</span>`);
 }
 function lotsForStart() {
   const s = S.setup;
@@ -313,7 +315,7 @@ function stagePanel(st) {
     <div class="hud top"><span class="onair">AO VIVO</span><span class="tag num">Lote ${st.idx + 1} de ${st.lots.length}</span>${dots}<span class="tag fmt-tag">${FMT_ICON[lot.format]} ${fm.name}</span></div>
     <div class="content">${zoomable(f)}
       <div class="info"><h2 class="title">${esc(f.title)}</h2>${f.orig && f.orig !== f.title ? `<div class="orig">${esc(f.orig)}</div>` : ""}
-        <div class="chips">${scoreChip(f)}${f.year ? `<span class="chip">${esc(f.year)}</span>` : ""}${f.dir ? `<span class="chip">${esc(f.dir)}</span>` : ""}${genres.map((g) => `<span class="chip">${esc(g)}</span>`).join("")}${f.by ? `<span class="chip">Indicado por ${esc(f.by)}</span>` : ""}</div>
+        <div class="chips">${f.year ? `<span class="chip">${esc(f.year)}</span>` : ""}${f.dir ? `<span class="chip">${esc(f.dir)}</span>` : ""}${genres.map((g) => `<span class="chip">${esc(g)}</span>`).join("")}${f.by ? `<span class="chip">Indicado por ${esc(f.by)}</span>` : ""}</div>
         ${synHtml}
         <a class="hint" href="https://www.imdb.com/title/${esc(f.id)}/" target="_blank" rel="noopener">Ver no IMDb</a>
       </div></div>
@@ -423,16 +425,17 @@ function extrasPanel(st) {
   let market = "", mission = "";
   if (r.market) {
     const rows = E.market(st);
-    market = `<section class="panel"><div class="panel-head"><h2>Bolsa de gêneros</h2><span class="hint">Top 3 vale +3, +2 e +1 por filme</span></div>
-      ${rows.length ? `<div class="ticker">${rows.map((m, i) => `<div class="tick ${m.bonus ? "hot" : ""}"><b>${esc(m.genre)}</b><span class="num">${m.count} ${m.count === 1 ? "filme" : "filmes"}</span>${m.bonus ? `<em>+${m.bonus} por filme</em>` : ""}</div>`).join("")}</div>` : `<p class="hint">Nenhum filme vendido ainda. O gênero principal de cada compra entra na bolsa.</p>`}</section>`;
+    market = panel("market", "Bolsa de gêneros",
+      rows.length ? `<div class="ticker">${rows.map((m, i) => `<div class="tick ${m.bonus ? "hot" : ""}"><b>${esc(m.genre)}</b><span class="num">${m.count} ${m.count === 1 ? "filme" : "filmes"}</span>${m.bonus ? `<em>+${m.bonus} por filme</em>` : ""}</div>`).join("")}</div>` : `<p class="hint">Nenhum filme vendido ainda. O gênero principal de cada compra entra na bolsa.</p>`,
+      `<span class="hint">Top 3 vale +3, +2 e +1 por filme</span>`);
   }
   if (r.missions) {
     const me = S.you && pl(S.you);
     if (S.mode === "online" && me) {
-      mission = `<section class="panel"><h2>Sua missão secreta</h2>${me.missions.map((m) => `<div class="mission"><span class="seal">🕵️</span><div><p>${esc(m.text)}</p><span class="pts">+${m.pts} pontos se cumprir</span></div></div>`).join("")}</section>`;
+      mission = panel("mission", "Sua missão secreta", me.missions.map((m) => `<div class="mission"><span class="seal">🕵️</span><div><p>${esc(m.text)}</p><span class="pts">+${m.pts} pontos se cumprir</span></div></div>`).join(""));
     } else if (S.mode === "local") {
-      mission = `<section class="panel"><h2>Missões secretas</h2><p class="hint">Cada jogador tem uma. Use "Ver missão secreta" no seu cartão, com os outros sem olhar.</p></section>`;
-    } else mission = `<section class="panel"><h2>Missões secretas</h2><p class="hint">Reveladas no fim da transmissão.</p></section>`;
+      mission = panel("mission", "Missões secretas", `<p class="hint">Cada jogador tem uma. Use "Ver missão secreta" no seu cartão, com os outros sem olhar.</p>`);
+    } else mission = panel("mission", "Missões secretas", `<p class="hint">Reveladas no fim da transmissão.</p>`);
   }
   return `<div class="extras">${market || ""}${mission || ""}</div>`;
 }
@@ -464,8 +467,9 @@ function sidePanel() {
     : m.from === null && !m.watcher ? `<div class="sys"><span>${esc(m.text)}</span></div>` : `<div class="msg ${m.watcher ? "watcher" : ""} ${onlyEmoji(m.text) ? "big" : ""}"><span class="n" style="color:${m.from ? colorOf(m.from) : "var(--mute)"}">${esc(m.name)}</span>${esc(m.text)}</div>` }));
   items.sort((a, b) => a.at - b.at);
   const reacts = ["🔥", "😱", "😂", "💸", "🍿", "👏", "🤡", "💀"].map((e) => `<button type="button" data-react="${e}" aria-label="Reagir com ${e}">${e}</button>`).join("");
+  if (S.fold.chat) return `<aside class="side folded" aria-label="Chat ao vivo"><div class="head">${foldBtn("chat", "<b>Chat ao vivo</b>")}</div></aside>`;
   return `<aside class="side" aria-label="Chat ao vivo">
-    <div class="head"><b>Chat ao vivo</b>${S.mode === "online" ? `<span class="viewers num">${eye}${S.viewers}</span><button type="button" class="snd" data-act="sound" aria-pressed="${S.sound}" title="${S.sound ? "Som ligado" : "Som desligado"}">${S.sound ? "🔊" : "🔇"}</button>` : ""}</div>
+    <div class="head">${foldBtn("chat", "<b>Chat ao vivo</b>")}${S.mode === "online" ? `<span class="viewers num">${eye}${S.viewers}</span><button type="button" class="snd" data-act="sound" aria-pressed="${S.sound}" title="${S.sound ? "Som ligado" : "Som desligado"}">${S.sound ? "🔊" : "🔇"}</button>` : ""}</div>
     <div class="feed" id="feed">${items.map((i) => i.html).join("") || `<p class="hint">${S.mode === "online" ? "Mande um oi para a galera." : "Os lances aparecem aqui."}</p>`}</div>
     <div class="reacts">${reacts}</div>
     ${S.mode === "online" && S.ui.emojiOpen ? `<div class="emoji-pick" role="group" aria-label="Emojis">${EMOJIS.map((e) => `<button type="button" data-emoji="${e}" aria-label="Inserir ${e}">${e}</button>`).join("")}</div>` : ""}
@@ -480,21 +484,47 @@ function renderLive() {
 /* ============================================================
    FIM DA TRANSMISSÃO
    ============================================================ */
+// voto da galera: online o servidor só manda o meu voto e, depois de fechar, a contagem sem nomes
+function voteBox(st, p, tally, fav) {
+  const n = tally[p.id] || 0;
+  if (st.voting !== "open") return `<div class="vote-line ${fav ? "fav" : ""}"><span>🗳️ Voto da galera</span><b class="num">${n} ${n === 1 ? "voto" : "votos"}</b></div>`;
+  if (S.mode === "local") return "";
+  if (p.id === S.you) return `<div class="vote-line"><span class="hint">Sua coleção. Não vale votar nela.</span></div>`;
+  const mine = st.myVote === p.id;
+  return `<button class="btn ${mine ? "mint" : ""}" data-vote="${p.id}" aria-pressed="${mine}">${mine ? "✓ Seu voto" : "Votar nesta coleção"}</button>`;
+}
+function localVotePanel(st) {
+  if (S.mode !== "local" || st.voting !== "open") return "";
+  const rows = st.players.map((v) => `<div class="voter"><span class="avatar sm" style="background:${v.color}">${initial(v.name)}</span><span class="nm">${esc(v.name)}</span>
+    <div class="seg" role="group" aria-label="Voto de ${esc(v.name)}">${st.players.filter((p) => p.id !== v.id).map((p) => `<button type="button" data-vote="${p.id}" data-voter="${v.id}" aria-pressed="${st.votes[v.id] === p.id}">${esc(p.name)}</button>`).join("")}</div></div>`).join("");
+  return panel("vote", "Votação da melhor coleção", `<div class="voters">${rows}</div>`, `<span class="hint">Ninguém vota em si mesmo</span>`);
+}
 function renderFinal() {
   const st = cur(), sc = E.scores(st), r = st.settings;
   const top = sc[0], winner = pl(top.id);
   const mk = r.market ? E.market(st) : [];
+  const open = st.voting === "open", tally = E.voteTally(st);
+  const total = S.mode === "online" ? st.voteTotal || 0 : Object.keys(st.votes || {}).length;
+  const vw = open ? null : E.voteWinner(st), fan = vw && pl(vw.id);
+  let crowd;
+  if (open) crowd = `<section class="champion crowd"><span class="avatar">🗳️</span><div><span class="label">Voto da galera</span><h1>Votação aberta</h1>
+      <p class="num">Quem joga e quem assiste escolhe a melhor coleção. ${total} ${total === 1 ? "voto" : "votos"} até agora.${S.mode === "online" && !st.myVote ? " Vote nos cartões abaixo." : ""}</p>
+      ${isHost() ? `<div class="toolbar"><button class="btn mint" data-act="close-vote">Encerrar votação</button></div>` : ""}</div></section>`;
+  else if (fan) crowd = `<section class="champion crowd"><span class="avatar" style="background:${fan.color}">${initial(fan.name)}</span><div><span class="label">Voto da galera</span><h1>${esc(fan.name)} montou a melhor coleção</h1>
+      <p class="num">${vw.votes} de ${total} ${total === 1 ? "voto" : "votos"}. Empate fica com quem somou mais nota.</p></div></section>`;
+  else crowd = `<section class="champion crowd"><span class="avatar">🗳️</span><div><span class="label">Voto da galera</span><h1>Ninguém votou</h1><p>A votação foi encerrada sem votos.</p></div></section>`;
   const cards = sc.map((row, i) => {
     const p = pl(row.id);
     const cols = [["Notas", pts(row.ratings)]];
     if (r.market) cols.push(["Mercado", "+" + row.market]);
     if (r.missions) cols.push(["Missões", "+" + row.missionPts]);
     cols.push(["Total", pts(row.total)]);
-    return `<article class="stand" style="--pc:${p.color}">
+    return `<article class="stand ${fan && fan.id === p.id ? "fav" : ""}" style="--pc:${p.color}">
       <div class="head"><span class="rank num">${i + 1}º</span><span class="avatar" style="background:${p.color}">${initial(p.name)}</span><h3>${esc(p.name)}</h3><span class="hint num">sobrou ${brl(p.money)}</span></div>
       <div class="breakdown" style="grid-template-columns:repeat(${cols.length},minmax(0,1fr))">${cols.map(([l, v], k) => `<div class="${k === cols.length - 1 ? "total" : ""}"><span>${l}</span><b class="num">${v}</b></div>`).join("")}</div>
       ${p.films.length ? `<div class="coll">${p.films.map((f) => { const ri = f.r != null ? { v: f.r, src: f.rsrc || "IMDb" } : null; return `<div class="item"><div style="width:40px">${zoomable(f)}</div><div class="t">${esc(f.title)}<small>${ri ? `★ ${pts(ri.v)} ${esc(ri.src)}` : "sem nota"}${f.year ? ` · ${esc(f.year)}` : ""}</small></div><span class="paid num">${brl(f.paid)}</span></div>`; }).join("")}</div>` : `<p class="empty">Não arrematou nenhum filme.</p>`}
       ${r.missions ? `<div class="mis-list">${row.missions.map((m) => `<div><span class="${m.ok ? "ok" : "no"}">${m.ok ? "✓" : "✗"}</span><span>${esc(m.text)} ${m.ok ? `(+${m.pts})` : ""}</span></div>`).join("")}</div>` : ""}
+      ${voteBox(st, p, tally, fan && fan.id === p.id)}
     </article>`;
   }).join("");
   const unsold = st.results.filter((x) => !x.by);
@@ -502,11 +532,15 @@ function renderFinal() {
     ? `<button class="btn go big" data-act="again">Nova rodada com a mesma galera</button><button class="btn quiet" data-act="leave">Sair</button>`
     : `<p class="hint">Aguardando ${esc(nameOf(S.host))} abrir outra rodada.</p><button class="btn quiet" data-act="leave">Sair</button>`;
   const main = `<div class="main final">
-    <section class="champion"><span class="avatar" style="background:${winner.color}">${initial(winner.name)}</span>
-      <div><h1>${esc(winner.name)} venceu o leilão</h1><p class="num">${pts(top.total)} pontos com ${winner.films.length} ${winner.films.length === 1 ? "filme" : "filmes"}. Empate vai para quem guardou mais dinheiro.</p></div></section>
+    <div class="champs">
+      <section class="champion"><span class="avatar" style="background:${winner.color}">${initial(winner.name)}</span>
+        <div><span class="label">Soma das notas</span><h1>${esc(winner.name)} venceu nas notas</h1><p class="num">${pts(top.total)} pontos com ${winner.films.length} ${winner.films.length === 1 ? "filme" : "filmes"}. Empate vai para quem guardou mais dinheiro.</p></div></section>
+      ${crowd}
+    </div>
+    ${localVotePanel(st)}
     <div class="standings">${cards}</div>
-    ${r.market && mk.length ? `<section class="panel"><h2>Bolsa de gêneros no fechamento</h2><div class="ticker">${mk.map((m) => `<div class="tick ${m.bonus ? "hot" : ""}"><b>${esc(m.genre)}</b><span class="num">${m.count} ${m.count === 1 ? "filme" : "filmes"}</span>${m.bonus ? `<em>+${m.bonus} por filme</em>` : ""}</div>`).join("")}</div></section>` : ""}
-    ${unsold.length ? `<section class="panel"><h2>Ficaram sem dono</h2><div class="chips" style="display:flex;flex-wrap:wrap;gap:6px">${unsold.map((x) => `<span class="chip">${esc(x.title)}</span>`).join("")}</div></section>` : ""}
+    ${r.market && mk.length ? panel("market", "Bolsa de gêneros no fechamento", `<div class="ticker">${mk.map((m) => `<div class="tick ${m.bonus ? "hot" : ""}"><b>${esc(m.genre)}</b><span class="num">${m.count} ${m.count === 1 ? "filme" : "filmes"}</span>${m.bonus ? `<em>+${m.bonus} por filme</em>` : ""}</div>`).join("")}</div>`) : ""}
+    ${unsold.length ? panel("unsold", "Ficaram sem dono", `<div class="chips" style="display:flex;flex-wrap:wrap;gap:6px">${unsold.map((x) => `<span class="chip">${esc(x.title)}</span>`).join("")}</div>`, `<span class="hint num">${unsold.length}</span>`) : ""}
     <div class="toolbar">${actions}</div>
   </div>`;
   return `<main class="wrap live">${main}${sidePanel()}</main>`;
@@ -539,23 +573,20 @@ function renderMarket() {
   const rows = m.ledger.map((e) => `<div class="lrow"><span>${esc(MK.KINDS[e.kind] || e.kind)}${e.ref ? ` <small>${esc(e.ref)}</small>` : ""}</span><span class="when">${esc(new Date(e.at).toLocaleDateString("pt-BR"))}</span><b class="num ${e.delta < 0 ? "out" : "in"}">${e.delta < 0 ? "−" : "+"}${brl(Math.abs(e.delta))}</b></div>`).join("");
   return `<main class="wrap market">
     <div class="col">
-      <section class="panel wallet">
-        <div class="panel-head"><h2>Carteira de ${esc(me.name)}${me.admin ? ` <span class="pill top">admin</span>` : ""}</h2><button class="btn quiet" data-act="logout">Sair da conta</button></div>
-        <div class="bal"><span class="label">Saldo livre</span><b class="num">${brl(w.free)}</b>${w.reserved ? `<span class="hint num">Mais ${brl(w.reserved)} reservados em lances</span>` : ""}</div>
-        <p class="hint">Próxima mesada de ${brl(MC.allowance)}: ${esc(fmtWhen(me.nextAllowanceAt))}.</p>
-      </section>
-      <section class="panel"><h2>Coleção</h2>${m.collection.length ? "" : `<div class="curtain"><div><b>Nenhum filme ainda</b><p>Seus filmes chegam pelos leilões do Mercado.</p></div></div>`}</section>
+      ${panel("wallet", `Carteira de ${esc(me.name)}${me.admin ? ` <span class="pill top">admin</span>` : ""}`,
+        `<div class="bal"><span class="label">Saldo livre</span><b class="num">${brl(w.free)}</b>${w.reserved ? `<span class="hint num">Mais ${brl(w.reserved)} reservados em lances</span>` : ""}</div>
+        <p class="hint">Próxima mesada de ${brl(MC.allowance)}: ${esc(fmtWhen(me.nextAllowanceAt))}.</p>`,
+        `<button class="btn quiet" data-act="logout">Sair da conta</button>`, "wallet")}
+      ${panel("collection", "Coleção", m.collection.length ? "" : `<div class="curtain"><div><b>Nenhum filme ainda</b><p>Seus filmes chegam pelos leilões do Mercado.</p></div></div>`)}
     </div>
     <div class="col">
-      <section class="panel"><h2>Extrato</h2><div class="ledger">${rows || `<p class="hint">Nenhuma movimentação ainda.</p>`}</div></section>
-      <section class="panel"><h2>Conta</h2>
-        <form class="acct-form" id="pwForm">
+      ${panel("ledger", "Extrato", `<div class="ledger">${rows || `<p class="hint">Nenhuma movimentação ainda.</p>`}</div>`)}
+      ${panel("account", "Conta", `<form class="acct-form" id="pwForm">
           <input class="input" id="pw-old" type="password" placeholder="Senha atual" autocomplete="current-password" value="${esc(a.pwOld)}">
           <input class="input" id="pw-new" type="password" placeholder="Senha nova" autocomplete="new-password" value="${esc(a.pwNew)}">
           <button class="btn" type="submit">Trocar senha</button></form>
         ${me.admin ? `<form class="acct-form" id="resetForm" autocomplete="off"><input class="input" id="rs-name" maxlength="18" placeholder="Nome da conta"><button class="btn" type="submit">Gerar senha temporária</button></form>
-          <p class="hint">A pessoa sai da conta em todos os aparelhos e entra com a senha temporária.</p>` : ""}
-      </section>
+          <p class="hint">A pessoa sai da conta em todos os aparelhos e entra com a senha temporária.</p>` : ""}`)}
     </div>
   </main>`;
 }
@@ -777,8 +808,9 @@ function showZoom(key, x, y) {
   const f = S.zoom[key]; if (!f) return hideZoom();
   if (zoomKey !== key) {
     const ri = f.r != null ? { v: f.r, src: f.rsrc || "IMDb" } : C.ratingInfo(f);
+    const rate = screen() === "live" ? "Nota revelada no fim" : ri ? `★ ${pts(ri.v)} ${esc(ri.src)}` : "Sem nota"; // na live a nota fica escondida
     zoomPop.innerHTML = `${poster(f)}<span class="t">${esc(f.title)}</span><div class="sub"><span>${esc(f.year || "")}${f.dir ? " · " + esc(f.dir) : ""}</span></div>
-      <div class="sub"><span class="rate">${ri ? `★ ${pts(ri.v)} ${esc(ri.src)}` : "Sem nota"}</span>${f.paid ? `<span>Pago ${brl(f.paid)}</span>` : ""}</div>`;
+      <div class="sub"><span class="rate">${rate}</span>${f.paid ? `<span>Pago ${brl(f.paid)}</span>` : ""}</div>`;
     zoomKey = key;
   }
   zoomPop.hidden = false; zoomPop.style.display = "flex";
@@ -925,6 +957,7 @@ $app.addEventListener("click", async (e) => {
   const b = e.target.closest("button, [data-zoom]"); if (!b) return;
   const d = b.dataset;
   if (d.zoom) { const r = b.getBoundingClientRect(); if (zoomKey === d.zoom) hideZoom(); else showZoom(d.zoom, r.right, r.top + r.height / 2); return; }
+  if (d.fold) { S.fold[d.fold] = !S.fold[d.fold]; store.set("ml-fold", S.fold); return render(); }
   if (d.modal != null) { const a = S.ui.modal.actions[+d.modal]; S.ui.modal = null; render(); if (a.run) a.run(); return; }
   if (d.rule) return setRule({ [d.rule]: +d.val });
   if (d.fmt) { const f = rules().formats; const nf = f.includes(d.fmt) ? f.filter((x) => x !== d.fmt) : [...f, d.fmt]; if (!nf.length) return toast("Deixe pelo menos um formato marcado."); return setRule({ formats: nf }); }
@@ -956,6 +989,12 @@ $app.addEventListener("click", async (e) => {
   if (d.openSealed) { S.ui.sealedOpen = d.openSealed; render(); document.getElementById("bidv")?.focus(); return; }
   if (d.sealed || d.sealed0) { const pid = d.sealed || d.sealed0; const v = d.sealed0 ? 0 : +(document.getElementById("bidv") || {}).value || 0; S.ui.sealedOpen = null; return doAct("sealed", v, pid); }
   if (d.buy) return doAct("buy", 0, d.buy);
+  if (d.vote) {
+    if (S.mode === "online") { const r = await N.call("game:vote", { target: d.vote }); if (r.error) toast(r.error, true); return; }
+    const err = E.vote(S.local, d.voter, d.vote);
+    if (err) return toast(err, true);
+    saveLocal(); return render();
+  }
   if (d.peekMission) {
     const p = pl(d.peekMission);
     return modal(`Missão de ${p.name}`, `<p class="hint">Só ${esc(p.name)} deve olhar.</p>${p.missions.map((m) => `<div class="mission"><span class="seal">🕵️</span><div><p>${esc(m.text)}</p><span class="pts">+${m.pts} pontos se cumprir</span></div></div>`).join("")}`, [{ label: "Esconder", cls: "go" }]);
@@ -1005,6 +1044,10 @@ $app.addEventListener("click", async (e) => {
       if (r.error) return toast(r.error, true);
       S.ui.donate.text = ""; S.ui.donate.v = 1; return render();
     }
+    case "close-vote":
+      if (S.mode === "online") { const r = await N.call("game:closeVote"); if (r.error) toast(r.error, true); }
+      else { const err = E.closeVote(S.local); if (err) toast(err, true); else { saveLocal(); render(); } }
+      return;
     case "again":
       if (S.mode === "online") { const r = await N.call("game:lobby"); if (r.error) toast(r.error, true); else drawLots(); }
       else { S.local = null; store.del("ml-local"); render(); drawLots(); }

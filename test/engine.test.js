@@ -37,8 +37,10 @@ function play(formats, opts = {}) {
     const v = E.view(st, "a");
     if (v.lot && v.lot.format === "sealed" && v.lot.stage === "bid") assert.deepStrictEqual(v.lot.bids, {}, "lance secreto vazou");
     v.players.filter((p) => p.id !== "a").forEach((p) => assert.ok(p.missions.every((m) => m.hidden), "missão vazou"));
+    if (v.phase === "playing") assert.ok([v.lots, ...v.players.map((p) => p.films)].every((l) => l.every((f) => f.r === null)), "nota vazou na live");
   }
   assert.strictEqual(st.phase, "over", "partida não terminou");
+  assert.strictEqual(st.voting, "open", "votação abre no fim");
   const spent = st.players.reduce((a, p) => a + (20 - p.money), 0);
   const paid = st.results.reduce((a, r) => a + r.price, 0);
   assert.strictEqual(spent, paid, "dinheiro não bate");
@@ -93,5 +95,40 @@ for (const f of [["classic"], ["sealed"], ["dutch"], ["classic", "sealed", "dutc
   E.backToLobby(st);
   assert.strictEqual(st.players[0].donated, 0, "nova rodada zera as doações");
   console.log("ok doação na sala");
+}
+// Voto da galera: jogadores e espectadores, ninguém em si mesmo, secreto até fechar
+{
+  const st = E.create({ formats: ["sealed"] });
+  E.addPlayer(st, "a", "A"); E.addPlayer(st, "b", "B"); E.addPlayer(st, "c", "C");
+  assert.ok(E.vote(st, "a", "b"), "não vota antes do fim");
+  E.start(st, films(2), 0, rng);
+  assert.ok(E.vote(st, "a", "b"), "não vota durante a live");
+  E.finish(st);
+  assert.strictEqual(E.vote(st, "a", "b"), null);
+  assert.ok(E.vote(st, "b", "b"), "não vota em si mesmo");
+  assert.ok(E.vote(st, "w1", "zz"), "só vota em jogador");
+  assert.strictEqual(E.vote(st, "b", "c"), null);
+  assert.strictEqual(E.vote(st, "w1", "c"), null);
+  assert.strictEqual(E.vote(st, "a", "c"), null, "dá para trocar o voto");
+  const open = E.view(st, "a");
+  assert.deepStrictEqual(open.votes, {}, "voto vazou com a votação aberta");
+  assert.strictEqual(open.myVote, "c"); assert.strictEqual(open.voteTotal, 3);
+  assert.strictEqual(E.closeVote(st), null);
+  assert.ok(E.vote(st, "c", "a"), "não vota depois de fechar");
+  assert.deepStrictEqual(E.voteTally(E.view(st, "__espectador")), { c: 3 }, "contagem aparece no fim");
+  assert.ok(!Object.keys(E.view(st, "b").votes).includes("a"), "voto fechado não mostra quem votou");
+  assert.deepStrictEqual(E.voteWinner(st), { id: "c", votes: 3 });
+  E.backToLobby(st);
+  assert.strictEqual(st.voting, null); assert.deepStrictEqual(st.votes, {});
+  // empate nos votos fica com quem está na frente na soma das notas
+  const t = E.create({ formats: ["dutch"] });
+  E.addPlayer(t, "a", "A"); E.addPlayer(t, "b", "B");
+  E.start(t, films(1), 0, rng);
+  E.act(t, "b", { type: "buy" }, 1);
+  E.finish(t);
+  E.vote(t, "a", "b"); E.vote(t, "b", "a");
+  E.closeVote(t);
+  assert.strictEqual(E.voteWinner(t).id, "b", "desempate pela soma das notas");
+  console.log("ok voto da galera");
 }
 console.log("Todos os testes do motor passaram.");

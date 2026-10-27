@@ -91,6 +91,7 @@ class Client {
     await sleep(100);
     assert.strictEqual(A.st.phase, "playing");
     assert.strictEqual(A.st.lots[0].img, null, "imagem de domínio estranho é descartada");
+    assert.ok(A.st.lots.every((f) => f.r === null), "nota escondida durante a live");
     assert.ok(A.st.players.find((p) => p.id !== A.state.you).missions[0].hidden, "missão alheia escondida");
     assert.ok(!A.st.players.find((p) => p.id === A.state.you).missions[0].hidden, "minha missão visível");
     assert.ok((await W.call("game:act", { type: "pass" })).error, "espectador não joga");
@@ -128,6 +129,25 @@ class Client {
     assert.ok(A.st.players.every((p) => p.missions.every((m) => !m.hidden)), "missões reveladas no fim");
     const spent = A.st.players.reduce((a, p) => a + (15 - p.donated - p.money), 0);
     assert.strictEqual(spent, A.st.results.reduce((a, r) => a + r.price, 0), "dinheiro confere");
+    assert.ok(A.st.lots.every((f) => f.r !== null), "notas reveladas no fim");
+
+    // voto da galera: jogadores e espectador votam; o host encerra
+    const [sa, sb, sc] = [A.state.you, B.state.you, C2.state.you];
+    assert.ok((await A.call("game:vote", { target: sa })).error, "não vota em si mesmo");
+    assert.ok((await A.call("game:vote", { target: sb })).ok);
+    assert.ok((await B.call("game:vote", { target: sc })).ok);
+    assert.ok((await W.call("game:vote", { target: sb })).ok, "espectador vota");
+    assert.ok((await W.call("game:vote", { target: sb })).ok, "espectador repete o voto sem contar duas vezes");
+    await sleep(100);
+    assert.deepStrictEqual(W.st.votes, {}, "votos secretos com a votação aberta");
+    assert.strictEqual(W.st.voteTotal, 3); assert.strictEqual(W.st.myVote, sb);
+    assert.ok((await B.call("game:closeVote")).error, "só host encerra");
+    assert.ok((await A.call("game:closeVote")).ok, "encerrar votação");
+    await sleep(100);
+    assert.strictEqual(B.st.voting, "closed");
+    assert.strictEqual(Object.values(B.st.votes).filter((t) => t === sb).length, 2, "contagem revelada");
+    assert.ok(A.chat.some((m) => /galera escolheu a coleção de Beto/.test(m.text)), "anúncio do voto no chat");
+    assert.ok((await C2.call("game:vote", { target: sa })).error, "votação fechada");
     assert.ok((await A.call("game:lobby")).ok, "voltar para a sala");
     await sleep(100);
     assert.strictEqual(B.st.phase, "lobby");

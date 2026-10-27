@@ -64,6 +64,7 @@ function makeRoom() {
     code: newCode(), st: Engine.create(), hostId: null, seats: 0,
     tokens: new Map(),      // token secreto -> id do lugar
     sockets: new Map(),     // socket.id -> id do lugar (ou null para espectador)
+    voters: new Map(),      // token do espectador -> id de voto ("w1", "w2"...), para votar uma vez só
     chat: [], lastActive: Date.now(), hostTimer: null, sentSeq: -1
   };
   rooms.set(room.code, room);
@@ -82,7 +83,8 @@ function broadcast(room) {
   const viewers = room.sockets.size;
   for (const [sid, seat] of room.sockets) {
     const c = conns.get(sid);
-    if (c) c.send({ t: "state", d: { code: room.code, you: seat, host: room.hostId, now, viewers, st: Engine.view(room.st, seat || "__espectador") } });
+    const viewer = seat || room.voters.get(c && c.data.token) || "__espectador";
+    if (c) c.send({ t: "state", d: { code: room.code, you: seat, host: room.hostId, now, viewers, st: Engine.view(room.st, viewer) } });
   }
 }
 function systemChat(room, text, early) {
@@ -185,6 +187,7 @@ attachWebSocket(server, "/ws", (socket) => {
     }
     if (data.watch || room.st.phase !== "lobby") {
       if (room.sockets.size >= 80) return reply(cb, { error: "A sala está lotada de espectadores." });
+      socket.data.token = data.token;
       attach(socket, room, null);
       return done(room, cb, null, { code, you: null, watching: true });
     }
@@ -251,6 +254,31 @@ attachWebSocket(server, "/ws", (socket) => {
   socket.on("game:next", (d, cb) => {
     const room = guardHost(cb); if (!room) return;
     done(room, cb, Engine.next(room.st, Date.now()));
+  });
+
+  // votação da melhor coleção: jogadores e espectadores, uma vez por pessoa (dá para trocar até fechar)
+  socket.on("game:vote", (data = {}, cb) => {
+    const room = roomOf(); if (!room) return reply(cb, { error: "Entre em uma sala para votar." });
+    let voter = socket.data.seat;
+    if (!voter && validToken(socket.data.token)) {
+      if (!room.voters.has(socket.data.token)) {
+        if (room.voters.size >= 200) return reply(cb, { error: "A votação está lotada." });
+        room.voters.set(socket.data.token, "w" + (room.voters.size + 1));
+      }
+      voter = room.voters.get(socket.data.token);
+    }
+    if (!voter) return reply(cb, { error: "Recarregue a página e tente de novo." });
+    done(room, cb, Engine.vote(room.st, voter, String(data.target || "")));
+  });
+
+  socket.on("game:closeVote", (d, cb) => {
+    const room = guardHost(cb); if (!room) return;
+    const err = Engine.closeVote(room.st);
+    if (!err) {
+      const w = Engine.voteWinner(room.st), p = w && room.st.players.find((x) => x.id === w.id);
+      systemChat(room, p ? `Votação encerrada! A galera escolheu a coleção de ${p.name}.` : "Votação encerrada sem votos.");
+    }
+    done(room, cb, err);
   });
 
   socket.on("game:lobby", (d, cb) => {

@@ -73,6 +73,7 @@
       players: [],             // {id, name, color, money, donated, films[], connected, missions[]}
       lots: [], idx: 0, lot: null,
       results: [], log: [],
+      voting: null, votes: {}, // votação da melhor coleção: null | "open" | "closed"; votes = {quem vota: em quem}
       seq: 0,                  // muda a cada alteração (para saber quando reenviar)
       nextColor: 0
     };
@@ -188,7 +189,7 @@
       const order = shuffle(pool, rng);
       st.players.forEach((p, i) => { p.missions = [clone(order[i % order.length])]; });
     }
-    st.phase = "playing"; st.idx = 0; st.results = []; st.log = []; st.starter = 0;
+    st.phase = "playing"; st.idx = 0; st.results = []; st.log = []; st.starter = 0; st.voting = null; st.votes = {};
     startLot(st, now);
     st.seq++;
     return null;
@@ -339,12 +340,40 @@
     }
     if (st.idx < st.lots.length) log(st, { k: "nobody" });
     log(st, { k: "end" });
-    st.phase = "over"; st.lot = null; st.seq++;
+    st.phase = "over"; st.lot = null; st.voting = "open"; st.votes = {}; st.seq++;
   }
   function backToLobby(st) {
-    st.phase = "lobby"; st.lots = []; st.idx = 0; st.lot = null; st.results = []; st.log = [];
+    st.phase = "lobby"; st.lots = []; st.idx = 0; st.lot = null; st.results = []; st.log = []; st.voting = null; st.votes = {};
     st.players.forEach((p) => { p.money = 0; p.donated = 0; p.films = []; p.missions = []; });
     st.seq++;
+  }
+
+  /* ---------- votação da melhor coleção (jogadores e espectadores, depois do leilão) ---------- */
+  function vote(st, voter, target) {
+    if (st.phase !== "over" || st.voting !== "open") return "A votação não está aberta.";
+    if (!voter) return "Voto inválido.";
+    if (!byId(st, target)) return "Escolha a coleção de um jogador.";
+    if (voter === target) return "Não vale votar na própria coleção.";
+    st.votes[voter] = target;
+    st.seq++;
+    return null;
+  }
+  function closeVote(st) {
+    if (st.phase !== "over" || st.voting !== "open") return "A votação não está aberta.";
+    st.voting = "closed";
+    st.seq++;
+    return null;
+  }
+  function voteTally(st) {
+    const c = {};
+    Object.values(st.votes || {}).forEach((pid) => (c[pid] = (c[pid] || 0) + 1));
+    return c;
+  }
+  // mais votos vence; empate fica com quem está na frente na soma das notas
+  function voteWinner(st) {
+    const c = voteTally(st);
+    const best = scores(st).filter((r) => c[r.id]).sort((a, b) => c[b.id] - c[a.id])[0];
+    return best ? { id: best.id, votes: c[best.id] } : null;
   }
 
   /* ---------- tempo ---------- */
@@ -410,10 +439,19 @@
       v.lot.bids = all ? bids : {};
     }
     if (v.phase !== "over" && !all) v.players.forEach((p) => { if (p.id !== viewerId) p.missions = p.missions.map(() => ({ hidden: true })); });
+    // as notas só aparecem no fim
+    if (v.phase === "playing" && !all) [v.lots, ...v.players.map((p) => p.films)].forEach((list) => list.forEach((f) => { f.r = null; f.rsrc = ""; }));
+    // voto secreto: com a votação aberta, cada um só vê o próprio; no fim, a contagem sem os nomes
+    if (!all) {
+      const votes = v.votes || {};
+      v.myVote = votes[viewerId] || null;
+      v.voteTotal = Object.keys(votes).length;
+      v.votes = v.voting === "closed" ? Object.fromEntries(Object.values(votes).map((t, i) => ["v" + i, t])) : {};
+    }
     if (v.phase !== "playing") delete v.lot;
     return v;
   }
 
   return { COLORS, GROUP_TAG, FORMATS, DEFAULTS, MAX_PLAYERS, MARKET_BONUS, create, addPlayer, removePlayer, setConnected, updateSettings, donate, donateLeft,
-    start, act, next, tick, finish, backToLobby, scores, market, view, primaryGenre, canPlay, cleanSettings, missionPool };
+    start, act, next, tick, finish, backToLobby, vote, closeVote, voteTally, voteWinner, scores, market, view, primaryGenre, canPlay, cleanSettings, missionPool };
 });
