@@ -620,7 +620,7 @@ function renderMarket() {
   const views = {
     painel: () => dashboard(m, me),
     estreias: () => auctionsPanel(me),
-    leiloes: () => playersPanel(me) || mpanel("players", "Leilões dos jogadores", `<p class="hint">Carregando…</p>`),
+    leiloes: () => userAuctionsPanel(me) || mpanel("players", "Leilões dos jogadores", `<p class="hint">Carregando…</p>`),
     colecao: () => collectionPanel(m),
     catalogo: () => catalogPanel(me),
     ranking: () => rankingPanel(me) || mpanel("ranking", "Ranking de colecionadores", `<p class="hint">Carregando…</p>`),
@@ -864,7 +864,7 @@ function resultText(a) {
   return `<span class="hint">${a.kind === "user" ? `${FMT_ICO[a.format]} de ${esc(a.sellerName)} · ` : ""}${who}${rev}</span>`;
 }
 /* ---------- leilões dos jogadores: vitrine e lista ---------- */
-function playersPanel(me) {
+function userAuctionsPanel(me) {
   const A = S.auctions;
   if (!A) return "";
   const P = A.players || [], feat = P.filter((a) => a.featured), rest = P.filter((a) => !a.featured);
