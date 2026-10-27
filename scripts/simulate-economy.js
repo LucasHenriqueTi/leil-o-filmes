@@ -38,7 +38,7 @@ const budget = (eco, agent) => Math.floor(eco.users[agent.id].wallet.free * (age
 function bidRound(eco, a, agents, now, cfg, rng) {
   const fmt = a.format || "open", order = agents.slice().sort(() => rng() - 0.5);
   if (fmt === "sealed" || fmt === "vickrey") {
-    order.forEach((ag) => { const v = Math.min(maxPrice(eco, ag, a, now, cfg, rng), budget(eco, ag)); if (v >= a.minBid) Market.bid(eco, a.id, ag.id, v, now, cfg); });
+    order.forEach((ag) => { const v = Math.min(maxPrice(eco, ag, a, now, cfg, rng), budget(eco, ag)); if (v >= a.minBid) Market.bid(eco, a.id, ag.id, v, now, cfg, rng); });
     return;
   }
   const caps = new Map(order.map((ag) => [ag.id, maxPrice(eco, ag, a, now, cfg, rng)]));
@@ -47,7 +47,7 @@ function bidRound(eco, a, agents, now, cfg, rng) {
     for (const ag of order) {
       if (a.status !== "open" || a.highBy === ag.id) continue;
       const min = a.highBy ? a.high + 1 : a.minBid;
-      if (min <= caps.get(ag.id) && min <= budget(eco, ag) && !Market.bid(eco, a.id, ag.id, min, now, cfg)) moved = true;
+      if (min <= caps.get(ag.id) && min <= budget(eco, ag) && !Market.bid(eco, a.id, ag.id, min, now, cfg, rng)) moved = true;
     }
   }
 }

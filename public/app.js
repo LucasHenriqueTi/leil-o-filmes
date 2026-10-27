@@ -678,7 +678,7 @@ function liveNow(list, next, mode) {
 }
 function rankList(rows, meId) {
   if (!rows.length) return `<p class="hint">Ninguém tem filmes ainda. A primeira cópia já põe você no topo.</p>`;
-  return `<ol class="rank-mini">${rows.map((r, i) => `<li class="${r.id && r.id === meId ? "me" : ""}"><span class="pos num">${["🥇", "🥈", "🥉"][i] || i + 1 + "º"}</span><b>${esc(r.name)}</b><span class="hint num">${r.films} ${r.films === 1 ? "filme" : "filmes"}</span><b class="num total">${pts(r.total)}</b></li>`).join("")}</ol>`;
+  return `<ol class="rank-mini">${rows.map((r, i) => `<li class="${r.id && r.id === meId ? "me" : ""}" ${r.id ? `data-rank="${esc(r.id)}" role="button" tabindex="0" title="Ver a coleção de ${esc(r.name)}"` : ""}><span class="pos num">${["🥇", "🥈", "🥉"][i] || i + 1 + "º"}</span><b>${esc(r.name)}</b><span class="hint num">${r.films} ${r.films === 1 ? "filme" : "filmes"}</span><b class="num total">${pts(r.total)}</b></li>`).join("")}</ol>`;
 }
 function filmStrip(list) {
   return `<div class="strip">${list.map((f) => `<div class="tile r-${esc(f.rarity)}">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}<span class="t">${esc(f.title)}</span><span class="tags">${rarBadge(f.rarity)}<b class="num">${pts(f.ref)}</b></span></div>`).join("")}</div>`;
@@ -742,9 +742,35 @@ function seasonBanner(s) {
 function rankingPanel(me) {
   const R = S.ranking;
   if (!R) return "";
-  const rows = R.ranking.map((r, i) => `<div class="rank-row ${r.id === me.id ? "me" : ""}"><span class="pos num">${i + 1}º</span><b>${esc(r.name)}</b>
-    <span class="hint num">${r.films} ${r.films === 1 ? "filme" : "filmes"}</span><span class="chips">${bonusChips(r)}</span><b class="num total">${pts(r.total)}</b></div>`).join("");
+  const rows = R.ranking.map((r, i) => `<button type="button" class="rank-row ${r.id === me.id ? "me" : ""}" data-rank="${esc(r.id)}" title="Ver a coleção de ${esc(r.name)}"><span class="pos num">${i + 1}º</span><b>${esc(r.name)}</b>
+    <span class="hint num">${r.films} ${r.films === 1 ? "filme" : "filmes"}</span><span class="chips">${bonusChips(r)}</span><b class="num total">${pts(r.total)}</b></button>`).join("");
   return mpanel("ranking", `Ranking de colecionadores ${tip("Pontos = soma das notas de referência dos seus filmes (cada filme conta uma vez; um Tomate Podre vale 10 menos a nota dele) + bônus de conjunto + temporada.")}`, `${seasonBanner()}<div class="ranking">${rows}</div>`);
+}
+/* ---------- coleção de outro jogador (pelo ranking) ---------- */
+async function openCollection(id) {
+  const r0 = ((S.ranking && S.ranking.ranking) || []).find((r) => r.id === id);
+  S.viewColl = { id, data: null, err: "" };
+  S.ui.modal = { title: `Coleção de ${r0 ? r0.name : "…"}`, cls: "wide", body: collectionModal, actions: [{ label: "Fechar", cls: "go", run: () => { S.viewColl = null; } }] };
+  render();
+  const r = await N.call("market:collection", { id });
+  if (!S.viewColl || S.viewColl.id !== id || !S.ui.modal) return;
+  if (r.error) S.viewColl.err = r.error;
+  else { S.viewColl.data = r; S.ui.modal.title = `Coleção de ${r.name}`; }
+  render();
+}
+function collectionModal() {
+  const v = S.viewColl;
+  if (!v) return "";
+  if (v.err) return `<p class="err">${esc(v.err)}</p>`;
+  if (!v.data) return `<p class="hint">Carregando a coleção…</p>`;
+  const d = v.data, s = d.score;
+  const head = `<div class="scorebox"><div><span class="label">Pontos da coleção</span><b class="num">${pts(s.total)}</b>
+      <span class="hint num">${s.films} ${s.films === 1 ? "filme" : "filmes"} · ${pts(s.base)} das notas${s.bonuses.length ? " + bônus" : ""}</span></div>
+    ${s.bonuses.length ? `<div class="chips">${bonusChips(s)}</div>` : ""}</div>`;
+  if (!d.copies.length) return head + `<p class="hint">Nenhum filme ainda.</p>`;
+  return head + `<div class="pgrid">${d.copies.map((c) => posterCard(c.film, { label: c.label,
+    foot: `<span class="meta num"><span>${esc(c.label)}</span><b class="ref">★ ${pts(c.film.ref)}</b></span>`,
+    below: c.listed ? `<span class="pill top">anunciada</span>` : "" })).join("")}</div>`;
 }
 async function loadRanking() {
   const r = await N.call("market:ranking");
@@ -755,7 +781,7 @@ async function loadRanking() {
 const hotGenre = () => { const s = (S.ranking && S.ranking.season) || (S.showcase && S.showcase.season); return s ? s.genre : null; };
 const isHot = (f) => !!hotGenre() && (f.g || []).includes(hotGenre());
 const hotChip = (f) => (isHot(f) ? `<span class="chip hot" tabindex="0" ${tipAttr(`Gênero da temporada (<b>${esc(hotGenre())}</b>): vale +${MC.seasonPts} pontos na coleção e ${Math.round((MC.seasonValueBoost - 1) * 100)}% a mais no valor de referência.`)}>🔥 em alta</span>` : "");
-const genreLine = (f, n) => ((f.g || []).length ? `<span class="hint genres">${esc(f.g.slice(0, n || 3).join(" · "))}</span>` : "");
+const genreLine = (f, n) => ((f.g || []).length ? `<span class="hint fgenres">${esc(f.g.slice(0, n || 3).join(" · "))}</span>` : "");
 const rarName = (k) => (MK.rarity(k) || {}).name || k;
 const rarBadge = (k) => `<span class="rar r-${esc(k)}">${esc(rarName(k))}</span>`;
 const filmScores = (f) => Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null).map(([k, n]) => `${n} ${pts(f.scores[k])}`).join(" · ");
@@ -770,16 +796,22 @@ function catalogPanel(me) {
   const c = S.catalog;
   const admin = me.admin ? `<button class="btn quiet" data-act="refill" ${c && c.refilling ? "disabled" : ""}>Atualizar agora</button>` : "";
   if (!c) return mpanel("catalog", "Filmes do Mercado", `<p class="hint">Carregando o catálogo…</p>`, admin);
-  const flt = S.ui.catFilter || "all", count = {};
-  c.films.forEach((f) => (count[f.rarity] = (count[f.rarity] || 0) + 1));
-  const opts = [["all", `Todos (${c.films.length})`], ...MC.rarities.slice().reverse().filter((r) => count[r.key]).map((r) => [r.key, `${r.name} (${count[r.key]})`])];
-  const list = c.films.filter((f) => flt === "all" || f.rarity === flt);
+  // filtros de raridade e de gênero se somam; as contagens de raridade já respeitam o gênero escolhido
+  const flt = S.ui.catFilter || "all", genres = {};
+  c.films.forEach((f) => (f.g || []).forEach((g) => (genres[g] = (genres[g] || 0) + 1)));
+  const gen = genres[S.ui.catGenre] ? S.ui.catGenre : "";
+  const byGenre = gen ? c.films.filter((f) => (f.g || []).includes(gen)) : c.films, count = {};
+  byGenre.forEach((f) => (count[f.rarity] = (count[f.rarity] || 0) + 1));
+  const opts = [["all", `Todos (${byGenre.length})`], ...MC.rarities.slice().reverse().filter((r) => count[r.key] || flt === r.key).map((r) => [r.key, `${r.name} (${count[r.key] || 0})`])];
+  const genreOpts = Object.entries(genres).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([g, n]) => `<option value="${esc(g)}" ${g === gen ? "selected" : ""}>${esc(g)} (${n})</option>`).join("");
+  const list = byGenre.filter((f) => flt === "all" || f.rarity === flt);
   const copies = (f) => `<span class="hint num">${f.minted} de ${f.supply} ${f.supply === 1 ? "cópia emitida" : "cópias emitidas"}</span>`;
   const body = !c.films.length
     ? `<div class="curtain"><div><b>${c.refilling ? "A Casa está escolhendo os filmes…" : "Catálogo vazio"}</b><p>A Casa sorteia filmes com pelo menos ${MC.minScores} notas (IMDb, Metacritic ou Rotten Tomatoes) e cadastra sozinha.</p></div></div>`
     : `<div class="cat-tools"><div class="seg" role="group" aria-label="Filtrar por raridade">${opts.map(([k, l]) => `<button type="button" data-catf="${k}" aria-pressed="${flt === k}">${esc(l)}</button>`).join("")}</div>
-         ${viewToggle("catalog")}</div>
-       ${S.views.catalog === "grid" ? `<div class="pgrid">${list.map((f) => posterCard(f)).join("")}</div>` : `<div class="mlist">${list.map((f) => filmRow(f, copies(f))).join("")}</div>`}`;
+         <div class="cat-side"><select class="input cat-genre" id="cat-genre" aria-label="Filtrar por gênero"><option value="">Todos os gêneros</option>${genreOpts}</select>${viewToggle("catalog")}</div></div>
+       ${!list.length ? `<p class="hint">Nenhum filme com esse filtro.</p>` : S.views.catalog === "grid" ? `<div class="pgrid">${list.map((f) => posterCard(f)).join("")}</div>` : `<div class="mlist">${list.map((f) => filmRow(f, copies(f))).join("")}</div>`}`;
   return mpanel("catalog", `Filmes do Mercado ${tip("Cada filme tem uma tiragem limitada de cópias numeradas, definida pela raridade. A nota de referência é a média das notas disponíveis (IMDb, Metacritic e Rotten Tomatoes, que vale metade).")}`, body, admin);
 }
 // Lista ou Pôsteres: cada lugar (catálogo, coleção, últimos leilões) guarda a própria escolha em ml-views
@@ -855,7 +887,8 @@ function auctionCard(a, me) {
     <div class="ahead">${head}<span class="clock-wrap">${scheduled ? `<span class="hint">abre em</span> <span class="clock num" data-clock="${a.startsAt}"></span>` : `<span class="clock num" data-clock="${a.endsAt}"></span>`}</span></div>
     ${filmRow(f, `<span class="serial num">${esc(a.lot)}</span>${a.fromStock ? `<span class="hint">volta do estoque da Casa</span>` : ""}${a.featured ? `<span class="pill top">vitrine</span>` : ""}`)}
     <div class="abody"><div class="aread">${read}</div><div class="actl">${ctl}</div></div>
-    ${a.highBy === "house" ? `<p class="hint">🏠 A Casa está na frente ${tip("A Casa disputa as estreias com um teto escondido: para levar, passe do lance dela. Se ela terminar na frente, a cópia não sai.")}</p>` : ""}
+    ${a.highBy === "house" ? `<p class="hint">🏠 A Casa está na frente${a.houseChance ? ` · ${a.houseChance}% de chance de cobrir de novo` : ""} ${tip("Nas estreias de Raro para cima, a Casa pode cobrir cada lance. A chance começa maior nas faixas mais raras e cai pela metade a cada cobertura, e ela nunca passa de um teto escondido. Se ela terminar na frente, a cópia não sai.")}</p>` : ""}
+    ${a.highBy !== "house" && a.houseChance ? `<p class="hint">🏠 Casa: ${a.houseChance}% de chance de cobrir ${tip("Nas estreias de Raro para cima, a Casa pode cobrir cada lance. A chance começa maior nas faixas mais raras e cai pela metade a cada cobertura, e ela nunca passa de um teto escondido. Se ela terminar na frente, a cópia não sai.")}</p>` : ""}
     ${a.hasReserve && !a.isSeller ? `<p class="hint">🔒 Reserva secreta ${tip("O dono definiu um preço mínimo escondido: abaixo dele, a cópia não é vendida e os lances voltam.")}</p>` : ""}
     ${a.extended ? `<p class="hint num">Prorrogada ${a.extended}× por lances no fim.</p>` : ""}
     ${me.admin ? `<div class="adm-row"><span class="hint">Admin:</span><button class="btn quiet" data-adm-close="${esc(a.id)}">Encerrar agora</button><button class="btn quiet" data-adm-cancel="${esc(a.id)}">Cancelar</button></div>` : ""}
@@ -954,7 +987,7 @@ function auctionsPanel(me) {
   const body = `${A.open.length ? `<div class="auctions">${A.open.map((a) => auctionCard(a, me)).join("")}</div>` : `<div class="curtain"><div><b>Nenhuma estreia aberta agora</b><p>A Casa abre uma por dia, uma por semana e uma por mês.</p></div></div>`}
     ${next.length ? `<p class="hint">Próximas: ${next.join(" · ")}</p>` : ""}
     ${recent.length ? `<div class="cat-tools"><span class="label">Últimos leilões encerrados</span>${viewToggle("recent")}</div><div class="${recentGrid ? "pgrid" : "mlist"}">${recent.join("")}</div>` : ""}`;
-  return mpanel("auctions", `Estreias da Casa ${tip(`Cada estreia leiloa uma cópia. Lance nos últimos ${MC.extendWindowSec} s soma mais ${MC.extendBySec} s ao relógio. O lance fica reservado na sua carteira; se alguém passar, ele volta na hora. Quem vence paga e recebe a cópia.`)}`, body, A.open.length ? `<span class="pill in">${A.open.length} ${A.open.length === 1 ? "aberta" : "abertas"}</span>` : "");
+  return mpanel("auctions", `Estreias da Casa ${tip(`Cada estreia leiloa uma cópia. Lance nos últimos ${MC.extendWindowSec} s soma mais ${MC.extendBySec} s ao relógio. O lance fica reservado na sua carteira; se alguém passar, ele volta na hora. Quem vence paga e recebe a cópia. Nas faixas de Raro para cima, a Casa também disputa: ela pode cobrir cada lance, com chance maior nas faixas raras, que cai a cada cobertura.`)}`, body, A.open.length ? `<span class="pill in">${A.open.length} ${A.open.length === 1 ? "aberta" : "abertas"}</span>` : "");
 }
 async function loadAuctions() {
   const r = await N.call("market:auctions");
@@ -1368,9 +1401,10 @@ function copyText(text, msg) {
 
 /* ---------- eventos ---------- */
 $app.addEventListener("click", async (e) => {
-  const b = e.target.closest("button, [data-zoom], [data-tip]"); if (!b) return;
+  const b = e.target.closest("button, [data-zoom], [data-tip], [data-rank]"); if (!b) return;
   const d = b.dataset;
   if (d.zoom) { const r = b.getBoundingClientRect(); if (zoomKey === d.zoom) hideZoom(); else showZoom(d.zoom, r.right, r.top + r.height / 2); return; }
+  if (d.rank) return openCollection(d.rank);
   if (d.tip != null) { if (tipFor === b && !HOVER.matches) hideTip(); else showTip(b); return; }
   if (d.fold) { S.fold[d.fold] = !S.fold[d.fold]; store.set("ml-fold", S.fold); return render(); }
   if (d.modal != null) { const a = S.ui.modal.actions[+d.modal]; S.ui.modal = null; render(); if (a.run) a.run(); return; }
@@ -1538,7 +1572,7 @@ $app.addEventListener("submit", async (e) => {
     const r = await N.call("market:bid", { id: aid, amount: Math.floor(+(el && el.value)) });
     if (r.error) return toast(r.error, true);
     delete bidDrafts[aid];
-    if (r.house) return toast(`A Casa cobriu seu lance com ${mny(r.high)}. Para levar, passe do lance dela.`, true);
+    if (r.house) return toast(`A Casa cobriu com ${mny(r.high)}. Dê outro lance: a chance de ela cobrir de novo é menor.`, true);
     const secret = ((S.auctions && S.auctions.players) || []).some((a) => a.id === aid && (a.format === "sealed" || a.format === "vickrey"));
     return toast(secret ? "Lance secreto enviado! Ninguém vê o valor até o fim; ele fica reservado na sua carteira." : "Lance dado! O valor fica reservado até o fim do leilão.");
   }
@@ -1581,11 +1615,14 @@ $app.addEventListener("input", (e) => {
 });
 $app.addEventListener("change", (e) => {
   const t = e.target;
+  if (t.id === "cat-genre") { S.ui.catGenre = t.value; return render(); }
   if (t.id === "r-money") return setRule({ money: +t.value });
   if (t.id === "r-max") return setRule({ maxFilms: +t.value });
   if (t.id === "lots-n") { S.setup.lots = Math.max(1, Math.min(200, Math.floor(+t.value) || 1)); saveSetup(); render(); return scheduleDraw(); }
 });
 $app.addEventListener("keydown", (e) => {
+  // item do top do ranking (li com role="button"): Enter ou espaço abre a coleção
+  if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.rank && e.target.tagName === "LI") { e.preventDefault(); return openCollection(e.target.dataset.rank); }
   if (e.target.id === "bidv" && e.key === "Enter") {
     e.preventDefault();
     const st = cur(), lot = st && st.lot; if (!lot) return;

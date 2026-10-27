@@ -438,6 +438,13 @@ attachWebSocket(server, "/ws", (socket) => {
     reply(cb, { ok: true, ranking: Market.rankingView(eco, now), season: Market.season(eco, now) });
   });
 
+  // coleção de outra conta (pelo ranking): filmes, cópias e pontos, sem a carteira
+  socket.on("market:collection", (d = {}, cb) => {
+    if (!meOf(cb)) return;
+    const c = Market.publicCollection(eco, String(d.id || ""), Date.now());
+    reply(cb, c ? Object.assign({ ok: true }, c) : { error: "Conta não encontrada." });
+  });
+
   socket.on("market:auctions", (d, cb) => {
     const uid = meOf(cb); if (!uid) return;
     reply(cb, Object.assign({ ok: true }, Market.auctionsView(eco, uid)));

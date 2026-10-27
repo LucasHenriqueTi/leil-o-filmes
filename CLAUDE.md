@@ -43,6 +43,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   | `admin:openEstreia` | `{event}` (`day`, `week`, `month`) | `{id}`. Abre agora, sem mexer na agenda. Só admin. |
   | `market:showcase` | — | Pública, sem login. `{open, featured, next, ranking (top 5), recent (10 filmes mais novos), season, stats}`: a vitrine da tela inicial. |
   | `market:ranking` | — | `{ranking, season}`: pontos de cada conta (com os bônus) e o gênero em alta no mês. |
+  | `market:collection` | `{id}` | `{id, name, score, copies}`: a coleção de qualquer conta, aberta pelo ranking (`publicCollection`). Só filmes, cópias e pontos, nada da carteira. |
   | `admin:season` | `{genre}` | Troca o gênero em alta neste mês (vazio volta ao sorteio). Só admin. |
   | `admin:grant` | `{name, amount}` | Dá de M$ 1 a M$ 10.000 para uma conta (extrato: "Ajuste do admin"). Só admin. |
 
@@ -179,8 +180,19 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
     - **Desistir:** `unlist` só funciona antes do primeiro lance.
     - **Agendados:** abrem em `startDue`, chamado pelo `auctionTick`.
   - **Teto por raridade** (`rarityCaps`: Lendário 2, Tomate Podre 1, Obra de Arte 1): `capCheck` conta as cópias que a conta tem e os leilões em que ela está na frente (ou tem lance secreto). Vale em todo lance e compra.
-  - **Comprador fantasma** (`ghostBuyer`, `ghostPct` 0,9): só nas estreias da Casa. O teto escondido é o valor de referência × 0,9 (`ghostCeiling`).
-    - Um lance abaixo do teto é coberto na hora pela Casa com +1 (`highBy: "house"`, nada fica reservado).
+  - **Comprador fantasma** (`ghostBuyer`): só nas estreias da Casa, e só nas faixas raras. A cada lance abaixo do teto, a Casa sorteia se cobre.
+    - **Teto** (`ghostAbove`, `ghostCeiling`): lance mínimo da faixa mais uma porcentagem fixa, que não sobe com vendas nem com a temporada. Fica escondido.
+    - **Chance** (`ghostChance`, `ghostChance()`): começa na porcentagem da faixa e cai por `ghostDecay` (0,5) a cada cobertura (`a.ghostCovers`). A tela mostra a chance atual (`houseChance` no `auctionView`).
+    - **Cobertura:** sobe `ghostStep` (25%) do caminho entre o lance mínimo e o teto, no mínimo +1, sem passar do teto (`highBy: "house"`, nada fica reservado).
+    - O sorteio vem do parâmetro `rng` de `bid` (o servidor usa `Math.random`; os testes e a simulação passam o próprio).
+
+    | Faixa | Lance mínimo | Teto da Casa | Chance | Preço médio para levar (um jogador) |
+    |---|---|---|---|---|
+    | Comum e Incomum | M$ 1 e M$ 3 | não disputa | — | o lance mínimo |
+    | Raro | M$ 6 | +25% (M$ 8) | 25% | M$ 6,5 |
+    | Épico | M$ 10 | +40% (M$ 14) | 40% | M$ 11 |
+    | Lendário | M$ 15 | +60% (M$ 24) | 60% | M$ 17 |
+    | Tomate Podre e Obra de Arte | M$ 25 | +80% (M$ 45) | 80% | M$ 32 |
     - Se a Casa termina na frente, nada é emitido (`result.house`).
     - Não atua nos leilões dos jogadores: lá, a Casa comprando criaria dinheiro do nada, e a reserva secreta do dono já cumpre esse papel.
   - **Pontos da coleção** (`collectionScore`): soma dos pontos dos filmes (cada filme conta uma vez; a nota de referência, ou `10 − nota` no Tomate Podre), mais os bônus de `collectionBonuses`:

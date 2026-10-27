@@ -735,6 +735,15 @@ button.season:hover, button.season:focus-visible { border-color: var(--live); }
   .btn, .zoom .poster, .switch .knob, .switch .knob::after { transition: none; }
 }
 /* gêneros do filme nas listas, nos cards de leilão e no "Acontecendo agora" */
-.hint.genres { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hint.fgenres { font-size: 12px; }
+.mini .fgenres { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mini .tags { flex-wrap: wrap; }
 .chip.hot[data-tip] { cursor: help; }
+/* filtro de gênero do catálogo, ao lado de Lista/Pôsteres */
+.cat-side { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cat-genre { width: auto; max-width: 240px; padding-block: 6px; }
+/* ranking: cada linha abre a coleção do jogador */
+button.rank-row { width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+button.rank-row:hover, button.rank-row:focus-visible, .rank-mini li[data-rank]:hover, .rank-mini li[data-rank]:focus-visible { border-color: var(--coin); }
+.rank-mini li[data-rank] { cursor: pointer; }
+.modal .pgrid { max-height: 60vh; overflow: auto; padding: 4px; }

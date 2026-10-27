@@ -89,8 +89,13 @@
 
     /* ---------- competitividade ---------- */
     rarityCaps: { lendario: 2, podre: 1, obra: 1 },   // teto de cópias por jogador (conta as que tem e os lances na frente)
-    ghostBuyer: true,         // a Casa compete nas estreias com um teto escondido: abaixo dele, ela cobre o lance
-    ghostPct: 0.9,            // teto da Casa = valor de referência × isto
+    ghostBuyer: true,         // a Casa disputa as estreias: a cada lance abaixo do teto da faixa, ela pode cobrir
+    // teto da Casa = lance mínimo da faixa + esta porcentagem (fixo; faixa fora da lista = a Casa não disputa)
+    ghostAbove: { raro: 0.25, epico: 0.4, lendario: 0.6, podre: 0.8, obra: 0.8 },
+    // chance de a Casa cobrir um lance; cai por ghostDecay a cada cobertura (Lendário: 60%, 30%, 15%…)
+    ghostChance: { raro: 0.25, epico: 0.4, lendario: 0.6, podre: 0.8, obra: 0.8 },
+    ghostDecay: 0.5,
+    ghostStep: 0.25,          // cada cobertura sobe esta fração do caminho entre o lance mínimo e o teto (no mínimo +1)
 
     /* ---------- pontuação da coleção ---------- */
     // pontos = soma das notas de referência dos filmes (cada filme conta uma vez) + bônus de conjunto + temporada

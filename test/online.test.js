@@ -196,13 +196,19 @@ class Client {
     assert.deepStrictEqual(au.open.map((a) => a.event).sort(), ["day", "month", "week"], "estreias do dia, da semana e do mês");
     const dayA = au.open.find((a) => a.event === "day");
     assert.ok((await U1.call("market:bid", { id: dayA.id, amount: dayA.minBid - 1 })).error, "abaixo do mínimo");
-    // comprador fantasma: o teto escondido da Casa é maior que o lance mínimo, então ela cobre o primeiro lance
-    let rb = await U1.call("market:bid", { id: dayA.id, amount: dayA.minBid });
-    assert.ok(rb.ok && rb.house && rb.high === dayA.minBid + 1, "a Casa cobre com +1: " + JSON.stringify(rb));
-    assert.strictEqual((await U1.call("market:me")).me.wallet.reserved, 0, "lance coberto pela Casa não fica reservado");
-    let won = dayA.minBid;
-    while (rb.house) { won = rb.high + 1; rb = await U1.call("market:bid", { id: dayA.id, amount: won }); }
-    assert.strictEqual((await U1.call("market:me")).me.wallet.reserved, won, "acima do teto da Casa, o lance fica reservado");
+    // comprador fantasma: a Casa não disputa Comum e Incomum; nas faixas raras, pode cobrir (sorteio no servidor)
+    const weekA = au.open.find((a) => a.event === "week");
+    assert.strictEqual(weekA.houseChance, Math.round(MC.ghostChance[weekA.film.rarity] * 100), "a tela mostra a chance da Casa");
+    const rw = await U2.call("market:bid", { id: weekA.id, amount: weekA.minBid });
+    const ceiling = Math.round(weekA.minBid * (1 + MC.ghostAbove[weekA.film.rarity]));
+    const reservedW = (await U2.call("market:me")).me.wallet.reserved;
+    if (rw.house) assert.ok(rw.high > weekA.minBid && rw.high <= ceiling && reservedW === 0, "a Casa cobriu até o teto, e nada fica reservado: " + JSON.stringify(rw));
+    else assert.strictEqual(reservedW, weekA.minBid, "a Casa deixou passar: o lance fica reservado");
+    assert.ok((await U1.call("admin:cancelAuction", { id: weekA.id })).ok, "cancelar devolve o lance");
+    const rb = await U1.call("market:bid", { id: dayA.id, amount: dayA.minBid });
+    assert.ok(rb.ok && !rb.house, "na estreia do dia a Casa não disputa: " + JSON.stringify(rb));
+    const won = dayA.minBid;
+    assert.strictEqual((await U1.call("market:me")).me.wallet.reserved, won, "o lance fica reservado");
     assert.ok((await U2.call("market:bid", { id: dayA.id, amount: won })).error, "precisa passar o maior lance");
     assert.ok((await U1.call("market:sell", { copy: "tt0068646#1" })).error, "só vende cópia que é sua");
 
@@ -236,6 +242,11 @@ class Client {
     assert.ok((await U2.call("market:bid", { id: opened.id, amount: 20 })).ok);
     assert.ok((await U1.call("admin:cancelAuction", { id: opened.id })).ok, "cancelar");
     assert.strictEqual((await U2.call("market:me")).me.wallet.reserved, 0, "cancelar devolve o lance");
+    // coleção de outra conta, pelo ranking: André vê a da Cibele, sem a carteira
+    const pcol = await U2.call("market:collection", { id: r1.me.id });
+    assert.ok(pcol.ok && pcol.name === "Cibele" && pcol.copies.length === 1 && !pcol.wallet, "ver a coleção de outro jogador: " + JSON.stringify(pcol).slice(0, 160));
+    assert.ok((await U2.call("market:collection", { id: "ninguem" })).error, "conta inexistente");
+    assert.ok((await BAD.call("market:collection", { id: r1.me.id })).error, "só para quem entrou");
     const paid = won;
 
     // leilão de jogador: Cibele anuncia a cópia que ganhou, André dá lance, o admin encerra

@@ -441,23 +441,46 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   assert.ok(/Teto/.test(M.bid(eco, l3, "b", 50, MON + MIN)), "dois lances na frente já contam como 2");
   assert.strictEqual(M.capCheck(eco, "b", "raro"), null, "Raro não tem teto");
 
-  // comprador fantasma: Interestelar (Raro, mínimo 6) vale 12; teto da Casa 90% = 11
+  // comprador fantasma: teto fixo por faixa; a cada lance abaixo dele, a Casa cobre com uma chance que cai pela metade
+  const COBRE = () => 0, PASSA = () => 0.99, NUNCA = () => { throw new Error("não devia sortear"); };
+  const ghostOf = (rar, minBid) => M.ghostCeiling(eco, { rarity: rar, minBid }, MON, M.CONFIG);
+  assert.deepStrictEqual(M.CONFIG.rarities.map((r) => ghostOf(r.key, r.minBid)), [0, 0, 8, 14, 24, 45, 45], "a Casa não disputa Comum e Incomum; o teto sobe com a raridade");
+  // Raro (Interestelar, mínimo 6, teto 8): chance de 25%
   const g = M.openAuction(eco, day, { film: "tt0816692" }, MON), ga = eco.auctions[g];
-  assert.strictEqual(M.ghostCeiling(eco, ga, MON, M.CONFIG), 11);
-  assert.strictEqual(M.bid(eco, g, "a", 6, MON + MIN), null);
-  assert.deepStrictEqual([ga.highBy, ga.high, eco.users.a.wallet.reserved], ["house", 7, 0], "a Casa cobre com +1 e nada fica reservado");
-  assert.strictEqual(M.auctionView(eco, ga, "a").highName, "Casa");
-  assert.ok(M.bid(eco, g, "a", 7, MON + MIN), "precisa passar o lance da Casa");
-  assert.strictEqual(M.bid(eco, g, "a", 10, MON + MIN), null);
-  assert.deepStrictEqual([ga.highBy, ga.high], ["house", 11]);
-  assert.strictEqual(M.bid(eco, g, "a", 12, MON + MIN), null);
-  assert.deepStrictEqual([ga.highBy, ga.high, eco.users.a.wallet.reserved], ["a", 12, 12], "acima do teto, o jogador fica na frente");
+  assert.strictEqual(M.ghostCeiling(eco, ga, MON + 100 * 864e5, M.CONFIG), 8, "o teto não sobe com temporada nem com vendas");
+  assert.strictEqual(M.auctionView(eco, ga, "a").houseChance, 25);
+  assert.strictEqual(M.bid(eco, g, "a", 6, MON + MIN, null, COBRE), null);
+  assert.deepStrictEqual([ga.highBy, ga.high, eco.users.a.wallet.reserved], ["house", 7, 0], "a Casa cobre e nada fica reservado");
+  assert.deepStrictEqual([M.auctionView(eco, ga, "a").highName, M.auctionView(eco, ga, "a").houseChance], ["Casa", 13], "a chance cai pela metade");
+  assert.ok(M.bid(eco, g, "a", 7, MON + MIN, null, COBRE), "precisa passar o lance da Casa");
+  assert.strictEqual(M.bid(eco, g, "a", 8, MON + MIN, null, NUNCA), null, "no teto, a Casa nem sorteia");
+  assert.deepStrictEqual([ga.highBy, ga.high, eco.users.a.wallet.reserved, M.auctionView(eco, ga, "a").houseChance], ["a", 8, 8, 0], "passou do teto: a Casa está fora");
+  assert.strictEqual(M.bid(eco, g, "b", 9, MON + MIN, null, NUNCA), null);
   M.tickAuctions(eco, ga.endsAt);
-  assert.strictEqual(eco.copies["tt0816692#1"].owner, "a");
+  assert.strictEqual(eco.copies["tt0816692#1"].owner, "b");
+  // Épico (O Exterminador do Futuro, mínimo 10, teto 14): a Casa pode deixar passar, cobrir depois e parar no teto
+  const k = M.openAuction(eco, day, { film: "tt0088247" }, MON), ka = eco.auctions[k];
+  assert.strictEqual(M.bid(eco, k, "a", 10, MON + MIN, null, PASSA), null);
+  assert.strictEqual(ka.highBy, "a", "o sorteio deixou passar");
+  const bRes = eco.users.b.wallet.reserved;
+  assert.strictEqual(M.bid(eco, k, "b", 11, MON + MIN, null, COBRE), null);
+  assert.deepStrictEqual([ka.highBy, ka.high, eco.users.a.wallet.reserved, eco.users.b.wallet.reserved], ["house", 12, 0, bRes], "cobriu o lance de outro jogador; o lance de quem estava na frente volta");
+  assert.strictEqual(M.auctionView(eco, ka, "a").houseChance, 20);
+  assert.strictEqual(M.bid(eco, k, "a", 13, MON + MIN, null, COBRE), null);
+  assert.deepStrictEqual([ka.highBy, ka.high, ka.ghostCovers], ["house", 14, 2], "nunca passa do teto");
+  M.cancelAuction(eco, k, MON + MIN);
+  // Obra de Arte: cada cobertura pula um quarto do caminho até o teto (25 → 45: +5)
+  assert.strictEqual(M.bid(eco, M.openAuction(eco, month, { film: "tt0068646" }, MON), "a", 25, MON + MIN, null, COBRE), null);
+  assert.strictEqual(Object.values(eco.auctions).find((x) => x.film === "tt0068646" && x.status === "open").high, 30);
+  // a Casa não disputa as faixas comuns
+  const c0 = M.openAuction(eco, day, { film: "tt0325980" }, MON);
+  assert.strictEqual(M.bid(eco, c0, "a", 3, MON + MIN, null, NUNCA), null);
+  assert.strictEqual(eco.auctions[c0].highBy, "a", "Incomum sai pelo lance mínimo");
+  M.cancelAuction(eco, c0, MON + MIN);
   const h = M.openAuction(eco, day, { film: "tt0441773" }, MON), ha = eco.auctions[h];
-  M.bid(eco, h, "b", 6, MON + MIN);
+  M.bid(eco, h, "b", 6, MON + MIN, null, COBRE);
   M.tickAuctions(eco, ha.endsAt);
-  assert.deepStrictEqual([ha.result.winner, ha.result.house, eco.films.tt0441773.minted, eco.users.b.wallet.free + eco.users.b.wallet.reserved], [null, true, 0, 500], "a Casa terminou na frente: nada é emitido, ninguém paga");
+  assert.deepStrictEqual([ha.result.winner, ha.result.house, eco.films.tt0441773.minted, eco.users.b.wallet.free + eco.users.b.wallet.reserved], [null, true, 0, 491], "a Casa terminou na frente: nada é emitido, ninguém paga (b só pagou o Interestelar)");
   assert.strictEqual(M.bid(eco, M.openAuction(eco, day, { film: "tt0441773" }, MON), "b", 6, MON + MIN, cfg({ ghostBuyer: false })), null, "dá para desligar o fantasma");
 
   // temporada: um gênero por mês, igual para todos; o admin pode trocar
@@ -508,5 +531,20 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   M.refreeze(eco, cfg());
   assert.deepStrictEqual([eco.films.tt0000201.garimpo, eco.films.tt0000201.rarity], [false, "comum"], "com 25 páginas de corte, 28 não é mais Garimpo");
   console.log("ok tomate podre");
+}
+
+// coleção pública (ranking): filmes, cópias e pontos de qualquer conta, sem a carteira
+{
+  const X = require("../public/market-films.js");
+  const eco = M.create();
+  M.addUser(eco, { id: "a", name: "Ana", auth }, MON, cfg());
+  X.examples.forEach((f) => M.addFilm(eco, f, MON));
+  M.mintCopy(eco, "tt0418279", "a", MON); M.mintCopy(eco, "tt0068646", "a", MON);
+  const pc = M.publicCollection(eco, "a", MON);
+  assert.deepStrictEqual([pc.name, pc.copies.map((c) => [c.film.title, c.label, c.listed])], ["Ana", [["O Poderoso Chefão", "cópia 1/1", false], ["Transformers", "cópia 1/20", false]]], "do mais raro para o mais comum");
+  assert.strictEqual(pc.score.total, M.collectionScore(eco, "a", MON).total);
+  assert.ok(!("wallet" in pc) && !JSON.stringify(pc).includes("buyback"), "nada da carteira nem da recompra");
+  assert.strictEqual(M.publicCollection(eco, "zzz", MON), null);
+  console.log("ok coleção pública");
 }
 console.log("Todos os testes do Mercado passaram.");

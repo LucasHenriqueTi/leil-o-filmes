@@ -359,6 +359,15 @@
     const extra = bonuses.reduce((a, b) => a + b.pts, 0);
     return { films: films.length, base, bonuses, total: Math.round((base + extra) * 10) / 10 };
   }
+  // coleção de qualquer conta, para o ranking: só o que é público (filmes, cópias, pontos), nada da carteira
+  function publicCollection(eco, uid, now, cfg) {
+    const u = eco.users[uid];
+    if (!u) return null;
+    const copies = Object.values(eco.copies).filter((c) => c.owner === uid)
+      .map((c) => ({ id: c.id, label: copyLabel(eco, c), film: filmCard(eco.films[c.film]), listed: !!activeFor(eco, c.id) }))
+      .sort((a, b) => byRarity(a.film, b.film) || a.id.localeCompare(b.id));
+    return { id: u.id, name: u.name, score: collectionScore(eco, uid, now, cfg), copies };
+  }
   function rankingView(eco, now, cfg) {
     return Object.values(eco.users).map((u) => Object.assign({ id: u.id, name: u.name }, collectionScore(eco, u.id, now, cfg)))
       .sort((a, b) => b.total - a.total || b.films - a.films || a.name.localeCompare(b.name));
@@ -573,7 +582,8 @@
   // lance: no Aberto precisa cobrir o mínimo (ou o maior lance + 1) com saldo livre; o valor fica reservado
   // e o lance anterior volta para quem foi superado. Lance no fim prorroga o relógio.
   // Nos outros formatos dos jogadores, o mesmo pedido vira lance secreto ou compra no relógio.
-  function bid(eco, aid, uid, amount, now, cfg) {
+  // rng: sorteio da cobertura da Casa nas estreias (o servidor passa o próprio; os testes passam um fixo)
+  function bid(eco, aid, uid, amount, now, cfg, rng) {
     cfg = cfg || CONFIG;
     const a = eco.auctions[aid];
     if (a && a.status === "scheduled") return "Esse leilão ainda não começou.";
@@ -599,10 +609,13 @@
     if (a.highBy && a.highBy !== "house") release(eco, a.highBy, a.high);
     a.bids.push({ uid, v, at: now });
     if (a.endsAt - now <= cfg.extendWindowSec * 1000) { a.endsAt += cfg.extendBySec * 1000; a.extended++; }
-    // comprador fantasma: nas estreias, abaixo do teto escondido a Casa cobre na hora com +1
+    // comprador fantasma: a cada lance abaixo do teto da faixa, a Casa pode cobrir. A chance começa na da faixa
+    // e cai a cada cobertura; cada cobertura pula um pedaço do caminho até o teto (nunca passa dele)
     const ceiling = a.kind === "house" && cfg.ghostBuyer ? ghostCeiling(eco, a, now, cfg) : 0;
-    if (v < ceiling) {
-      a.high = v + 1; a.highBy = "house"; a.bids.push({ uid: "house", v: v + 1, at: now });
+    if (v < ceiling && (rng || Math.random)() < ghostChance(a, cfg)) {
+      const hv = Math.min(ceiling, v + Math.max(1, Math.round((ceiling - a.minBid) * (cfg.ghostStep || 0))));
+      a.high = hv; a.highBy = "house"; a.bids.push({ uid: "house", v: hv, at: now });
+      a.ghostCovers = (a.ghostCovers || 0) + 1;
     } else {
       reserve(eco, uid, v);
       a.high = v; a.highBy = uid;
@@ -610,7 +623,17 @@
     eco.seq++;
     return null;
   }
-  const ghostCeiling = (eco, a, now, cfg) => Math.max(a.minBid, Math.round(refValue(eco, a.film, cfg, now) * cfg.ghostPct));
+  // teto da Casa: o lance mínimo da faixa + a porcentagem da faixa (fixo: não sobe com vendas nem temporada); 0 = não disputa
+  const ghostCeiling = (eco, a, now, cfg) => {
+    const p = ((cfg || CONFIG).ghostAbove || {})[a.rarity] || 0;
+    return p > 0 ? Math.round(a.minBid * (1 + p)) : 0;
+  };
+  // chance de a Casa cobrir o próximo lance: a da faixa, cortada por ghostDecay a cada cobertura que ela já deu
+  const ghostChance = (a, cfg) => {
+    cfg = cfg || CONFIG;
+    if (a.kind !== "house" || !cfg.ghostBuyer) return 0;
+    return ((cfg.ghostChance || {})[a.rarity] || 0) * Math.pow(cfg.ghostDecay == null ? 1 : cfg.ghostDecay, a.ghostCovers || 0);
+  };
   const releaseAll = (eco, a) => {
     if (a.highBy && a.highBy !== "house") release(eco, a.highBy, a.high);
     Object.entries(a.sealed || {}).forEach(([uid, b]) => release(eco, uid, b.v));
@@ -699,6 +722,7 @@
       fromStock: a.kind === "house" && !!a.copy, format: fmt, formatName: FORMATS[fmt].name, seller: a.seller || null, sellerName: a.seller ? nameOf(a.seller) : null, isSeller: seller,
       featured: !!a.featured, minBid: a.minBid, startsAt: a.startsAt, endsAt: a.endsAt, extended: a.extended || 0, status: a.status, closedAt: a.closedAt || null,
       high: secret ? 0 : a.high, highBy: secret ? null : a.highBy, highName: !secret && a.highBy ? nameOf(a.highBy) : null,
+      houseChance: a.kind === "house" && isActive(a) && (a.high || 0) < ghostCeiling(eco, a, 0, CONFIG) ? Math.round(ghostChance(a) * 100) : 0,
       mine: !!viewer && (secret ? !!(a.sealed || {})[viewer] : a.highBy === viewer), bids: secret ? Object.keys(a.sealed || {}).length : a.bids.length,
       hasReserve: fmt !== "dutch" && (a.reserve || 0) > 0, reserve: seller || fmt === "dutch" ? a.reserve || 0 : null,
       result: a.result && Object.assign({}, a.result, { winnerName: a.result.winner ? nameOf(a.result.winner) : null,
@@ -739,6 +763,6 @@
     addFilm, mintCopy, transferCopy, copyLabel, collectionOf, catalogView, openFilms, refreeze, pruneCatalog,
     money, refValue, buybackPrice, sellToHouse,
     FORMATS, listCopy, unlist, listingCost, dutchPrice, startDue,
-    season, setSeason, collectionScore, rankingView, showcase, capCheck, ghostCeiling,
+    season, setSeason, collectionScore, publicCollection, rankingView, showcase, capCheck, ghostCeiling, ghostChance,
     nextEstreia, pickLot, openAuction, openEstreiaNow, accountsView, openDueEstreias, restartEstreias, bid, cancelAuction, closeAuction, tickAuctions, dueAuctions, auctionView, auctionsView };
 });
