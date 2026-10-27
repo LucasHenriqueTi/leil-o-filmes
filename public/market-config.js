@@ -9,7 +9,7 @@
   "use strict";
   return {
     testMode: true,           // testes: a cada início renova o catálogo (exemplos + filmes novos) e abre as 3 estreias na hora. Desligue em produção.
-    bootBatch: 12,            // filmes novos buscados a cada início no modo de teste
+    bootBatch: 20,            // filmes novos buscados a cada início no modo de teste
     currency: "M$",           // o dinheiro do Mercado não é o R$ da partida rápida
 
     /* ---------- carteira ---------- */
@@ -30,23 +30,27 @@
 
     /* ---------- raridade ---------- */
     // da mais comum para a mais rara; a faixa é a última com `min` <= nota de referência
-    // (e com pelo menos `requireScores` notas, quando a faixa exige)
+    // (e com pelo menos `requireScores` notas, quando a faixa exige).
+    // Faixa invertida (`max`): vale para nota até `max`, vem antes das outras e o Garimpo não mexe nela.
+    // Cortes calibrados num catálogo de 509 filmes para ~1% Tomate Podre, 40% Comum, 28% Incomum,
+    // 18% Raro, 9% Épico, 3% Lendário e 1% Obra de Arte (com o Garimpo abaixo de 25 páginas)
     rarities: [
       { key: "comum", name: "Comum", min: 0, copies: 20, minBid: 1 },
-      { key: "incomum", name: "Incomum", min: 6.5, copies: 10, minBid: 3 },
-      { key: "raro", name: "Raro", min: 7.3, copies: 5, minBid: 6 },
-      { key: "epico", name: "Épico", min: 8.0, copies: 3, minBid: 10 },
-      { key: "lendario", name: "Lendário", min: 8.5, copies: 1, minBid: 15 },
-      { key: "obra", name: "Obra de Arte", min: 9.5, copies: 1, minBid: 25, requireScores: 3 }
+      { key: "incomum", name: "Incomum", min: 6.6, copies: 10, minBid: 3 },
+      { key: "raro", name: "Raro", min: 7.6, copies: 5, minBid: 6 },
+      { key: "epico", name: "Épico", min: 8.4, copies: 3, minBid: 10 },
+      { key: "lendario", name: "Lendário", min: 8.8, copies: 1, minBid: 15 },
+      { key: "podre", name: "Tomate Podre", max: 1.5, copies: 1, minBid: 25, requireScores: 2 },   // o avesso da Obra de Arte
+      { key: "obra", name: "Obra de Arte", min: 9.2, copies: 1, minBid: 25, requireScores: 2 }
     ],
     minScores: 2,             // notas (de IMDb, Metacritic e Rotten Tomatoes) para o filme entrar no Mercado
     // peso de cada fonte na média: o Tomatometer do RT é a % de críticas positivas, não uma nota,
     // e puxa a média para cima (87% não quer dizer nota 8,7); por isso vale metade
     scoreWeights: { imdb: 1, metacritic: 1, rt: 0.5 },
     unanimityMaxSpread: 1.0,  // selo "Unanimidade": maior nota - menor nota até isto
-    garimpoBelowLinks: 30,    // Garimpo = filme com menos páginas que isto na Wikipédia (com 40, mais da metade do sorteio subia de faixa)
+    garimpoBelowLinks: 25,    // Garimpo = filme com menos páginas que isto na Wikipédia (com 30, um terço do catálogo subia de faixa)
     garimpoBoost: 1,          // faixas que o Garimpo sobe
-    garimpoCap: "epico",      // o Garimpo não leva acima desta faixa
+    garimpoCap: "raro",       // o Garimpo não leva acima desta faixa
 
     /* ---------- catálogo (a Casa cadastra sozinha) ---------- */
     catalogMinLinks: 20,      // fama mínima para a Casa sortear um filme
@@ -66,7 +70,7 @@
     estreias: [
       { key: "day", name: "Estreia do dia", every: "day", hour: 20, bands: ["comum", "incomum"], minutes: 15 },
       { key: "week", name: "Estreia da semana", every: "week", weekday: 6, hour: 20, bands: ["raro", "epico"], minutes: 30 },
-      { key: "month", name: "Estreia do mês", every: "month", day: 1, hour: 20, bands: ["lendario", "obra"], minutes: 60 }
+      { key: "month", name: "Estreia do mês", every: "month", day: 1, hour: 20, bands: ["lendario", "podre", "obra"], minutes: 60 }
     ],
     extendWindowSec: 30,      // lance nos últimos 30 s...
     extendBySec: 30,          // ...soma mais 30 s ao relógio (Aberto: estreias e leilões dos jogadores)
@@ -84,7 +88,7 @@
     dutchMaxStart: 1000,      // preço inicial máximo do relógio holandês
 
     /* ---------- competitividade ---------- */
-    rarityCaps: { lendario: 2, obra: 1 },   // teto de cópias por jogador (conta as que tem e os lances na frente)
+    rarityCaps: { lendario: 2, podre: 1, obra: 1 },   // teto de cópias por jogador (conta as que tem e os lances na frente)
     ghostBuyer: true,         // a Casa compete nas estreias com um teto escondido: abaixo dele, ela cobre o lance
     ghostPct: 0.9,            // teto da Casa = valor de referência × isto
 

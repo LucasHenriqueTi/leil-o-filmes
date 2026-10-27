@@ -112,20 +112,26 @@ const books = (eco) => Object.values(eco.users).forEach((u) => assert.strictEqua
   console.log("ok notas");
 }
 
-// Raridade: bordas das faixas, Obra de Arte e Garimpo
+// Raridade: bordas das faixas, Tomate Podre, Obra de Arte e Garimpo
 {
   const R = (ref, g, n) => M.rarityOf(ref, !!g, n || 2, cfg());
-  [[0, "comum"], [6.4, "comum"], [6.5, "incomum"], [7.2, "incomum"], [7.3, "raro"], [7.9, "raro"], [8.0, "epico"], [8.4, "epico"], [8.5, "lendario"], [9.4, "lendario"]]
+  [[0, "podre"], [1.5, "podre"], [1.6, "comum"], [6.5, "comum"], [6.6, "incomum"], [7.5, "incomum"], [7.6, "raro"], [8.3, "raro"],
+    [8.4, "epico"], [8.7, "epico"], [8.8, "lendario"], [9.1, "lendario"], [9.2, "obra"], [10, "obra"]]
     .forEach(([ref, key]) => assert.strictEqual(R(ref), key, `nota ${ref}`));
-  assert.strictEqual(R(9.5, false, 3), "obra", "Obra de Arte com 3 notas");
-  assert.strictEqual(R(9.8, false, 2), "lendario", "Obra de Arte exige as 3 notas");
-  assert.strictEqual(R(6.4, true), "incomum", "Garimpo sobe uma faixa");
-  assert.strictEqual(R(7.5, true), "epico");
-  assert.strictEqual(R(8.2, true), "epico", "Garimpo para em Épico");
-  assert.strictEqual(R(8.7, true), "lendario", "Garimpo não rebaixa");
-  assert.strictEqual(R(9.6, true, 3), "obra", "Garimpo não rebaixa a Obra de Arte");
-  assert.strictEqual(M.rarityOf(8.2, true, 3, cfg({ garimpoCap: "obra" })), "lendario", "com teto maior, o Garimpo vai até Lendário");
-  assert.strictEqual(M.rarityOf(8.7, true, 2, cfg({ garimpoCap: "obra" })), "lendario", "nem com teto maior o Garimpo dispensa as 3 notas");
+  assert.strictEqual(R(6.5, true), "incomum", "Garimpo sobe uma faixa");
+  assert.strictEqual(R(7.6, true), "raro", "Garimpo para em Raro");
+  assert.strictEqual(R(8.5, true), "epico", "Garimpo não rebaixa");
+  assert.strictEqual(R(9.6, true), "obra", "Garimpo não rebaixa a Obra de Arte");
+  assert.strictEqual(R(1.2, true), "podre", "Garimpo não tira do Tomate Podre");
+  assert.strictEqual(M.rarityOf(8.0, true, 2, cfg({ garimpoCap: "obra" })), "epico", "com teto maior, o Garimpo passa de Raro");
+  assert.strictEqual(M.rarityOf(8.9, true, 2, cfg({ garimpoCap: "obra" })), "obra", "e pula o Tomate Podre na subida");
+  // as duas faixas extremas podem exigir as 3 notas
+  const strict = cfg({ garimpoCap: "obra", rarities: M.CONFIG.rarities.map((r) => (r.key === "obra" || r.key === "podre" ? Object.assign({}, r, { requireScores: 3 }) : r)) });
+  assert.strictEqual(M.rarityOf(9.5, false, 3, strict), "obra", "Obra de Arte com 3 notas");
+  assert.strictEqual(M.rarityOf(9.8, false, 2, strict), "lendario", "Obra de Arte exige as 3 notas");
+  assert.strictEqual(M.rarityOf(1.0, false, 3, strict), "podre", "Tomate Podre com 3 notas");
+  assert.strictEqual(M.rarityOf(1.0, false, 2, strict), "comum", "Tomate Podre exige as 3 notas");
+  assert.strictEqual(M.rarityOf(9.0, true, 2, strict), "lendario", "nem com teto maior o Garimpo dispensa as 3 notas");
   console.log("ok raridade");
 }
 
@@ -137,11 +143,11 @@ const books = (eco) => Object.values(eco.users).forEach((u) => assert.strictEqua
   const film = (id, scores, o) => Object.assign({ id, title: "Filme " + id, year: 2001, g: ["Drama"], links: 80, scores, img: "https://upload.wikimedia.org/x.jpg" }, o || {});
   assert.ok(M.addFilm(eco, film("123", { imdb: 8, rt: 8 }), MON, cfg()), "IMDb inválido");
   assert.ok(M.addFilm(eco, film("tt0000001", { imdb: 8 }), MON, cfg()), "uma nota só fica fora");
-  assert.strictEqual(M.addFilm(eco, film("tt0000002", { imdb: 8.3, metacritic: 8.1, rt: 8.4 }), MON, cfg()), null);
+  assert.strictEqual(M.addFilm(eco, film("tt0000002", { imdb: 8.5, metacritic: 8.4, rt: 8.6 }), MON, cfg()), null);
   assert.ok(M.addFilm(eco, film("tt0000002", { imdb: 9, rt: 9 }), MON, cfg()), "filme repetido");
   const f = eco.films.tt0000002;
-  assert.deepStrictEqual([f.rarity, f.supply, f.minted, f.ref, f.unanimous, f.garimpo], ["epico", 3, 0, 8.3, true, false]);
-  assert.strictEqual(M.addFilm(eco, film("tt0000003", { imdb: 6.2, rt: 6.6 }, { links: 25, img: "https://evil.example.com/x.jpg" }), MON, cfg()), null);
+  assert.deepStrictEqual([f.rarity, f.supply, f.minted, f.ref, f.unanimous, f.garimpo], ["epico", 3, 0, 8.5, true, false]);
+  assert.strictEqual(M.addFilm(eco, film("tt0000003", { imdb: 6.2, rt: 6.6 }, { links: 20, img: "https://evil.example.com/x.jpg" }), MON, cfg()), null);
   assert.deepStrictEqual([eco.films.tt0000003.rarity, eco.films.tt0000003.garimpo, eco.films.tt0000003.img], ["incomum", true, null], "Garimpo e pôster de domínio estranho descartado");
   assert.strictEqual(M.addFilm(eco, film("tt0000004", { imdb: 9.2, metacritic: 10, rt: 9.7 }), MON, cfg()), null);
   assert.deepStrictEqual([eco.films.tt0000004.rarity, eco.films.tt0000004.supply], ["obra", 1]);
@@ -193,12 +199,12 @@ const books = (eco) => Object.values(eco.users).forEach((u) => assert.strictEqua
   assert.strictEqual(r.spread, 1.5, "a Unanimidade compara as notas sem peso");
   assert.strictEqual(M.refRating({ imdb: 0, rt: 9 }, cfg({ scoreWeights: { imdb: 1, rt: 0 } })).ref, 0, "peso zero ignora a fonte na média");
   const eco = M.create();
-  M.addFilm(eco, { id: "tt0000101", title: "A", links: 80, scores: { metacritic: 7.9, rt: 9.4 } }, MON, cfg());
-  M.addFilm(eco, { id: "tt0000102", title: "B", links: 80, scores: { metacritic: 7.9, rt: 9.4 } }, MON, cfg());
+  M.addFilm(eco, { id: "tt0000101", title: "A", links: 80, scores: { metacritic: 8.3, rt: 9.4 } }, MON, cfg());
+  M.addFilm(eco, { id: "tt0000102", title: "B", links: 80, scores: { metacritic: 8.3, rt: 9.4 } }, MON, cfg());
   assert.strictEqual(eco.films.tt0000101.rarity, "lendario", "com pesos iguais era Lendário");
   M.mintCopy(eco, "tt0000102", "house", MON);
   assert.strictEqual(M.refreeze(eco), 1);
-  assert.deepStrictEqual([eco.films.tt0000101.ref, eco.films.tt0000101.rarity, eco.films.tt0000101.supply], [8.4, "epico", 3], "sem cópias, segue a fórmula nova");
+  assert.deepStrictEqual([eco.films.tt0000101.ref, eco.films.tt0000101.rarity, eco.films.tt0000101.supply], [8.7, "epico", 3], "sem cópias, segue a fórmula nova");
   assert.strictEqual(eco.films.tt0000102.rarity, "lendario", "com cópia emitida, fica congelado");
   M.addFilm(eco, { id: "tt0000103", title: "C", links: 80, scores: { imdb: 7, rt: 7 } }, MON);
   assert.strictEqual(M.pruneCatalog(eco, new Set(["tt0000103"])), 1, "tira só quem não tem cópias e não foi pedido");
@@ -225,7 +231,7 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   const d = open("day");
   assert.deepStrictEqual([d.film, eco.films[d.film].rarity, d.minBid], ["tt0325980", "incomum", 3], "do dia: Comum ou Incomum");
   assert.ok(["raro", "epico"].includes(eco.films[open("week").film].rarity), "da semana: Raro ou Épico");
-  assert.ok(["lendario", "obra"].includes(eco.films[open("month").film].rarity), "do mês: Lendário ou Obra de Arte");
+  assert.ok(["lendario", "podre", "obra"].includes(eco.films[open("month").film].rarity), "do mês: Lendário, Tomate Podre ou Obra de Arte");
 
   // lances: mínimo, saldo livre, reserva e devolução para quem foi superado
   assert.ok(bidNG(eco, d.id, "a", 2, MON + 1000), "abaixo do lance mínimo");
@@ -310,7 +316,7 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   ["a", "b", "c", "d"].forEach((id) => { M.addUser(eco, { id, name: "Conta " + id, auth }, T0, cfg()); M.credit(eco, id, 70, "admin", T0); });   // M$ 100 cada
   X.examples.forEach((f) => M.addFilm(eco, f, T0));
   const give = (film, uid) => { M.mintCopy(eco, film, uid, T0); return `${film}#${eco.films[film].minted}`; };
-  const raro = give("tt0441773", "a"), epico = give("tt1375666", "a"), comum = give("tt0418279", "a"), incomum = give("tt0325980", "a"), raro2 = give("tt0816692", "b");
+  const raro = give("tt0441773", "a"), epico = give("tt0088247", "a"), comum = give("tt0418279", "a"), incomum = give("tt0325980", "a"), raro2 = give("tt0816692", "b");
   const list = (uid, o, now) => M.listCopy(eco, uid, Object.assign({ format: "open", minutes: 15 }, o), now == null ? T0 : now);
   const supply0 = M.supply(eco);
 
@@ -482,5 +488,25 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   assert.deepStrictEqual(M.rankingView(sc, MON).map((r) => [r.name, r.total]), [["Ana", 60], ["Beto", 0]]);
   books(eco); books(sc);
   console.log("ok pontuação da coleção e ranking");
+}
+// Tomate Podre: vale como a Obra de Arte, com a lógica invertida
+{
+  const X = require("../public/market-films.js");
+  const eco = M.create();
+  M.addUser(eco, { id: "a", name: "Ana", auth }, MON, cfg());
+  X.examples.forEach((f) => M.addFilm(eco, f, MON));
+  const podre = eco.films.tt0795461, obra = eco.films.tt0068646;
+  assert.deepStrictEqual([podre.rarity, podre.supply, M.rarity("podre").minBid], ["podre", 1, M.rarity("obra").minBid], "uma cópia só e o lance mínimo da Obra de Arte");
+  assert.strictEqual(M.refValue(eco, "tt0795461"), M.refValue(eco, "tt0068646"), "vale o mesmo que a Obra de Arte");
+  assert.deepStrictEqual([M.filmPoints(podre), M.filmPoints(obra)], [9.1, 9.6], "na coleção vale 10 − nota; os outros, a nota");
+  M.mintCopy(eco, "tt0795461", "a", MON);
+  assert.strictEqual(M.collectionScore(eco, "a", MON).base, 9.1);
+  assert.ok(M.capCheck(eco, "a", "podre"), "teto de 1 Tomate Podre por jogador");
+  // o Garimpo segue o config atual nos filmes ainda sem cópias
+  M.addFilm(eco, { id: "tt0000201", title: "Obscuro", links: 28, scores: { imdb: 6, metacritic: 6 } }, MON, cfg({ garimpoBelowLinks: 30 }));
+  assert.deepStrictEqual([eco.films.tt0000201.garimpo, eco.films.tt0000201.rarity], [true, "incomum"]);
+  M.refreeze(eco, cfg());
+  assert.deepStrictEqual([eco.films.tt0000201.garimpo, eco.films.tt0000201.rarity], [false, "comum"], "com 25 páginas de corte, 28 não é mais Garimpo");
+  console.log("ok tomate podre");
 }
 console.log("Todos os testes do Mercado passaram.");

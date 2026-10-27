@@ -653,9 +653,14 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
   box-shadow: 0 10px 38px rgba(180, 140, 255, 0.35); }
 .pcard.r-obra .pbadge { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
 .pcard.r-obra .pfoot .ref, .pcard.r-obra .pscores li.ref b { color: var(--coin); }
+/* Tomate Podre: o avesso da Obra de Arte, com moldura de gosma verde escorrendo */
+.pcard.r-podre { background: linear-gradient(160deg, #8bc34a, #4e5d1c 35%, #7a4a1d 60%, #8bc34a); background-size: 200% 200%; animation: pRainbow 8s linear infinite;
+  box-shadow: 0 10px 38px rgba(139, 195, 74, 0.3); }
+.pcard.r-podre .pbadge { color: #e7ffd0; border-color: rgba(139, 195, 74, 0.7); }
+.pcard.r-podre .pbadge::before, .rar.r-podre::before { content: "🍅 "; }
 @keyframes pShine { 0%, 60% { background-position: 150% 0; } 100% { background-position: -50% 0; } }
 @keyframes pRainbow { to { background-position: 300% 0; } }
-@media (prefers-reduced-motion: reduce) { .pcard.r-lendario::after, .pcard.r-obra { animation: none; } .pcard, .pdetail { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .pcard.r-lendario::after, .pcard.r-obra, .pcard.r-podre { animation: none; } .pcard, .pdetail { transition: none; } }
 
 /* ferramentas do admin */
 .adm-row { display: flex; gap: 4px; align-items: center; border-top: 1px dashed var(--line); padding-top: 6px; }
@@ -668,9 +673,9 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 @media (max-width: 640px) { .acc-row { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
 .lead-ok { margin: 0; font-size: 14px; font-weight: 600; color: var(--mint); }
 .mfilm .sell { padding: 2px 0; font-size: 12px; color: var(--coin); }
-/* raridade: comum, incomum, raro, épico, lendário, obra de arte */
+/* raridade: comum, incomum, raro, épico, lendário, tomate podre, obra de arte */
 .r-comum { --rar: #a99cc4; } .r-incomum { --rar: var(--mint); } .r-raro { --rar: #7aa7ff; }
-.r-epico { --rar: #b48cff; } .r-lendario { --rar: var(--coin); } .r-obra { --rar: #fff3c4; }
+.r-epico { --rar: #b48cff; } .r-lendario { --rar: var(--coin); } .r-podre { --rar: #8bc34a; } .r-obra { --rar: #fff3c4; }
 .rar { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; color: var(--rar); border: 1px solid color-mix(in srgb, var(--rar) 55%, transparent); background: color-mix(in srgb, var(--rar) 14%, transparent); white-space: nowrap; }
 .rar.r-obra { color: #fff; border-color: transparent; background: linear-gradient(var(--raise), var(--raise)) padding-box, conic-gradient(#ff4f6d, #ffd166, #4be3b0, #7aa7ff, #b48cff, #ff4f6d) border-box; border: 2px solid transparent; }
 .seal { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--mint) 18%, transparent); color: var(--mint); white-space: nowrap; }

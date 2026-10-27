@@ -106,20 +106,23 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   - **Unanimidade:** selo quando a maior nota menos a menor dá até `unanimityMaxSpread` (1,0).
   - **Faixas** (`rarities`; nota mínima, cópias, lance mínimo):
 
-    | Faixa | Nota | Cópias | Lance mínimo |
-    |---|---|---|---|
-    | Comum | até 6,4 | 20 | M$ 1 |
-    | Incomum | 6,5 | 10 | M$ 3 |
-    | Raro | 7,3 | 5 | M$ 6 |
-    | Épico | 8,0 | 3 | M$ 10 |
-    | Lendário | 8,5 | 1 | M$ 15 |
-    | Obra de Arte | 9,5 | 1 | M$ 25 |
+    | Faixa | Nota | Cópias | Lance mínimo | Alvo no catálogo |
+    |---|---|---|---|---|
+    | Tomate Podre | até 1,5 | 1 | M$ 25 | ~1% |
+    | Comum | até 6,5 | 20 | M$ 1 | ~40% |
+    | Incomum | 6,6 | 10 | M$ 3 | ~28% |
+    | Raro | 7,6 | 5 | M$ 6 | ~18% |
+    | Épico | 8,4 | 3 | M$ 10 | ~9% |
+    | Lendário | 8,8 | 1 | M$ 15 | ~3% |
+    | Obra de Arte | 9,2 | 1 | M$ 25 | ~1% |
 
-    A Obra de Arte exige as 3 notas (`requireScores`); com 2, o filme para em Lendário.
-  - **Garimpo:** filme com menos de `garimpoBelowLinks` (30) páginas na Wikipédia sobe `garimpoBoost` (1) faixa, até `garimpoCap` (Épico). Nunca rebaixa.
-  - **Congelamento:** nota, raridade e tiragem (`supply`) congelam na **primeira cópia emitida**. Antes disso, `refreeze` recalcula no início do servidor, então mudar pesos ou faixas vale para os filmes ainda sem cópias.
+    Os cortes foram calibrados num catálogo de 509 filmes para chegar nos alvos (já contando o Garimpo).
+    - `requireScores` faz uma faixa exigir mais notas; hoje a Obra de Arte e o Tomate Podre pedem 2, o mesmo que `minScores`.
+    - **Tomate Podre** é o avesso da Obra de Arte. É uma faixa invertida (`max` em vez de `min`), decidida antes das outras, e o Garimpo não mexe nela. Fica na lista logo abaixo da Obra de Arte, então é a segunda mais rara. Tem 1 cópia, o mesmo lance mínimo e o mesmo valor de referência da Obra de Arte, sai na estreia do mês e tem teto de 1 por jogador. Na coleção vale `10 − nota` pontos (`filmPoints`).
+  - **Garimpo:** filme com menos de `garimpoBelowLinks` (25) páginas na Wikipédia sobe `garimpoBoost` (1) faixa, até `garimpoCap` (Raro). Nunca rebaixa e pula a faixa invertida.
+  - **Congelamento:** nota, raridade, tiragem (`supply`) e Garimpo congelam na **primeira cópia emitida**. Antes disso, `refreeze` recalcula no início do servidor (o Garimpo, pelas páginas salvas em `links`), então mudar pesos, faixas ou o corte do Garimpo vale para os filmes ainda sem cópias.
   - **Cópias:** nascem aos poucos com `mintCopy` (`tt…#n`, "cópia n/total"), cada uma com dono (`"house"` ou id da conta) e histórico. `transferCopy` troca o dono sem mexer em dinheiro: o servidor junta transferência e pagamento na mesma `mutate`.
-  - **Filmes de exemplo:** `examples` em `public/market-films.js`, 9 filmes que cobrem todas as faixas, salvos com notas e pôster. Ficam sempre no catálogo e funcionam sem internet.
+  - **Filmes de exemplo:** `examples` em `public/market-films.js`, 11 filmes que cobrem todas as faixas (o Épico é O Exterminador do Futuro, e o Tomate Podre, Todo Mundo em Pânico 5), salvos com notas e pôster. Ficam sempre no catálogo e funcionam sem internet.
   - **A Casa monta o catálogo sozinha** (`refillCatalog` no servidor):
     - sorteia no Wikidata filmes com pelo menos `catalogMinLinks` páginas que já têm 2 notas;
     - fora do modo de teste, completa até `catalogTarget` filmes com cópias por emitir, ao iniciar e a cada `catalogRefreshHours`;
@@ -136,7 +139,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
     |---|---|---|---|
     | do dia | todo dia às 20h | Comum e Incomum | 15 min |
     | da semana | sábado às 20h | Raro e Épico | 30 min |
-    | do mês | dia 1º às 20h | Lendário e Obra de Arte | 60 min |
+    | do mês | dia 1º às 20h | Lendário, Tomate Podre e Obra de Arte | 60 min |
 
     A agenda fica em `eco.house.next` e sobrevive a reinícios. `auctionTick` roda a cada segundo, mas só entra na fila quando há algo vencido (`dueAuctions`).
   - **Lance (`bid`):**
@@ -175,12 +178,12 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
     - **Limites:** `maxActiveUserAuctions` (6) anúncios no Mercado e `maxActivePerUser` (2) por jogador, contando agendados e abertos.
     - **Desistir:** `unlist` só funciona antes do primeiro lance.
     - **Agendados:** abrem em `startDue`, chamado pelo `auctionTick`.
-  - **Teto por raridade** (`rarityCaps`: Lendário 2, Obra de Arte 1): `capCheck` conta as cópias que a conta tem e os leilões em que ela está na frente (ou tem lance secreto). Vale em todo lance e compra.
+  - **Teto por raridade** (`rarityCaps`: Lendário 2, Tomate Podre 1, Obra de Arte 1): `capCheck` conta as cópias que a conta tem e os leilões em que ela está na frente (ou tem lance secreto). Vale em todo lance e compra.
   - **Comprador fantasma** (`ghostBuyer`, `ghostPct` 0,9): só nas estreias da Casa. O teto escondido é o valor de referência × 0,9 (`ghostCeiling`).
     - Um lance abaixo do teto é coberto na hora pela Casa com +1 (`highBy: "house"`, nada fica reservado).
     - Se a Casa termina na frente, nada é emitido (`result.house`).
     - Não atua nos leilões dos jogadores: lá, a Casa comprando criaria dinheiro do nada, e a reserva secreta do dono já cumpre esse papel.
-  - **Pontos da coleção** (`collectionScore`): soma das notas de referência dos filmes (cada filme conta uma vez), mais os bônus de `collectionBonuses`:
+  - **Pontos da coleção** (`collectionScore`): soma dos pontos dos filmes (cada filme conta uma vez; a nota de referência, ou `10 − nota` no Tomate Podre), mais os bônus de `collectionBonuses`:
 
     | Bônus | Regra | Pontos |
     |---|---|---|
@@ -195,7 +198,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
 - Lotes: aleatório (Wikidata, com faixas de popularidade Famosos, Conhecidos e Garimpo), por categoria ou escolhidos a dedo. A prévia dos lotes fica escondida até alguém pedir para ver.
 
 ## Visual
-Tema de live stream. A base é ameixa escura (`--ground #150f1f`), o vermelho "no ar" é `--live #ff4f6d`, o dourado do dinheiro é `--coin #ffd166` e a menta da "sua vez" é `--mint #4be3b0`. Fontes: Unbounded nos títulos e Onest no texto. O lote aparece num "palco" 16:9 com o pôster desfocado ao fundo; os lances viram alertas, a venda vira o carimbo "Vendido!" e há chat com reações. O donate vira um alerta no topo da tela: `--lvl` cresce a cada real (tamanho, brilho, itens caindo, tempo na tela, notas do som) e as faixas `DON_TIERS` (1, 2, 3, 5, 8, 10, 15, 20, 30, 50 e 100 reais) trocam o visual e somam efeitos: tela tremendo, buzina, sirene, clarão, raios e voz lendo a mensagem. Os sons são gerados com Web Audio, sem arquivos, e o botão 🔊 do chat liga ou desliga (`ml-sound`). O chat tem seletor de emoji, e mensagens só de emoji aparecem grandes. O Mercado é organizado em abas no topo (`MTABS`): Painel, Estreias, Leilões, Coleção, Catálogo, Ranking, Carteira e Admin. A aba aberta fica em `S.mtab` (`ml-mtab`); qualquer botão com `data-mtab` troca de aba. Dentro das abas, os painéis usam `mpanel()` (sem esconder). O catálogo, a coleção e os últimos leilões encerrados têm dois modos, cada um com a própria escolha (`S.views`, salva em `ml-views`; o seletor é `viewToggle(chave)`): **Lista** (`filmRow`) e **Pôsteres** (`posterCard(f, {foot, detail, below, label})`: `foot` troca a linha do rodapé, `detail` soma ao detalhe, `below` põe botões embaixo do card, como Anunciar e Vender na coleção). No modo Pôsteres, a moldura do card mostra a raridade (cor de `--rar`; Lendário com reflexo; Obra de Arte com borda arco-íris animada), o rodapé mostra título, ano, nota e cópias, e os detalhes (`.pdetail`) sobem por cima do pôster com o mouse em cima ou com foco (toque no celular, Tab no teclado). O Painel resume tudo: números clicáveis (`stat`), temporada, "Acontecendo agora" (`liveNow` + `miniAuction`), top do ranking (`rankList`) e filmes recém-chegados (`filmStrip`). A tela inicial mostra a vitrine pública do Mercado (`marketShowcase`, atualizada a cada 20 s), com o convite "Criar conta e ganhar M$ 30". A tela de criar conta mostra as vantagens e o que está acontecendo ao lado do formulário. O pôster ampliado abre ao passar o mouse em qualquer `[data-zoom]` e fecha ao tirar o mouse, clicar fora ou apertar Esc.
+Tema de live stream. A base é ameixa escura (`--ground #150f1f`), o vermelho "no ar" é `--live #ff4f6d`, o dourado do dinheiro é `--coin #ffd166` e a menta da "sua vez" é `--mint #4be3b0`. Fontes: Unbounded nos títulos e Onest no texto. O lote aparece num "palco" 16:9 com o pôster desfocado ao fundo; os lances viram alertas, a venda vira o carimbo "Vendido!" e há chat com reações. O donate vira um alerta no topo da tela: `--lvl` cresce a cada real (tamanho, brilho, itens caindo, tempo na tela, notas do som) e as faixas `DON_TIERS` (1, 2, 3, 5, 8, 10, 15, 20, 30, 50 e 100 reais) trocam o visual e somam efeitos: tela tremendo, buzina, sirene, clarão, raios e voz lendo a mensagem. Os sons são gerados com Web Audio, sem arquivos, e o botão 🔊 do chat liga ou desliga (`ml-sound`). O chat tem seletor de emoji, e mensagens só de emoji aparecem grandes. O Mercado é organizado em abas no topo (`MTABS`): Painel, Estreias, Leilões, Coleção, Catálogo, Ranking, Carteira e Admin. A aba aberta fica em `S.mtab` (`ml-mtab`); qualquer botão com `data-mtab` troca de aba. Dentro das abas, os painéis usam `mpanel()` (sem esconder). O catálogo, a coleção e os últimos leilões encerrados têm dois modos, cada um com a própria escolha (`S.views`, salva em `ml-views`; o seletor é `viewToggle(chave)`): **Lista** (`filmRow`) e **Pôsteres** (`posterCard(f, {foot, detail, below, label})`: `foot` troca a linha do rodapé, `detail` soma ao detalhe, `below` põe botões embaixo do card, como Anunciar e Vender na coleção). No modo Pôsteres, a moldura do card mostra a raridade (cor de `--rar`; Lendário com reflexo; Obra de Arte com borda arco-íris animada; Tomate Podre com moldura verde de gosma e 🍅 no selo), o rodapé mostra título, ano, nota e cópias, e os detalhes (`.pdetail`) sobem por cima do pôster com o mouse em cima ou com foco (toque no celular, Tab no teclado). O Painel resume tudo: números clicáveis (`stat`), temporada, "Acontecendo agora" (`liveNow` + `miniAuction`), top do ranking (`rankList`) e filmes recém-chegados (`filmStrip`). A tela inicial mostra a vitrine pública do Mercado (`marketShowcase`, atualizada a cada 20 s), com o convite "Criar conta e ganhar M$ 30". A tela de criar conta mostra as vantagens e o que está acontecendo ao lado do formulário. O pôster ampliado abre ao passar o mouse em qualquer `[data-zoom]` e fecha ao tirar o mouse, clicar fora ou apertar Esc.
 
 ## Cuidados
 - O estado do cliente é salvo no `localStorage` com o prefixo `ml-` (token, nome, configuração, partida local, painéis escondidos em `ml-fold`, cache de metadados, `ml-sound` e `ml-auth`, que é o token da conta do Mercado).

@@ -187,17 +187,26 @@
     return { ref: round1(sum / wsum), n: vals.length, spread, unanimous: spread <= cfg.unanimityMaxSpread };
   }
   const rarityIndex = (key, cfg) => (cfg || CONFIG).rarities.findIndex((r) => r.key === key);
+  // faixa invertida (Tomate Podre): vale para nota de referência até `max`, em vez de a partir de `min`
+  const inverted = (r) => r.max != null;
   function rarityOf(ref, garimpo, n, cfg) {
     cfg = cfg || CONFIG;
-    const R = cfg.rarities, fits = (i) => !(R[i].requireScores > n);
+    const fits = (r) => !(r.requireScores > n);
+    // a faixa invertida vem antes de tudo, e o Garimpo não mexe nela
+    const low = cfg.rarities.find((r) => inverted(r) && ref <= r.max && fits(r));
+    if (low) return low.key;
+    const R = cfg.rarities.filter((r) => !inverted(r));
     let base = 0;
-    R.forEach((r, i) => { if (ref >= r.min && fits(i)) base = i; });
+    R.forEach((r, i) => { if (ref >= r.min && fits(r)) base = i; });
     if (!garimpo) return R[base].key;
     // o Garimpo sobe até o teto, mas nunca rebaixa
-    let up = Math.max(base, Math.min(base + cfg.garimpoBoost, rarityIndex(cfg.garimpoCap, cfg)));
-    while (up > base && !fits(up)) up--;
+    let up = Math.max(base, Math.min(base + cfg.garimpoBoost, R.findIndex((r) => r.key === cfg.garimpoCap)));
+    while (up > base && !fits(R[up])) up--;
     return R[up].key;
   }
+  const isGarimpo = (links, cfg) => links > 0 && links < cfg.garimpoBelowLinks;
+  // pontos do filme na coleção: a nota de referência; na faixa invertida, 10 − nota (quanto pior, mais vale)
+  const filmPoints = (f, cfg) => (inverted(rarity(f.rarity, cfg) || {}) ? Math.round((10 - f.ref) * 10) / 10 : f.ref);
   const rarity = (key, cfg) => (cfg || CONFIG).rarities[rarityIndex(key, cfg)] || null;
   // correções manuais (public/market-films.js) por cima do que veio do Wikidata
   function applyOverrides(film, overrides) {
@@ -217,7 +226,7 @@
     if (!r) return `O filme precisa de pelo menos ${cfg.minScores} notas para entrar no Mercado.`;
     const scores = {};
     Object.keys(SOURCES).forEach((k) => { const v = scoreOf(f.scores, k); if (v != null) scores[k] = v; });
-    const links = Math.max(0, Math.floor(+f.links || 0)), garimpo = links > 0 && links < cfg.garimpoBelowLinks;
+    const links = Math.max(0, Math.floor(+f.links || 0)), garimpo = isGarimpo(links, cfg);
     const key = rarityOf(r.ref, garimpo, r.n, cfg);
     const img = typeof f.img === "string" && /^https:\/\/upload\.wikimedia\.org\//.test(f.img) ? f.img.slice(0, 600) : null;
     eco.films[f.id] = {
@@ -276,9 +285,11 @@
       if (f.minted > 0) return;
       const r = refRating(f.scores, cfg);
       if (!r) return;
-      const key = rarityOf(r.ref, f.garimpo, r.n, cfg);
-      if (f.ref !== r.ref || f.rarity !== key) n++;
-      Object.assign(f, { ref: r.ref, spread: r.spread, unanimous: r.unanimous, rarity: key, supply: rarity(key, cfg).copies });
+      // o Garimpo também segue o config atual (quando o filme guardou o número de páginas)
+      const garimpo = f.links ? isGarimpo(f.links, cfg) : !!f.garimpo;
+      const key = rarityOf(r.ref, garimpo, r.n, cfg);
+      if (f.ref !== r.ref || f.rarity !== key || f.garimpo !== garimpo) n++;
+      Object.assign(f, { ref: r.ref, spread: r.spread, unanimous: r.unanimous, garimpo, rarity: key, supply: rarity(key, cfg).copies });
     });
     if (n) eco.seq++;
     return n;
@@ -335,7 +346,7 @@
   function collectionScore(eco, uid, now, cfg) {
     cfg = cfg || CONFIG;
     const films = [...new Set(Object.values(eco.copies).filter((c) => c.owner === uid).map((c) => c.film))].map((id) => eco.films[id]).filter(Boolean);
-    const base = Math.round(films.reduce((a, f) => a + f.ref, 0) * 10) / 10;
+    const base = Math.round(films.reduce((a, f) => a + filmPoints(f, cfg), 0) * 10) / 10;
     const groups = { series: (f) => f.series, director: (f) => f.dir, decade: (f) => decadeOf(f.year), genre: (f) => (f.g || [])[0] };
     const bonuses = [];
     Object.entries(cfg.collectionBonuses).forEach(([kind, b]) => {
@@ -724,7 +735,7 @@
   return { CONFIG, KINDS, WEEK, cleanName, nameKey, create, nextCycle, findByName, checkName, addUser, setAuth,
     addSession, sessionUser, revokeSession, revokeSessions, pruneSessions,
     credit, debit, reserve, release, capture, tick, supply, view, ledgerOf, balanceFromLedger,
-    SOURCES, parseScore, refRating, rarityOf, rarity, rarityIndex, applyOverrides,
+    SOURCES, parseScore, refRating, rarityOf, rarity, rarityIndex, filmPoints, applyOverrides,
     addFilm, mintCopy, transferCopy, copyLabel, collectionOf, catalogView, openFilms, refreeze, pruneCatalog,
     money, refValue, buybackPrice, sellToHouse,
     FORMATS, listCopy, unlist, listingCost, dutchPrice, startDue,

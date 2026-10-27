@@ -740,7 +740,7 @@ function rankingPanel(me) {
   if (!R) return "";
   const rows = R.ranking.map((r, i) => `<div class="rank-row ${r.id === me.id ? "me" : ""}"><span class="pos num">${i + 1}º</span><b>${esc(r.name)}</b>
     <span class="hint num">${r.films} ${r.films === 1 ? "filme" : "filmes"}</span><span class="chips">${bonusChips(r)}</span><b class="num total">${pts(r.total)}</b></div>`).join("");
-  return mpanel("ranking", "Ranking de colecionadores", `${seasonBanner()}<p class="hint">Pontos = soma das notas de referência dos seus filmes (cada filme conta uma vez) + bônus de conjunto + temporada.</p><div class="ranking">${rows}</div>`);
+  return mpanel("ranking", "Ranking de colecionadores", `${seasonBanner()}<p class="hint">Pontos = soma das notas de referência dos seus filmes (cada filme conta uma vez; um Tomate Podre vale 10 menos a nota dele) + bônus de conjunto + temporada.</p><div class="ranking">${rows}</div>`);
 }
 async function loadRanking() {
   const r = await N.call("market:ranking");
