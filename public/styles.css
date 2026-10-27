@@ -600,6 +600,63 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .sc-stats b { font-family: var(--display); color: var(--ink); font-size: 18px; margin-right: 4px; }
 .showcase .panel { background: color-mix(in srgb, var(--ground) 60%, var(--surface)); }
 
+/* ---------- catálogo em pôsteres: moldura por raridade, rodapé essencial, detalhes ao passar o mouse ---------- */
+.cat-tools { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 16px; }
+@media (max-width: 520px) { .pgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+/* a moldura é o fundo do card aparecendo em volta (padding); a cor vem de --rar */
+.pcard { position: relative; padding: 3px; border-radius: 14px; outline: none; cursor: default; min-width: 0;
+  background: linear-gradient(160deg, var(--rar), color-mix(in srgb, var(--rar) 25%, var(--surface)) 55%, color-mix(in srgb, var(--rar) 70%, var(--surface)));
+  transition: transform 0.15s, box-shadow 0.15s; }
+.pcard:hover, .pcard:focus-visible { transform: translateY(-3px); }
+.pcard:focus-visible { box-shadow: 0 0 0 2px var(--mint); }
+.pin { position: relative; border-radius: 11px; overflow: hidden; background: var(--ground); display: flex; flex-direction: column; height: 100%; }
+.pimg { position: relative; }
+.pimg .poster { border-radius: 0; }
+.pbadge { position: absolute; top: 8px; left: 8px; z-index: 1; font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--ground) 80%, transparent); color: var(--rar); border: 1px solid color-mix(in srgb, var(--rar) 60%, transparent); backdrop-filter: blur(6px); }
+.pfoot { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px 9px; border-top: 1px solid color-mix(in srgb, var(--rar) 45%, var(--line));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rar) 12%, var(--ground)), var(--ground)); }
+.pfoot .t { font-size: 13px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pfoot .meta { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 12px; color: var(--mute); }
+.pfoot .ref { font-family: var(--display); font-size: 14px; color: var(--rar); }
+.pfoot .meta.res { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* resultado de leilão */
+/* card com botões embaixo (coleção) */
+.pcell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pbelow { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; justify-content: center; }
+.pbelow .btn { flex: 1 1 auto; padding: 6px 8px; font-size: 12px; }
+.pbelow .pill { flex: none; }
+/* detalhes: sobem por cima do pôster */
+/* "safe": se o detalhe não couber, começa do topo (com rolagem) em vez de cortar o título */
+.pdetail { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; justify-content: safe flex-end; gap: 5px; padding: 12px; overflow-y: auto; scrollbar-width: thin;
+  background: linear-gradient(180deg, rgba(12, 8, 20, 0.55), rgba(12, 8, 20, 0.95) 35%); opacity: 0; transform: translateY(8px); transition: opacity 0.18s, transform 0.18s; pointer-events: none; }
+.pcard:hover .pdetail, .pcard:focus .pdetail, .pcard:focus-within .pdetail { opacity: 1; transform: none; pointer-events: auto; }
+.pbadge { transition: opacity 0.18s; }
+.pcard:hover .pbadge, .pcard:focus .pbadge, .pcard:focus-within .pbadge { opacity: 0; }
+.pdetail .t { font-family: var(--display); font-size: 15px; line-height: 1.15; }
+.pdetail .hint { font-size: 11.5px; }
+.pdetail .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.pdetail .tags > * { font-size: 10px; padding: 2px 7px; }
+.pscores { list-style: none; margin: 2px 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.pscores li { display: flex; justify-content: space-between; gap: 8px; }
+.pscores li span { color: var(--mute); }
+.pscores li.ref { border-top: 1px solid var(--line); padding-top: 3px; margin-top: 1px; }
+.pscores li.ref b { color: var(--rar); font-family: var(--display); }
+/* as faixas mais raras ganham brilho; Lendário com reflexo, Obra de Arte com borda arco-íris animada */
+.pcard.r-comum { background: linear-gradient(160deg, color-mix(in srgb, var(--rar) 55%, var(--surface)), var(--surface)); }
+.pcard.r-raro { box-shadow: 0 6px 22px color-mix(in srgb, var(--rar) 18%, transparent); }
+.pcard.r-epico { box-shadow: 0 8px 28px color-mix(in srgb, var(--rar) 28%, transparent); }
+.pcard.r-lendario { box-shadow: 0 10px 34px color-mix(in srgb, var(--rar) 35%, transparent); overflow: hidden; }
+.pcard.r-lendario::after { content: ""; position: absolute; inset: 0; border-radius: 14px; pointer-events: none; z-index: 3;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.22) 50%, transparent 65%); background-size: 250% 100%; animation: pShine 4s ease-in-out infinite; }
+.pcard.r-obra { background: linear-gradient(120deg, #ff4f6d, #ffd166, #4be3b0, #7aa7ff, #b48cff, #ff4f6d); background-size: 300% 300%; animation: pRainbow 6s linear infinite;
+  box-shadow: 0 10px 38px rgba(180, 140, 255, 0.35); }
+.pcard.r-obra .pbadge { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
+.pcard.r-obra .pfoot .ref, .pcard.r-obra .pscores li.ref b { color: var(--coin); }
+@keyframes pShine { 0%, 60% { background-position: 150% 0; } 100% { background-position: -50% 0; } }
+@keyframes pRainbow { to { background-position: 300% 0; } }
+@media (prefers-reduced-motion: reduce) { .pcard.r-lendario::after, .pcard.r-obra { animation: none; } .pcard, .pdetail { transition: none; } }
+
 /* ferramentas do admin */
 .adm-row { display: flex; gap: 4px; align-items: center; border-top: 1px dashed var(--line); padding-top: 6px; }
 .adm-row .btn { padding: 4px 8px; font-size: 13px; }

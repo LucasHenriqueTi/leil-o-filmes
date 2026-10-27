@@ -41,6 +41,8 @@ const S = {
   auth: store.get("ml-auth") || null, me: null, market: null,   // Mercado: token da conta, conta e carteira
   acct: { tab: "register", name: "", pass: "", busy: false, pwOld: "", pwNew: "" },
   mtab: store.get("ml-mtab") || "painel", showcase: null,   // Mercado: aba aberta e vitrine pública
+  // Lista ou Pôsteres em cada lugar (ml-catview era a escolha antiga, só do catálogo)
+  views: Object.assign({ catalog: store.get("ml-catview") || "list", collection: "list", recent: "list" }, store.get("ml-views") || {}),
   fold: Object.assign({ info: true, donate: true, rules: true }, store.get("ml-fold") || {}), // painéis escondidos (os três começam fechados)
   lastTop: null, zoom: {}
 };
@@ -681,11 +683,20 @@ function filmStrip(list) {
 
 /* ---------- Coleção e Carteira ---------- */
 function collectionPanel(m) {
+  const actions = (c, compact) => c.listed
+    ? `<span class="pill top">anunciada</span><button class="btn quiet" data-mtab="leiloes">${compact ? "Ver leilão" : "Ver no painel de leilões"}</button>`
+    : `<button class="btn" data-list="${esc(c.id)}">Anunciar</button><button class="btn ghost num" data-sell="${esc(c.id)}" title="A Casa paga ${Math.round(MC.buybackPct * 100)}% do valor de referência (${mny(c.value)})">${compact ? `Vender · ${mny(c.buyback)}` : `Vender para a Casa · ${mny(c.buyback)}`}</button>`;
+  const grid = S.views.collection === "grid";
+  const cards = grid
+    ? `<div class="pgrid">${m.collection.map((c) => posterCard(c.film, {
+        label: c.label,
+        foot: `<span class="meta num"><span>${esc(c.label)}</span><b class="ref">★ ${pts(c.film.ref)}</b></span>`,
+        detail: `<span class="hint num">Valor de referência ${mny(c.value)} · a Casa paga ${mny(c.buyback)}</span>`,
+        below: actions(c, true)
+      })).join("")}</div>`
+    : `<div class="mlist">${m.collection.map((c) => `<div class="citem">${filmRow(c.film, `<span class="serial num">${esc(c.label)}</span>`)}<div class="cact">${actions(c, false)}</div></div>`).join("")}</div>`;
   const body = scoreBox(m) + (m.collection.length
-    ? `<div class="mlist">${m.collection.map((c) => `<div class="citem">${filmRow(c.film, `<span class="serial num">${esc(c.label)}</span>`)}
-        <div class="cact">${c.listed
-          ? `<span class="pill top">anunciada</span><button class="btn quiet" data-mtab="leiloes">Ver no painel de leilões</button>`
-          : `<button class="btn" data-list="${esc(c.id)}">Anunciar</button><button class="btn ghost num" data-sell="${esc(c.id)}" title="A Casa paga ${Math.round(MC.buybackPct * 100)}% do valor de referência (${mny(c.value)})">Vender para a Casa · ${mny(c.buyback)}</button>`}</div></div>`).join("")}</div>`
+    ? `<div class="cat-tools"><span class="label">Suas cópias</span>${viewToggle("collection")}</div>${cards}`
     : `<div class="curtain"><div><b>Nenhum filme ainda</b><p>Suas cópias chegam pelas estreias da Casa e pelos leilões dos jogadores.</p></div><button class="btn coin" data-mtab="estreias">Ver estreias</button></div>`);
   return mpanel("collection", "Coleção", body, m.collection.length ? `<span class="hint num">${m.collection.length} ${m.collection.length === 1 ? "cópia" : "cópias"}</span>` : "");
 }
@@ -760,9 +771,48 @@ function catalogPanel(me) {
   const body = !c.films.length
     ? `<div class="curtain"><div><b>${c.refilling ? "A Casa está escolhendo os filmes…" : "Catálogo vazio"}</b><p>A Casa sorteia filmes com pelo menos ${MC.minScores} notas (IMDb, Metacritic ou Rotten Tomatoes) e cadastra sozinha.</p></div></div>`
     : `<p class="hint">Cada filme tem uma tiragem limitada de cópias numeradas, definida pela raridade. A nota de referência é a média das notas disponíveis.</p>
-       <div class="seg" role="group" aria-label="Filtrar por raridade">${opts.map(([k, l]) => `<button type="button" data-catf="${k}" aria-pressed="${flt === k}">${esc(l)}</button>`).join("")}</div>
-       <div class="mlist">${list.map((f) => filmRow(f, copies(f))).join("")}</div>`;
+       <div class="cat-tools"><div class="seg" role="group" aria-label="Filtrar por raridade">${opts.map(([k, l]) => `<button type="button" data-catf="${k}" aria-pressed="${flt === k}">${esc(l)}</button>`).join("")}</div>
+         ${viewToggle("catalog")}</div>
+       ${S.views.catalog === "grid" ? `<div class="pgrid">${list.map((f) => posterCard(f)).join("")}</div>` : `<div class="mlist">${list.map((f) => filmRow(f, copies(f))).join("")}</div>`}`;
   return mpanel("catalog", "Filmes do Mercado", body, admin);
+}
+// Lista ou Pôsteres: cada lugar (catálogo, coleção, últimos leilões) guarda a própria escolha em ml-views
+function viewToggle(key) {
+  const grid = S.views[key] === "grid";
+  return `<div class="seg" role="group" aria-label="Modo de exibição"><button type="button" data-view="${key}:list" aria-pressed="${!grid}">☰ Lista</button><button type="button" data-view="${key}:grid" aria-pressed="${grid}">▦ Pôsteres</button></div>`;
+}
+// modo Pôsteres: só o pôster com moldura da raridade e um rodapé essencial; os detalhes sobem ao passar o mouse
+// (ou ao tocar/focar, no celular e no teclado). o.foot troca a linha do rodapé, o.detail soma ao detalhe
+// e o.below põe botões embaixo do card (fora da moldura).
+function posterCard(f, o) {
+  o = o || {};
+  const hot = hotGenre() && (f.g || []).includes(hotGenre());
+  const tags = `${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip">Garimpo</span>` : ""}${hot ? `<span class="chip hot">🔥 em alta</span>` : ""}`;
+  const scores = Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null).map(([k, n]) => `<li><span>${esc(n)}</span><b class="num">${pts(f.scores[k])}</b></li>`).join("");
+  const card = `<article class="pcard r-${esc(f.rarity)}" tabindex="0" aria-label="${esc(f.title)}, ${esc(rarName(f.rarity))}, nota ${pts(f.ref)}${o.label ? ", " + esc(o.label) : ""}">
+    <div class="pin">
+      <div class="pimg">${poster(f)}<span class="pbadge">${esc(rarName(f.rarity))}</span>
+        <div class="pdetail">
+          <b class="t">${esc(f.title)}</b>${f.orig && f.orig !== f.title ? `<span class="hint">${esc(f.orig)}</span>` : ""}
+          <span class="hint">${esc(f.year)}${f.dir ? " · " + esc(f.dir) : ""}</span>
+          <div class="tags">${tags}</div>
+          <ul class="pscores">${scores}<li class="ref"><span>Referência</span><b class="num">${pts(f.ref)}</b></li></ul>
+          ${(f.g || []).length ? `<span class="hint">${esc(f.g.slice(0, 3).join(" · "))}</span>` : ""}
+          ${f.series ? `<span class="hint">Série: ${esc(f.series)}</span>` : ""}
+          <span class="hint num">${f.minted} de ${f.supply} ${f.supply === 1 ? "cópia emitida" : "cópias emitidas"}${f.house ? ` · ${f.house} no estoque da Casa` : ""}</span>
+          ${o.detail || ""}
+        </div>
+      </div>
+      <div class="pfoot"><b class="t">${esc(f.title)}</b>${o.foot || `<span class="meta num"><span>${esc(f.year)}</span><b class="ref">★ ${pts(f.ref)}</b><span title="cópias emitidas">${f.minted}/${f.supply}</span></span>`}</div>
+    </div>
+  </article>`;
+  return o.below ? `<div class="pcell">${card}<div class="pbelow">${o.below}</div></div>` : card;
+}
+// resultado curto de um leilão encerrado (rodapé do pôster)
+function resultShort(a) {
+  const r = a.result || {};
+  if (r.winner) return `🏆 ${esc(r.winnerName)} · <b class="ref">${mny(r.price)}</b>`;
+  return a.status === "canceled" ? "cancelado" : r.house ? "a Casa ficou na frente" : r.reserveMissed ? "reserva não atingida" : "sem lances";
 }
 /* ---------- estreias da Casa: leilões que emitem as cópias ---------- */
 const EVENT_ICON = { day: "🎟️", week: "🎬", month: "🏆" };
@@ -809,7 +859,7 @@ function auctionCard(a, me) {
 // resultado de um leilão encerrado, com os lances secretos revelados
 function resultText(a) {
   const r = a.result || {};
-  const who = r.winner ? `${esc(r.winnerName)} levou por <b class="num">${mny(r.price)}</b>` : a.status === "canceled" ? "cancelado" : r.reserveMissed ? "não atingiu a reserva" : "sem lances";
+  const who = r.winner ? `${esc(r.winnerName)} levou por <b class="num">${mny(r.price)}</b>` : a.status === "canceled" ? "cancelado" : r.house ? "a Casa ficou na frente" : r.reserveMissed ? "não atingiu a reserva" : "sem lances";
   const rev = r.reveal && r.reveal.length ? `<br><small>lances: ${r.reveal.map((b) => `${esc(b.name)} ${mny(b.v)}`).join(", ")}</small>` : "";
   return `<span class="hint">${a.kind === "user" ? `${FMT_ICO[a.format]} de ${esc(a.sellerName)} · ` : ""}${who}${rev}</span>`;
 }
@@ -894,11 +944,14 @@ function auctionsPanel(me) {
   const A = S.auctions;
   if (!A) return mpanel("auctions", "Estreias da Casa", `<p class="hint">Carregando as estreias…</p>`);
   const next = MC.estreias.filter((ev) => A.next[ev.key]).map((ev) => `${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}: ${esc(fmtWhen(A.next[ev.key]))}`);
-  const recent = A.recent.slice(0, 4).map((a) => filmRow(a.film, resultText(a)));
+  const recentGrid = S.views.recent === "grid";
+  const recent = A.recent.slice(0, recentGrid ? 7 : 4).map((a) => recentGrid
+    ? posterCard(a.film, { label: "leilão encerrado", foot: `<span class="meta res">${resultShort(a)}</span>`, detail: `<span class="hint">${a.kind === "user" ? `${FMT_ICO[a.format]} ${esc(a.formatName)}` : `${EVENT_ICON[a.event] || "🎬"} ${esc(a.eventName || "")}`}${a.lot ? ` · ${esc(a.lot)}` : ""}</span>${resultText(a)}` })
+    : filmRow(a.film, resultText(a)));
   const body = `<p class="hint">Cada estreia leiloa uma cópia. Lance nos últimos ${MC.extendWindowSec} s soma mais ${MC.extendBySec} s ao relógio. O lance fica reservado na sua carteira; se alguém passar, ele volta na hora. Quem vence paga e recebe a cópia.</p>
     ${A.open.length ? `<div class="auctions">${A.open.map((a) => auctionCard(a, me)).join("")}</div>` : `<div class="curtain"><div><b>Nenhuma estreia aberta agora</b><p>A Casa abre uma por dia, uma por semana e uma por mês.</p></div></div>`}
     ${next.length ? `<p class="hint">Próximas: ${next.join(" · ")}</p>` : ""}
-    ${recent.length ? `<span class="label">Últimos leilões encerrados</span><div class="mlist">${recent.join("")}</div>` : ""}`;
+    ${recent.length ? `<div class="cat-tools"><span class="label">Últimos leilões encerrados</span>${viewToggle("recent")}</div><div class="${recentGrid ? "pgrid" : "mlist"}">${recent.join("")}</div>` : ""}`;
   return mpanel("auctions", "Estreias da Casa", body, A.open.length ? `<span class="pill in">${A.open.length} ${A.open.length === 1 ? "aberta" : "abertas"}</span>` : "");
 }
 async function loadAuctions() {
@@ -1313,6 +1366,7 @@ $app.addEventListener("click", async (e) => {
   if (d.mtab) { S.mtab = d.mtab; store.set("ml-mtab", d.mtab); S.mode = "market"; render(); window.scrollTo(0, 0); return; }
   if (d.acctTab) { S.acct.tab = d.acctTab; S.ui.err = ""; render(); document.getElementById("au-name")?.focus(); return; }
   if (d.catf) { S.ui.catFilter = d.catf; return render(); }
+  if (d.view) { const [k, mode] = d.view.split(":"); S.views[k] = mode; store.set("ml-views", S.views); return render(); }
   if (d.list) return openListForm(d.list);
   if (d.lfFormat && listDraft) { listDraft.format = d.lfFormat; listDraft.err = ""; return render(); }
   if (d.lfWhen && listDraft) { listDraft.schedule = d.lfWhen === "later"; return render(); }

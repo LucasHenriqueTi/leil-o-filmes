@@ -146,10 +146,10 @@ Dentro do Mercado, as abas no topo separam cada assunto:
 | Aba | O que tem |
 |---|---|
 | Painel | Resumo: saldo, pontos, coleção, o que está ao vivo, ranking e novidades. |
-| Estreias | As estreias da Casa. |
+| Estreias | As estreias da Casa e os últimos leilões encerrados (em lista ou em pôsteres, com o resultado no rodapé). |
 | Leilões | Leilões entre jogadores. |
-| Coleção | Suas cópias, com os botões de anunciar e de vender para a Casa. |
-| Catálogo | Os filmes do Mercado. |
+| Coleção | Suas cópias, em lista ou em pôsteres (com o número da cópia no rodapé), com os botões de anunciar e de vender para a Casa. |
+| Catálogo | Os filmes do Mercado, em **Lista** ou em **Pôsteres**. Nos pôsteres, a moldura indica a raridade (Lendário brilha, Obra de Arte tem borda arco-íris), o rodapé traz título, ano, nota e cópias, e passar o mouse (ou tocar) mostra os detalhes. |
 | Ranking | Ranking de colecionadores e temporada. |
 | Carteira | Saldo, extrato e senha. |
 | Admin | Só para admins. |
