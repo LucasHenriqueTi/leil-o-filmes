@@ -666,7 +666,7 @@ function miniAuction(a, mode) {
   const goto = mode === "join" ? `data-act="market-join" data-after="${user ? "leiloes" : "estreias"}"` : `data-mtab="${user ? "leiloes" : "estreias"}"`;
   return `<button type="button" class="mini r-${esc(f.rarity)}" ${goto}>
     <span class="mp">${poster(f)}</span>
-    <span class="mi"><span class="ev">${who}</span><b class="t">${esc(f.title)}</b><span class="tags">${rarBadge(f.rarity)}<span class="hint num">${esc(a.lot)}</span></span></span>
+    <span class="mi"><span class="ev">${who}</span><b class="t">${esc(f.title)}</b>${genreLine(f, 2)}<span class="tags">${rarBadge(f.rarity)}${isHot(f) ? `<span class="chip hot">🔥 em alta</span>` : ""}<span class="hint num">${esc(a.lot)}</span></span></span>
     <span class="mr"><span class="clock num" data-clock="${a.endsAt}"></span>${price}<span class="hint">${fmt === "dutch" ? "preço agora" : secret ? "secretos" : a.highBy ? (a.highBy === "house" ? "da Casa" : a.mine ? "seu lance" : "maior lance") : "lance mínimo"}</span></span>
   </button>`;
 }
@@ -752,15 +752,18 @@ async function loadRanking() {
 }
 
 /* ---------- catálogo do Mercado: raridade, notas e tiragem ---------- */
-const hotGenre = () => (S.ranking && S.ranking.season ? S.ranking.season.genre : null);
+const hotGenre = () => { const s = (S.ranking && S.ranking.season) || (S.showcase && S.showcase.season); return s ? s.genre : null; };
+const isHot = (f) => !!hotGenre() && (f.g || []).includes(hotGenre());
+const hotChip = (f) => (isHot(f) ? `<span class="chip hot" tabindex="0" ${tipAttr(`Gênero da temporada (<b>${esc(hotGenre())}</b>): vale +${MC.seasonPts} pontos na coleção e ${Math.round((MC.seasonValueBoost - 1) * 100)}% a mais no valor de referência.`)}>🔥 em alta</span>` : "");
+const genreLine = (f, n) => ((f.g || []).length ? `<span class="hint genres">${esc(f.g.slice(0, n || 3).join(" · "))}</span>` : "");
 const rarName = (k) => (MK.rarity(k) || {}).name || k;
 const rarBadge = (k) => `<span class="rar r-${esc(k)}">${esc(rarName(k))}</span>`;
 const filmScores = (f) => Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null).map(([k, n]) => `${n} ${pts(f.scores[k])}`).join(" · ");
 function filmRow(f, side) {
   return `<div class="mfilm r-${esc(f.rarity)}"><div class="ph">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}</div>
     <div class="meta"><b>${esc(f.title)}</b><span class="hint">${esc(f.year)}${f.dir ? " · " + esc(f.dir) : ""}</span>
-      <div class="tags">${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal" title="As notas quase não discordam">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip" title="Pouco lembrado: subiu uma raridade">Garimpo</span>` : ""}${hotGenre() && (f.g || []).includes(hotGenre()) ? `<span class="chip hot" title="Gênero da temporada: vale mais pontos e mais no valor de referência">🔥 em alta</span>` : ""}</div>
-      <span class="hint num">${esc(filmScores(f))}</span></div>
+      <div class="tags">${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal" title="As notas quase não discordam">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip" title="Pouco lembrado: subiu uma raridade">Garimpo</span>` : ""}${hotChip(f)}</div>
+      ${genreLine(f)}<span class="hint num">${esc(filmScores(f))}</span></div>
     <div class="ref"><b class="num">${pts(f.ref)}</b>${side || ""}</div></div>`;
 }
 function catalogPanel(me) {
@@ -789,8 +792,7 @@ function viewToggle(key) {
 // e o.below põe botões embaixo do card (fora da moldura).
 function posterCard(f, o) {
   o = o || {};
-  const hot = hotGenre() && (f.g || []).includes(hotGenre());
-  const tags = `${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip">Garimpo</span>` : ""}${hot ? `<span class="chip hot">🔥 em alta</span>` : ""}`;
+  const tags = `${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip">Garimpo</span>` : ""}${hotChip(f)}`;
   const scores = Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null).map(([k, n]) => `<li><span>${esc(n)}</span><b class="num">${pts(f.scores[k])}</b></li>`).join("");
   const card = `<article class="pcard r-${esc(f.rarity)}" tabindex="0" aria-label="${esc(f.title)}, ${esc(rarName(f.rarity))}, nota ${pts(f.ref)}${o.label ? ", " + esc(o.label) : ""}">
     <div class="pin">
@@ -1366,7 +1368,7 @@ function copyText(text, msg) {
 
 /* ---------- eventos ---------- */
 $app.addEventListener("click", async (e) => {
-  const b = e.target.closest("button, [data-zoom]"); if (!b) return;
+  const b = e.target.closest("button, [data-zoom], [data-tip]"); if (!b) return;
   const d = b.dataset;
   if (d.zoom) { const r = b.getBoundingClientRect(); if (zoomKey === d.zoom) hideZoom(); else showZoom(d.zoom, r.right, r.top + r.height / 2); return; }
   if (d.tip != null) { if (tipFor === b && !HOVER.matches) hideTip(); else showTip(b); return; }

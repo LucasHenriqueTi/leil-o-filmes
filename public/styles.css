@@ -734,3 +734,7 @@ button.season:hover, button.season:focus-visible { border-color: var(--live); }
   #app.shaking > main { animation: none; }
   .btn, .zoom .poster, .switch .knob, .switch .knob::after { transition: none; }
 }
+/* gêneros do filme nas listas, nos cards de leilão e no "Acontecendo agora" */
+.hint.genres { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini .tags { flex-wrap: wrap; }
+.chip.hot[data-tip] { cursor: help; }
