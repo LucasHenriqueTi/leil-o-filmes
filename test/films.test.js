@@ -8,7 +8,7 @@ const W = "http://www.wikidata.org/entity/";
 
 const info = [
   { imdb: lit("tt0068646"), links: lit("133"), tpt: lit("The Godfather"), ten: lit("The Godfather"), d: lit("1972-03-15T00:00:00Z"), dir: lit("Francis Ford Coppola"),
-    genres: lit("filme de drama|filme sobre crimes|filme de drama"), enArt: uri("https://en.wikipedia.org/wiki/The_Godfather"), seriesPt: lit("O Padrinho"), seriesEn: lit("The Godfather trilogy") },
+    genres: lit("filme de drama|filme sobre crimes|filme de drama"), enArt: uri("https://en.wikipedia.org/wiki/The_Godfather"), seriesPt: lit("O Padrinho"), seriesEn: lit("The Godfather trilogy"), awards: lit(W + "Q102427|" + W + "Q103916|" + W + "Q999"), nac: lit("0") },
   { imdb: lit("tt1375666"), links: lit("97"), tptbr: lit("A Origem"), tpt: lit("Inception"), ten: lit("Inception"), d: lit("2010-07-08T00:00:00Z"),
     genres: lit("filme de ficção científica"), ptArt: uri("https://pt.wikipedia.org/wiki/Inception_(filme)") },
   { imdb: lit("tt0050083"), links: lit("30"), tpt: lit("12 Angry Men"), ten: lit("12 Angry Men"), d: lit("1957-04-10T00:00:00Z"),
@@ -42,6 +42,8 @@ assert.strictEqual(gf.links, 133);
 assert.deepStrictEqual(gf.articles, { pt: "", en: "The Godfather" });
 assert.strictEqual(gf.series, "O Padrinho", "série em português primeiro");
 assert.strictEqual(byId.tt1375666.series, "", "sem série");
+assert.deepStrictEqual([gf.oscars, gf.nacional, byId.tt1375666.oscars], [["filme", "atuacao"], false, []], "Oscars por família (prêmio desconhecido fica de fora) e cinema nacional");
+assert.deepStrictEqual(F.oscarFamilies(W + "Q22752811|" + W + "Q41417"), ["roteiro", "musica"], "versões antigas entram na família, na ordem das famílias");
 
 const inc = byId.tt1375666;
 assert.strictEqual(inc.title, "A Origem", "rótulo pt-BR primeiro");

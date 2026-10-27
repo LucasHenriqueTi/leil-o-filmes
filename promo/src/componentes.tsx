@@ -61,15 +61,17 @@ export const Legenda: React.FC<{ texto: string; at?: number; size?: number; alig
 
 // captura real do app numa moldura, com um leve zoom
 // maxH recorta a captura pela altura (mostra só o topo); celular põe a moldura de um aparelho
-export const Tela: React.FC<{ src: string; width: number; at?: number; zoom?: number; radius?: number; maxH?: number; celular?: boolean; children?: React.ReactNode }> = ({ src, width, at = 0, zoom = 0.04, radius = 22, maxH, celular, children }) => {
+// base: com maxH, mostra o fim da captura em vez do começo
+export const Tela: React.FC<{ src: string; width: number; at?: number; zoom?: number; radius?: number; maxH?: number; celular?: boolean; base?: boolean; children?: React.ReactNode }> = ({ src, width, at = 0, zoom = 0.04, radius = 22, maxH, celular, base, children }) => {
   const f = useCurrentFrame(), { fps, durationInFrames } = useVideoConfig();
   const s = spring({ frame: f - at, fps, config: { damping: 18 } });
   const z = 1 + interpolate(f, [at, durationInFrames], [0, zoom], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const borda = celular ? `${width * 0.025}px solid #07040c` : `2px solid ${C.line}`;
   return (
     <div style={{ position: "relative", width, maxHeight: maxH, borderRadius: celular ? width * 0.1 : radius, overflow: "hidden", border: borda, boxShadow: "0 30px 90px rgba(0,0,0,0.6)", flexShrink: 0,
+      display: base ? "flex" : "block", flexDirection: "column", justifyContent: "flex-end",
       opacity: s, transform: `translateY(${(1 - s) * 60}px) scale(${z})` }}>
-      <Img src={staticFile(src)} style={{ width: "100%", display: "block" }} />
+      <Img src={staticFile(src)} style={{ width: "100%", display: "block", flexShrink: 0 }} />
       {children}
     </div>
   );
@@ -125,18 +127,20 @@ export const CardRaridade: React.FC<{ title: string; year: number; nota: string;
   const f = useCurrentFrame(), { fps } = useVideoConfig();
   const s = spring({ frame: f - at, fps, config: { damping: 13 } });
   if (f < at) return <div style={{ width }} />;
-  const r = RARIDADES[raridade], obra = raridade === "obra", lend = raridade === "lendario";
+  const r = RARIDADES[raridade], obra = raridade === "obra", lend = raridade === "lendario", podre = raridade === "podre";
+  // Obra de Arte: arco-íris; Tomate Podre: gosma verde escorrendo (as mesmas molduras do app)
   const frame = obra
     ? `linear-gradient(${f * 3}deg, #ff4f6d, #ffd166, #4be3b0, #7aa7ff, #b48cff, #ff4f6d)`
+    : podre ? `linear-gradient(${160 + f * 2}deg, #8bc34a, #4e5d1c 35%, #7a4a1d 60%, #8bc34a)`
     : `linear-gradient(160deg, ${r.color}, ${r.color}55 55%, ${r.color}bb)`;
-  const brilho = obra ? "0 0 60px rgba(180,140,255,0.55)" : lend ? `0 0 46px ${C.coin}66` : raridade === "epico" ? "0 0 32px #b48cff55" : "0 14px 40px rgba(0,0,0,0.4)";
+  const brilho = obra ? "0 0 60px rgba(180,140,255,0.55)" : podre ? "0 0 50px rgba(139,195,74,0.45)" : lend ? `0 0 46px ${C.coin}66` : raridade === "epico" ? "0 0 32px #b48cff55" : "0 14px 40px rgba(0,0,0,0.4)";
   return (
     <div style={{ width, padding: width * 0.02, borderRadius: width * 0.09, background: frame, boxShadow: brilho, opacity: s,
       transform: `translateY(${(1 - s) * 80}px) scale(${(destaque ? 1.08 : 1) * interpolate(s, [0, 1], [0.8, 1])})` }}>
       <div style={{ borderRadius: width * 0.075, overflow: "hidden", background: C.ground, position: "relative" }}>
         <Poster title={title} year={year} width={width * 0.96} />
         <span style={{ position: "absolute", top: width * 0.05, left: width * 0.05, fontFamily: BODY, fontWeight: 800, fontSize: width * 0.065, letterSpacing: "0.06em", textTransform: "uppercase",
-          padding: `${width * 0.02}px ${width * 0.05}px`, borderRadius: 999, background: "rgba(21,15,31,0.82)", color: obra ? "#fff" : r.color, border: `1px solid ${obra ? "#fff9" : r.color + "99"}` }}>{r.name}</span>
+          padding: `${width * 0.02}px ${width * 0.05}px`, borderRadius: 999, background: "rgba(21,15,31,0.82)", color: obra ? "#fff" : r.color, border: `1px solid ${obra ? "#fff9" : r.color + "99"}` }}>{podre ? "🍅 " : ""}{r.name}</span>
         <div style={{ padding: `${width * 0.05}px ${width * 0.06}px`, borderTop: `1px solid ${r.color}66`, background: `linear-gradient(180deg, ${r.color}22, ${C.ground})` }}>
           <div style={{ fontFamily: BODY, fontWeight: 700, fontSize: width * 0.075, color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: BODY, fontSize: width * 0.065, color: C.mute }}>
@@ -178,8 +182,8 @@ export const Reacoes: React.FC<{ from: number; n?: number; size: number; area: {
 // pôsteres reais caindo ao fundo
 export const ChuvaDePosteres: React.FC<{ n?: number; opacity?: number }> = ({ n = 12, opacity = 0.35 }) => {
   const f = useCurrentFrame(), { width, height } = useVideoConfig();
-  const titulos = ["Em Busca do Ouro", "Interestelar", "O Garoto", "A Origem", "Asas", "Crepúsculo", "Sherlock Jr.", "Transformers", "Viagem à Lua", "Kung Fu Panda",
-    "Aurora", "O Poderoso Chefão", "Steamboat Bill, Jr.", "Um Sonho de Liberdade", "Piratas do Caribe", "Batman"];
+  const titulos = ["Pulp Fiction", "Interestelar", "Cidade de Deus", "A Origem", "Clube da Luta", "Crepúsculo", "Gladiador", "Transformers", "Bacurau", "Kung Fu Panda",
+    "Forrest Gump", "O Poderoso Chefão", "Donnie Darko", "Um Sonho de Liberdade", "Piratas do Caribe", "Batman", "Em Busca do Ouro", "Central do Brasil"];
   return (
     <AbsoluteFill style={{ opacity, overflow: "hidden" }}>
       {Array.from({ length: n }, (_, i) => {

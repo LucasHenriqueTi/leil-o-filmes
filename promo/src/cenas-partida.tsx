@@ -165,3 +165,23 @@ export const CenaVotacao: React.FC = () => {
     </AbsoluteFill>
   );
 };
+
+/* mesmo aparelho: sem internet, todo mundo joga passando o celular */
+export const CenaMesmoAparelho: React.FC = () => {
+  const { vertical, u } = useFormato();
+  const fs = (vertical ? 30 : 28) * u;
+  return (
+    <AbsoluteFill>
+      <Fundo tom={C.coin} />
+      <AbsoluteFill style={{ ...centro, flexDirection: vertical ? "column" : "row", gap: (vertical ? 50 : 90) * u, padding: 70 * u }}>
+        <div style={{ maxWidth: (vertical ? 960 : 760) * u, display: "flex", flexDirection: "column", gap: 30 * u, alignItems: vertical ? "center" : "flex-start" }}>
+          <Legenda texto="Sem internet? *Todo mundo no mesmo aparelho*." size={(vertical ? 76 : 70) * u} align={vertical ? "center" : "left"} />
+          <div style={{ display: "flex", gap: 12 * u, flexWrap: "wrap", justifyContent: vertical ? "center" : "flex-start" }}>
+            <Chip texto="📱 Passa a vez" at={36} size={fs} cor={C.coin} /><Chip texto="✉️ Lance secreto escondido" at={50} size={fs} cor={C.coin} /><Chip texto="↩️ Dá para desfazer" at={64} size={fs} cor={C.coin} />
+          </div>
+        </div>
+        <Tela src="telas/local-jogadores-v.png" width={(vertical ? 760 : 620) * u} at={8} zoom={0.03} radius={24} />
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};

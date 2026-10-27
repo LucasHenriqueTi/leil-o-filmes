@@ -233,6 +233,7 @@
       id: f.id, title: str(f.title, 140) || "Sem título", orig: str(f.orig, 140), year: Math.floor(+f.year) || "", dir: str(f.dir, 140),
       g: (Array.isArray(f.g) ? f.g : []).slice(0, 8).map((x) => str(x, 32)), img, wiki: str(f.wiki, 200), links, series: str(f.series, 140),
       scores, ref: r.ref, spread: r.spread, unanimous: r.unanimous, garimpo, rarity: key,
+      cult: !!f.cult, nacional: !!f.nacional, oscars: oscarList(f.oscars, cfg),
       supply: rarity(key, cfg).copies, minted: 0, addedAt: now
     };
     eco.seq++;
@@ -262,7 +263,25 @@
     return null;
   }
   const copyLabel = (eco, c) => `cópia ${c.serial}/${eco.films[c.film].supply}`;
-  const filmCard = (f) => ({ id: f.id, title: f.title, orig: f.orig, year: f.year, dir: f.dir, g: f.g, img: f.img, wiki: f.wiki, series: f.series || "", scores: f.scores, ref: f.ref, spread: f.spread, unanimous: f.unanimous, garimpo: f.garimpo, rarity: f.rarity, supply: f.supply, minted: f.minted });
+  // famílias de Oscar que o filme ganhou (só as conhecidas no config, na ordem do config)
+  const oscarList = (v, cfg) => { const got = new Set(Array.isArray(v) ? v : []); return Object.keys((cfg || CONFIG).oscarFamilies || {}).filter((k) => got.has(k)); };
+  // tags do filme (Cult, Nacional…): as chaves de cfg.filmTags que o filme tem
+  const filmTags = (f, cfg) => Object.keys((cfg || CONFIG).filmTags || {}).filter((k) => f[k]);
+  // atualiza as tags dos filmes do catálogo: { id: { cult, nacional, oscars } } (só as chaves que vierem)
+  function applyTags(eco, byId) {
+    let n = 0;
+    Object.entries(byId || {}).forEach(([id, t]) => {
+      const f = eco.films[id];
+      if (!f) return;
+      Object.entries(t).forEach(([k, v]) => {
+        const nv = k === "oscars" ? oscarList(v) : !!v;
+        if (JSON.stringify(f[k]) !== JSON.stringify(nv)) { f[k] = nv; n++; }
+      });
+    });
+    if (n) eco.seq++;
+    return n;
+  }
+  const filmCard = (f) => ({ id: f.id, title: f.title, orig: f.orig, year: f.year, dir: f.dir, g: f.g, img: f.img, wiki: f.wiki, series: f.series || "", scores: f.scores, ref: f.ref, spread: f.spread, unanimous: f.unanimous, garimpo: f.garimpo, rarity: f.rarity, supply: f.supply, minted: f.minted, tags: filmTags(f), oscars: f.oscars || [] });
   const byRarity = (a, b) => rarityIndex(b.rarity) - rarityIndex(a.rarity) || b.ref - a.ref || a.title.localeCompare(b.title);
   function collectionOf(eco, uid, now) {
     return Object.values(eco.copies).filter((c) => c.owner === uid)
@@ -343,16 +362,26 @@
 
   /* ---------- pontuação da coleção e ranking ---------- */
   const decadeOf = (y) => (+y ? `anos ${Math.floor(+y / 10) * 10}` : "");
+  // pontos de um conjunto com n filmes: começa em pts e sobe step por filme a mais, até max
+  const setPoints = (b, n) => (n < b.n ? 0 : Math.min(b.max == null ? Infinity : b.max, b.pts + (n - b.n) * (b.step || 0)));
   function collectionScore(eco, uid, now, cfg) {
     cfg = cfg || CONFIG;
     const films = [...new Set(Object.values(eco.copies).filter((c) => c.owner === uid).map((c) => c.film))].map((id) => eco.films[id]).filter(Boolean);
     const base = Math.round(films.reduce((a, f) => a + filmPoints(f, cfg), 0) * 10) / 10;
     const groups = { series: (f) => f.series, director: (f) => f.dir, decade: (f) => decadeOf(f.year), genre: (f) => (f.g || [])[0] };
+    const isTag = (kind) => !!(cfg.filmTags || {})[kind];
     const bonuses = [];
     Object.entries(cfg.collectionBonuses).forEach(([kind, b]) => {
-      const count = {};
-      films.forEach((f) => { const k = groups[kind](f); if (k) count[k] = (count[k] || 0) + 1; });
-      Object.entries(count).forEach(([label, n]) => { if (n >= b.n) bonuses.push({ kind, name: b.name, label, n, pts: b.pts }); });
+      const count = {}, key = isTag(kind) ? (f) => (f[kind] ? kind : "") : groups[kind];
+      films.forEach((f) => { const k = key(f); if (k) count[k] = (count[k] || 0) + 1; });
+      // nas tags o próprio nome do bônus já diz tudo (sem rótulo)
+      Object.entries(count).forEach(([label, n]) => { if (n >= b.n) bonuses.push({ kind, name: b.name, label: isTag(kind) ? "" : label, n, pts: setPoints(b, n) }); });
+    });
+    // Oscar: cada família (Melhor filme, Atuação, Roteiro…) é um conjunto
+    const os = cfg.oscarSet;
+    if (os) Object.entries(cfg.oscarFamilies || {}).forEach(([fam, o]) => {
+      const n = films.filter((f) => (f.oscars || []).includes(fam)).length;
+      if (n >= os.n) bonuses.push({ kind: "oscar", fam, name: os.name, label: o.name, icon: o.icon, n, pts: setPoints(os, n) });
     });
     const s = season(eco, now, cfg), hot = films.filter((f) => (f.g || []).includes(s.genre)).length;
     if (hot) bonuses.push({ kind: "season", name: "Temporada", label: s.genre, n: hot, pts: hot * cfg.seasonPts });
@@ -759,10 +788,10 @@
   return { CONFIG, KINDS, WEEK, cleanName, nameKey, create, nextCycle, findByName, checkName, addUser, setAuth,
     addSession, sessionUser, revokeSession, revokeSessions, pruneSessions,
     credit, debit, reserve, release, capture, tick, supply, view, ledgerOf, balanceFromLedger,
-    SOURCES, parseScore, refRating, rarityOf, rarity, rarityIndex, filmPoints, applyOverrides,
+    SOURCES, parseScore, refRating, rarityOf, rarity, rarityIndex, filmPoints, filmTags, applyTags, applyOverrides,
     addFilm, mintCopy, transferCopy, copyLabel, collectionOf, catalogView, openFilms, refreeze, pruneCatalog,
     money, refValue, buybackPrice, sellToHouse,
     FORMATS, listCopy, unlist, listingCost, dutchPrice, startDue,
-    season, setSeason, collectionScore, publicCollection, rankingView, showcase, capCheck, ghostCeiling, ghostChance,
+    season, setSeason, setPoints, collectionScore, publicCollection, rankingView, showcase, capCheck, ghostCeiling, ghostChance,
     nextEstreia, pickLot, openAuction, openEstreiaNow, accountsView, openDueEstreias, restartEstreias, bid, cancelAuction, closeAuction, tickAuctions, dueAuctions, auctionView, auctionsView };
 });

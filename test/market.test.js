@@ -506,9 +506,12 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   const p = M.collectionScore(sc, "a", MON);
   assert.strictEqual(p.films, 6, "duas cópias do mesmo filme contam uma vez");
   assert.strictEqual(p.base, 43, "7,9 + 8,2 + 8,9 + 3 × 6,0");
-  assert.deepStrictEqual(p.bonuses.map((b) => [b.kind, b.label, b.pts]), [["series", "Saga Teste", 8], ["director", "Christopher Nolan", 5], ["season", "Drama", 4]]);
-  assert.strictEqual(p.total, 60);
-  assert.deepStrictEqual(M.rankingView(sc, MON).map((r) => [r.name, r.total]), [["Ana", 60], ["Beto", 0]]);
+  assert.deepStrictEqual(p.bonuses.map((b) => [b.kind, b.label, b.pts]), [["series", "Saga Teste", 4], ["director", "Christopher Nolan", 2], ["season", "Drama", 4]], "conjuntos no começo da escada");
+  assert.strictEqual(p.total, 53);
+  // escada: cada filme a mais soma, até o teto
+  const D = M.CONFIG.collectionBonuses.director;
+  assert.deepStrictEqual([2, 3, 4, 5, 9, 20].map((n) => M.setPoints(D, n)), [0, 2, 3, 4, 8, 8], "Mesmo diretor: +2 com 3 filmes, +1 por filme a mais, até +8");
+  assert.deepStrictEqual(M.rankingView(sc, MON).map((r) => [r.name, r.total]), [["Ana", 53], ["Beto", 0]]);
   books(eco); books(sc);
   console.log("ok pontuação da coleção e ranking");
 }
@@ -546,5 +549,32 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   assert.ok(!("wallet" in pc) && !JSON.stringify(pc).includes("buyback"), "nada da carteira nem da recompra");
   assert.strictEqual(M.publicCollection(eco, "zzz", MON), null);
   console.log("ok coleção pública");
+}
+
+// tags dos filmes (Cult, Oscar, Nacional) e os conjuntos de bônus
+{
+  const X = require("../public/market-films.js");
+  const eco = M.create();
+  M.addUser(eco, { id: "a", name: "Ana", auth }, MON, cfg());
+  X.examples.forEach((f) => M.addFilm(eco, f, MON));
+  assert.deepStrictEqual([M.filmTags(eco.films.tt0068646), eco.films.tt0068646.oscars], [[], ["filme", "atuacao", "roteiro"]], "O Poderoso Chefão: Oscars por família");
+  assert.ok(X.cult.length >= 30 && new Set(X.cult).size === X.cult.length, "lista de cults sem repetição");
+  const film = (n, t) => M.addFilm(eco, Object.assign({ id: "tt000040" + n, title: "Filme " + n, year: 1950 + n * 10, dir: "Diretor " + n, g: ["G" + n], links: 80, scores: { imdb: 7, metacritic: 7 } }, t), MON);
+  [1, 2, 3].forEach((n) => film(n, { cult: true }));
+  [4, 5].forEach((n) => film(n, { nacional: true }));
+  assert.deepStrictEqual(M.catalogView(eco).find((f) => f.id === "tt0000401").tags, ["cult"], "a tela recebe as tags");
+  ["tt0000401", "tt0000402", "tt0000403", "tt0000404", "tt0000405"].forEach((id) => M.mintCopy(eco, id, "a", MON));
+  let sc = M.collectionScore(eco, "a", MON, cfg({ seasonPts: 0 }));
+  assert.deepStrictEqual(sc.bonuses.map((b) => [b.kind, b.name, b.label, b.pts]), [["cult", "Cults", "", 3]], "3 cults: +3; 2 nacionais ainda não");
+  assert.strictEqual(M.applyTags(eco, { tt0000403: { nacional: true }, tt9999999: { cult: true } }), 1, "atualiza as tags do catálogo e ignora quem não está nele");
+  sc = M.collectionScore(eco, "a", MON, cfg({ seasonPts: 0 }));
+  assert.deepStrictEqual(sc.bonuses.map((b) => b.kind), ["cult", "nacional"], "o mesmo filme conta em mais de um conjunto");
+  // Oscar: cada família é um conjunto (3 com Atuação: +4); famílias diferentes não se somam
+  M.applyTags(eco, { tt0000401: { oscars: ["atuacao", "nada"] }, tt0000402: { oscars: ["atuacao"] }, tt0000404: { oscars: ["atuacao", "roteiro"] }, tt0000405: { oscars: ["roteiro"] } });
+  assert.deepStrictEqual(eco.films.tt0000401.oscars, ["atuacao"], "família desconhecida fica de fora");
+  assert.deepStrictEqual(M.catalogView(eco).find((f) => f.id === "tt0000404").oscars, ["atuacao", "roteiro"], "a tela recebe as famílias");
+  sc = M.collectionScore(eco, "a", MON, cfg({ seasonPts: 0 }));
+  assert.deepStrictEqual(sc.bonuses.filter((b) => b.kind === "oscar").map((b) => [b.label, b.n, b.pts]), [["Atuação", 3, 2]], "3 Oscars de Atuação: +2; 2 de Roteiro ainda não");
+  console.log("ok tags");
 }
 console.log("Todos os testes do Mercado passaram.");

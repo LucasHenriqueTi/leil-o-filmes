@@ -747,3 +747,17 @@ button.rank-row { width: 100%; font: inherit; color: inherit; text-align: left; 
 button.rank-row:hover, button.rank-row:focus-visible, .rank-mini li[data-rank]:hover, .rank-mini li[data-rank]:focus-visible { border-color: var(--coin); }
 .rank-mini li[data-rank] { cursor: pointer; }
 .modal .pgrid { max-height: 60vh; overflow: auto; padding: 4px; }
+/* tags dos filmes: Cult, Oscar, Nacional */
+.chip.ftag { background: color-mix(in srgb, var(--coin) 12%, transparent); border-color: color-mix(in srgb, var(--coin) 40%, transparent); cursor: help; }
+/* balão largo: a legenda do catálogo (rola no celular) */
+#tipPop.wide { max-width: min(580px, calc(100vw - 20px)); max-height: calc(100vh - 20px); overflow: auto; pointer-events: auto; }
+.legend h4 { margin: 10px 0 4px; font-family: var(--display); font-size: 13px; }
+.legend h4:first-child { margin-top: 0; }
+.legend p, .legend ul { margin: 4px 0; color: var(--mute); }
+.legend ul { padding-left: 18px; }
+.legend li b { color: var(--ink); }
+.legend table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.legend th { text-align: left; color: var(--mute); font-weight: 600; padding: 2px 6px; }
+.legend td { padding: 3px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+.legend td.num { white-space: nowrap; }
+.legend .rar { font-size: 10px; padding: 2px 7px; }

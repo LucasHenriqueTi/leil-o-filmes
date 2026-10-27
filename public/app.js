@@ -586,7 +586,7 @@ function marketTabs(me) {
 // painel sem botão de esconder: dentro das abas cada tela já tem um assunto só
 // explicação num balão (mouse em cima, foco pelo teclado ou toque), em vez de um parágrafo na tela
 const tipAttr = (html) => `data-tip="${esc(html)}"`;
-const tip = (html) => `<button type="button" class="tip" ${tipAttr(html)} aria-label="${esc(html.replace(/<[^>]+>/g, ""))}">?</button>`;
+const tip = (html, wide) => `<button type="button" class="tip" ${tipAttr(html)}${wide ? " data-tip-wide" : ""} aria-label="${esc(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())}">?</button>`;
 function mpanel(key, title, body, extra, cls) {
   return `<section class="panel ${cls || ""}"><div class="panel-head"><h2>${title}</h2>${extra || ""}</div>${body}</section>`;
 }
@@ -723,14 +723,22 @@ function walletView(m, me) {
   </div>`;
 }
 /* ---------- pontuação da coleção, tetos, temporada e ranking ---------- */
-const BONUS_ICO = { series: "🎞️", director: "🎬", decade: "📅", genre: "🎭", season: "🔥" };
-const bonusChips = (s) => s.bonuses.map((b) => `<span class="chip bonus" title="${esc(b.name)}: ${b.n} filmes">${BONUS_ICO[b.kind] || "★"} ${esc(b.name)}: ${esc(b.label)} <b class="num">+${pts(b.pts)}</b></span>`).join("");
+const BONUS_ICO = Object.assign({ series: "🎞️", director: "🎬", decade: "📅", genre: "🎭", season: "🔥" }, Object.fromEntries(Object.entries(MC.filmTags || {}).map(([k, t]) => [k, t.icon])));
+const bonusChips = (s) => s.bonuses.map((b) => `<span class="chip bonus" title="${esc(b.name)}: ${b.n} filmes">${b.icon || BONUS_ICO[b.kind] || "★"} ${esc(b.name)}${b.label ? ": " + esc(b.label) : ""} <b class="num">+${pts(b.pts)}</b></span>`).join("");
+// tags do filme (Cult, Nacional) e os Oscars num selo só ("🏆 Oscar ×3"), com a explicação no balão
+const oscarChip = (f) => {
+  const fams = (f.oscars || []).map((k) => (MC.oscarFamilies || {})[k]).filter(Boolean);
+  if (!fams.length) return "";
+  const list = fams.map((o) => `${o.icon} ${esc(o.name)}`).join("<br>");
+  return `<span class="chip ftag" tabindex="0" ${tipAttr(`<b>Oscar</b><br>${list}`)}>🏆 Oscar${fams.length > 1 ? ` ×${fams.length}` : ""}</span>`;
+};
+const tagChips = (f) => oscarChip(f) + (f.tags || []).map((k) => { const t = (MC.filmTags || {})[k]; return t ? `<span class="chip ftag" tabindex="0" ${tipAttr(esc(t.desc))}>${t.icon} ${esc(t.name)}</span>` : ""; }).join("");
 function scoreBox(m) {
   const s = m.score, caps = (m.caps || []).map((c) => `${esc(rarName(c.rarity))}: <b class="num">${c.owned} de ${c.cap}</b>`).join(" · ");
   if (!s) return "";
   return `<div class="scorebox"><div><span class="label">Pontos da coleção</span><b class="num">${pts(s.total)}</b>
       <span class="hint num">${pts(s.base)} das notas${s.bonuses.length ? " + bônus" : ""}</span></div>
-    ${s.bonuses.length ? `<div class="chips">${bonusChips(s)}</div>` : `<p class="hint">Nenhum bônus ainda ${tip(`Bônus: 3 filmes da mesma série (+${MC.collectionBonuses.series.pts}), do mesmo diretor (+${MC.collectionBonuses.director.pts}), 4 da mesma década ou do mesmo gênero (+${MC.collectionBonuses.decade.pts}) e filmes do gênero da temporada.`)}</p>`}
+    ${s.bonuses.length ? `<div class="chips">${bonusChips(s)}</div>` : `<p class="hint">Nenhum bônus ainda ${tip(`Bônus de conjunto: 3 filmes da mesma série, do mesmo diretor, cults, nacionais ou com Oscar da mesma família (Atuação, Roteiro…), e 4 da mesma década ou do mesmo gênero. Cada conjunto começa pequeno e cresce a cada filme a mais, até um teto. Filmes do gênero da temporada também somam. A tabela completa está no "?" do Catálogo.`)}</p>`}
     ${caps ? `<p class="hint">Teto por jogador: ${caps}</p>` : ""}</div>`;
 }
 function seasonBanner(s) {
@@ -788,7 +796,7 @@ const filmScores = (f) => Object.entries(MK.SOURCES).filter(([k]) => f.scores[k]
 function filmRow(f, side) {
   return `<div class="mfilm r-${esc(f.rarity)}"><div class="ph">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}</div>
     <div class="meta"><b>${esc(f.title)}</b><span class="hint">${esc(f.year)}${f.dir ? " · " + esc(f.dir) : ""}</span>
-      <div class="tags">${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal" title="As notas quase não discordam">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip" title="Pouco lembrado: subiu uma raridade">Garimpo</span>` : ""}${hotChip(f)}</div>
+      <div class="tags">${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal" title="As notas quase não discordam">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip" title="Pouco lembrado: subiu uma raridade">Garimpo</span>` : ""}${hotChip(f)}${tagChips(f)}</div>
       ${genreLine(f)}<span class="hint num">${esc(filmScores(f))}</span></div>
     <div class="ref"><b class="num">${pts(f.ref)}</b>${side || ""}</div></div>`;
 }
@@ -812,7 +820,38 @@ function catalogPanel(me) {
     : `<div class="cat-tools"><div class="seg" role="group" aria-label="Filtrar por raridade">${opts.map(([k, l]) => `<button type="button" data-catf="${k}" aria-pressed="${flt === k}">${esc(l)}</button>`).join("")}</div>
          <div class="cat-side"><select class="input cat-genre" id="cat-genre" aria-label="Filtrar por gênero"><option value="">Todos os gêneros</option>${genreOpts}</select>${viewToggle("catalog")}</div></div>
        ${!list.length ? `<p class="hint">Nenhum filme com esse filtro.</p>` : S.views.catalog === "grid" ? `<div class="pgrid">${list.map((f) => posterCard(f)).join("")}</div>` : `<div class="mlist">${list.map((f) => filmRow(f, copies(f))).join("")}</div>`}`;
-  return mpanel("catalog", `Filmes do Mercado ${tip("Cada filme tem uma tiragem limitada de cópias numeradas, definida pela raridade. A nota de referência é a média das notas disponíveis (IMDb, Metacritic e Rotten Tomatoes, que vale metade).")}`, body, admin);
+  return mpanel("catalog", `Filmes do Mercado ${tip(catalogLegend(), true)}`, body, admin);
+}
+// legenda do catálogo (no "?" do título): raridades, selos, tags, conjuntos e pontos, tudo lido do config
+function catalogLegend() {
+  const normal = MC.rarities.filter((r) => r.max == null);
+  const range = (r) => {
+    if (r.max != null) return `até ${pts(r.max)}`;
+    const i = normal.indexOf(r);
+    return i === 0 ? `até ${pts(normal[1].min - 0.1)}` : `${pts(r.min)}+`;
+  };
+  const chance = (k) => ((MC.ghostChance || {})[k] ? `${Math.round(MC.ghostChance[k] * 100)}%` : "—");
+  const rarRows = MC.rarities.slice().reverse().map((r) => `<tr><td>${rarBadge(r.key)}</td><td class="num">${range(r)}</td><td class="num">${r.copies}</td><td class="num">${mny(r.minBid)}</td><td class="num">${chance(r.key)}</td></tr>`).join("");
+  const B = MC.collectionBonuses, SET_TEXT = { series: "da mesma série", director: "do mesmo diretor", decade: "da mesma década", genre: "do mesmo gênero principal", cult: "cults", nacional: "nacionais" };
+  // escada: "+2, +1 por filme a mais, até +8"
+  const ladder = (b) => `+${b.pts}${b.step ? `<small>, +${b.step} por filme a mais, até +${b.max}</small>` : ""}`;
+  const setRows = Object.entries(B).map(([k, b]) => `<tr><td>${BONUS_ICO[k] || "★"} ${esc(b.name)}</td><td>a partir de ${b.n} filmes ${SET_TEXT[k] || ""}</td><td>${ladder(b)}</td></tr>`).join("")
+    + (MC.oscarSet ? `<tr><td>🏆 ${esc(MC.oscarSet.name)}</td><td>a partir de ${MC.oscarSet.n} filmes com Oscar da mesma família (cada família conta)</td><td>${ladder(MC.oscarSet)}</td></tr>` : "")
+    + `<tr><td>🔥 Temporada</td><td>cada filme do gênero em alta no mês</td><td class="num">+${MC.seasonPts}</td></tr>`;
+  const tags = Object.values(MC.filmTags || {}).map((t) => `<li>${t.icon} <b>${esc(t.name)}</b>: ${esc(t.desc)}</li>`).join("")
+    + `<li>🏆 <b>Oscar</b>: por família, ${Object.values(MC.oscarFamilies || {}).map((o) => `${o.icon} ${esc(o.name)}`).join(", ")}.</li>`;
+  return `<div class="legend">
+    <h4>Raridades</h4>
+    <table><tr><th>Faixa</th><th>Nota</th><th>Cópias</th><th>Lance</th><th>Casa</th></tr>${rarRows}</table>
+    <p>Nota de referência: média de IMDb, Metacritic e Rotten Tomatoes (o RT vale metade). Casa: chance de ela cobrir um lance nas estreias.</p>
+    <h4>Selos</h4>
+    <ul><li><b>Unanimidade</b>: as notas quase não discordam (até ${pts(MC.unanimityMaxSpread)} de diferença).</li>
+      <li><b>Garimpo</b>: filme pouco lembrado (menos de ${MC.garimpoBelowLinks} páginas na Wikipédia); sobe uma faixa, até ${esc(rarName(MC.garimpoCap))}.</li>
+      <li>🔥 <b>em alta</b>: gênero da temporada; vale +${MC.seasonPts} pontos e ${Math.round((MC.seasonValueBoost - 1) * 100)}% a mais no valor de referência.</li></ul>
+    <h4>Tags</h4><ul>${tags}</ul>
+    <h4>Pontos da coleção</h4>
+    <p>Cada filme vale a nota de referência (o Tomate Podre vale 10 menos a nota); cada filme conta uma vez. Os conjuntos somam:</p>
+    <table>${setRows}</table></div>`;
 }
 // Lista ou Pôsteres: cada lugar (catálogo, coleção, últimos leilões) guarda a própria escolha em ml-views
 function viewToggle(key) {
@@ -824,7 +863,7 @@ function viewToggle(key) {
 // e o.below põe botões embaixo do card (fora da moldura).
 function posterCard(f, o) {
   o = o || {};
-  const tags = `${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip">Garimpo</span>` : ""}${hotChip(f)}`;
+  const tags = `${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip">Garimpo</span>` : ""}${hotChip(f)}${tagChips(f)}`;
   const scores = Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null).map(([k, n]) => `<li><span>${esc(n)}</span><b class="num">${pts(f.scores[k])}</b></li>`).join("");
   const card = `<article class="pcard r-${esc(f.rarity)}" tabindex="0" aria-label="${esc(f.title)}, ${esc(rarName(f.rarity))}, nota ${pts(f.ref)}${o.label ? ", " + esc(o.label) : ""}">
     <div class="pin">
@@ -1255,6 +1294,7 @@ const HOVER = matchMedia("(hover: hover)");
 let tipFor = null;
 function showTip(el) {
   tipFor = el; tipPop.innerHTML = el.dataset.tip; tipPop.hidden = false;
+  tipPop.classList.toggle("wide", "tipWide" in el.dataset);   // balão largo (legenda), que rola no celular
   const r = el.getBoundingClientRect(), w = tipPop.offsetWidth, h = tipPop.offsetHeight, pad = 10;
   let top = r.bottom + 8;
   if (top + h > innerHeight - pad) top = r.top - h - 8;
@@ -1266,11 +1306,11 @@ function hideTip() { tipPop.hidden = true; tipFor = null; }
 document.addEventListener("mousemove", (e) => {
   if (!HOVER.matches) return;
   const t = e.target.closest && e.target.closest("[data-tip]");
-  if (t) { if (t !== tipFor) showTip(t); } else if (tipFor) hideTip();
+  if (t) { if (t !== tipFor) showTip(t); } else if (tipFor && !tipPop.contains(e.target)) hideTip();
 });
 document.addEventListener("focusin", (e) => { const t = e.target.closest && e.target.closest("[data-tip]"); if (t && t.matches(":focus-visible")) showTip(t); });
 document.addEventListener("focusout", (e) => { if (e.target.closest && e.target.closest("[data-tip]")) hideTip(); });
-document.addEventListener("click", (e) => { if (tipFor && !(e.target.closest && e.target.closest("[data-tip]"))) hideTip(); }, true);
+document.addEventListener("click", (e) => { if (tipFor && !tipPop.contains(e.target) && !(e.target.closest && e.target.closest("[data-tip]"))) hideTip(); }, true);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && tipFor) hideTip(); });
 addEventListener("scroll", () => { if (tipFor) hideTip(); }, { passive: true });
 

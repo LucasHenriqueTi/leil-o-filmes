@@ -99,12 +99,35 @@
 
     /* ---------- pontuação da coleção ---------- */
     // pontos = soma das notas de referência dos filmes (cada filme conta uma vez) + bônus de conjunto + temporada
+    // conjuntos em escada: com n filmes valem pts; cada filme a mais soma step, até max
+    // (começa baixo para um trio fácil não valer muito, e o teto evita bola de neve com sagas e diretores grandes)
     collectionBonuses: {
-      series: { name: "Trilogia", n: 3, pts: 8 },          // 3 filmes da mesma série
-      director: { name: "Mesmo diretor", n: 3, pts: 5 },
-      decade: { name: "Mesma década", n: 4, pts: 3 },
-      genre: { name: "Mesmo gênero", n: 4, pts: 3 }         // gênero principal (o primeiro da lista)
+      series: { name: "Trilogia", n: 3, pts: 4, step: 2, max: 12 },     // filmes da mesma série
+      director: { name: "Mesmo diretor", n: 3, pts: 2, step: 1, max: 8 },
+      decade: { name: "Mesma década", n: 4, pts: 1, step: 1, max: 5 },
+      genre: { name: "Mesmo gênero", n: 4, pts: 1, step: 1, max: 5 },   // gênero principal (o primeiro da lista)
+      cult: { name: "Cults", n: 3, pts: 3, step: 1, max: 8 },           // filmes com a mesma tag (filmTags)
+      nacional: { name: "Cinema nacional", n: 3, pts: 3, step: 1, max: 8 }
     },
+    // tags dos filmes: Cult vem da lista de public/market-films.js; Nacional (país de origem Brasil), do Wikidata
+    filmTags: {
+      cult: { name: "Cult", icon: "🌀", desc: "Filme cult: ganhou um público fiel com o tempo." },
+      nacional: { name: "Nacional", icon: "🇧🇷", desc: "Cinema nacional: produção brasileira." }
+    },
+    // Oscars do filme, por família (as categorias de cada uma ficam em lib/films.js); cada família é um conjunto
+    oscarFamilies: {
+      filme: { name: "Melhor filme", icon: "🏆" },
+      atuacao: { name: "Atuação", icon: "🎭" },
+      roteiro: { name: "Roteiro", icon: "✍️" },
+      musica: { name: "Música", icon: "🎵" },
+      visual: { name: "Visual", icon: "🎨" },
+      tecnica: { name: "Técnica", icon: "🎞️" },
+      internacional: { name: "Filme internacional", icon: "🌍" }
+    },
+    oscarSet: { name: "Oscar", n: 3, pts: 2, step: 1, max: 6 },   // filmes com Oscar da mesma família (escada como acima)
+    // a cada rodada, a Casa reserva estas vagas do catálogo para filmes com a tag que ainda não estão lá
+    // (oscar: de uma família diferente a cada rodada)
+    tagDraws: { cult: 2, oscar: 1, nacional: 1 },
     // temporada: a cada mês um gênero desta lista está em alta (sorteio fixo pelo mês)
     seasonGenres: ["Ação", "Aventura", "Comédia", "Drama", "Ficção científica", "Terror", "Suspense", "Romance", "Animação", "Crimes", "Fantasia", "Mistério"],
     seasonPts: 2,             // pontos extras por filme do gênero em alta

@@ -1,7 +1,7 @@
 // Cenas usadas nos dois vídeos. Cada cena funciona nas duas proporções: useFormato() diz se é vertical.
 import React from "react";
 import { AbsoluteFill, interpolate, random, spring, useCurrentFrame, useVideoConfig } from "remotion";
-import { AoVivo, ChuvaDePosteres, Chip, Fundo, Legenda, Logo, Tela, useFormato } from "./componentes";
+import { AoVivo, ChuvaDePosteres, Fundo, Legenda, Logo, useFormato } from "./componentes";
 import { BODY, C, DISPLAY, SITE_URL } from "./tema";
 
 export const centro: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" };
@@ -25,7 +25,7 @@ export const CenaGancho: React.FC<{ texto: string; selo?: string; cor?: string }
 };
 
 /* donate: o alerta fica mais exagerado a cada real */
-const TIERS: [number, string, string][] = [[1, "🪙", "Doação"], [2, "💵", "Doação em dobro"], [3, "💸", "Chuva de dinheiro"], [5, "🔥", "Doação pegando fogo"], [8, "🚀", "Doação foguete"],
+const TIERS: [number, string, string][] = [[1, "💰", "Doação"], [2, "💵", "Doação em dobro"], [3, "💸", "Chuva de dinheiro"], [5, "🔥", "Doação pegando fogo"], [8, "🚀", "Doação foguete"],
   [10, "💎", "Doação diamante"], [15, "👑", "Doação da realeza"], [20, "🌋", "Erupção de dinheiro"], [30, "🤯", "Mega doação"], [50, "☄️", "Doação lendária"], [100, "🏦", "O magnata chegou"]];
 export const CenaDonate: React.FC = () => {
   const { vertical, u, width, height } = useFormato();
@@ -56,31 +56,6 @@ export const CenaDonate: React.FC = () => {
             <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: (76 + Math.min(v, 60) * 0.55) * u, lineHeight: 1.05, color: C.coin }}>R$ {v}</div>
             <div style={{ fontFamily: BODY, fontSize: 28 * u, color: C.ink, marginTop: 8 * u }}><b style={{ color: C.mint }}>Pinho</b> doou</div>
           </div>
-        </div>
-      </AbsoluteFill>
-    </AbsoluteFill>
-  );
-};
-
-/* coleção e ranking: bônus entrando e o ranking da galera */
-export const CenaColecao: React.FC = () => {
-  const { vertical, u } = useFormato();
-  // as capturas de celular têm letra maior: servem às duas versões
-  const w = (vertical ? 860 : 800) * u;
-  return (
-    <AbsoluteFill>
-      <Fundo tom={C.mint} />
-      <AbsoluteFill style={{ ...centro, flexDirection: vertical ? "column" : "row", gap: 60 * u, padding: 70 * u }}>
-        <div style={{ maxWidth: (vertical ? 960 : 620) * u, display: "flex", flexDirection: "column", gap: 30 * u, alignItems: vertical ? "center" : "flex-start" }}>
-          <Legenda texto="Monte trilogias e *suba no ranking* da galera." size={(vertical ? 76 : 68) * u} align={vertical ? "center" : "left"} cor={C.mint} />
-          <div style={{ display: "flex", gap: 14 * u, flexWrap: "wrap", justifyContent: vertical ? "center" : "flex-start" }}>
-            <Chip texto="🎞️ Trilogia +8" at={34} size={34 * u} /><Chip texto="🎬 Mesmo diretor +5" at={52} size={34 * u} />
-            <Chip texto="🔥 Gênero do mês +2" at={70} size={34 * u} />
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 * u, width: w }}>
-          <Tela src="telas/colecao-v.png" width={w} zoom={0.02} radius={18} />
-          <Tela src="telas/ranking-v.png" width={w} at={14} zoom={0.02} radius={18} maxH={(vertical ? 560 : 430) * u} />
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
