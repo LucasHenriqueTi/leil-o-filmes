@@ -209,6 +209,13 @@ const books = (eco) => Object.values(eco.users).forEach((u) => assert.strictEqua
   M.addFilm(eco, { id: "tt0000103", title: "C", links: 80, scores: { imdb: 7, rt: 7 } }, MON);
   assert.strictEqual(M.pruneCatalog(eco, new Set(["tt0000103"])), 1, "tira só quem não tem cópias e não foi pedido");
   assert.deepStrictEqual(Object.keys(eco.films).sort(), ["tt0000102", "tt0000103"]);
+  // nota nova do IMDb (arquivo oficial): muda só quem não tem cópias, respeita a correção à mão e recalcula a raridade
+  assert.strictEqual(M.updateScores(eco, "imdb", { tt0000102: 9.9, tt0000103: 9.5, tt0000104: 8 }, new Set()), 1, "só o filme sem cópias muda");
+  assert.deepStrictEqual(eco.films.tt0000103.scores, { imdb: 9.5, rt: 7 });
+  assert.deepStrictEqual([eco.films.tt0000103.ref, eco.films.tt0000103.rarity], [8.7, "epico"], "a nota nova vale na raridade");
+  assert.strictEqual(eco.films.tt0000102.scores.imdb, undefined, "o congelado não ganha nota");
+  assert.strictEqual(M.updateScores(eco, "imdb", { tt0000103: 6 }, new Set(["tt0000103"])), 0, "a nota corrigida à mão fica");
+  assert.strictEqual(M.updateScores(eco, "imdb", { tt0000103: 9.5, tt0000102: 12 }), 0, "nota igual ou fora de 0 a 10 não conta");
   console.log("ok peso do RT e congelamento");
 }
 
@@ -308,6 +315,91 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   assert.ok(view.open.length >= 3 && view.recent.length >= 2 && view.next.day, "vitrine com abertas, encerradas e agenda");
   books(eco);
   console.log("ok estreias da Casa, lances, prorrogação e recompra");
+}
+// Estreia personalizada (admin): filme escolhido ou sorteado, qualquer formato, lance mínimo e duração livres
+{
+  const X = require("../public/market-films.js");
+  const eco = M.create(), T0 = MON, MIN = 60e3;
+  ["a", "b", "c"].forEach((id) => M.addUser(eco, { id, name: "Conta " + id, auth }, T0, cfg()));   // M$ 30 cada
+  X.examples.forEach((f) => M.addFilm(eco, f, T0));
+  const open = (o, now) => M.openCustomEstreia(eco, Object.assign({ format: "open", minutes: 30 }, o), now == null ? T0 : now, M.CONFIG, () => 0);
+  const bid = (aid, uid, v, now) => M.bid(eco, aid, uid, v, now, M.CONFIG, () => 0);   // sorteio 0: a Casa cobre sempre que pode
+
+  assert.ok(open({ film: "tt0000000" }).error, "filme fora do catálogo");
+  assert.ok(open({ format: "leilão" }).error, "formato inválido");
+  assert.ok(open({ minutes: 0 }).error, "duração mínima");
+  assert.ok(open({ minutes: M.CONFIG.customEstreia.maxMinutes + 1 }).error, "duração máxima");
+  assert.ok(open({ minBid: M.CONFIG.dutchMaxStart + 1 }).error, "lance mínimo acima do teto");
+  assert.ok(open({ format: "dutch", minBid: 10, startPrice: 10 }).error, "o relógio começa acima do mínimo");
+
+  // escolhido, Aberto, com nome, lance mínimo e duração do admin, sem a Casa na disputa
+  const a1 = eco.auctions[open({ film: "tt0088247", name: "  Noite   do Exterminador ", minBid: 4, minutes: 90, ghost: false }).id];
+  assert.deepStrictEqual([a1.kind, a1.event, a1.eventName, a1.format, a1.minBid, a1.endsAt - a1.startsAt], ["house", "custom", "Noite do Exterminador", "open", 4, 90 * MIN]);
+  assert.ok(open({ film: "tt0088247" }).error, "o mesmo filme não fica em duas estreias abertas");
+  assert.strictEqual(bid(a1.id, "a", 4, T0 + MIN), null);
+  assert.strictEqual(a1.highBy, "a", "sem a Casa, ninguém cobre (no Épico ela cobriria)");
+  assert.strictEqual(M.auctionView(eco, a1, "b").houseChance, 0);
+  M.tickAuctions(eco, a1.endsAt);
+  assert.deepStrictEqual([eco.copies["tt0088247#1"].owner, eco.users.a.wallet.free], ["a", 26]);
+
+  // com a Casa (padrão), o teto segue o lance mínimo escolhido
+  const a2 = eco.auctions[open({ film: "tt0441773" }).id];
+  assert.deepStrictEqual([a2.minBid, a2.ghost], [M.rarity("raro").minBid, true], "sem valor, o lance mínimo é o da raridade");
+  assert.strictEqual(bid(a2.id, "b", 6, T0 + MIN), null);
+  assert.strictEqual(a2.highBy, "house", "a Casa cobriu");
+  M.cancelAuction(eco, a2.id, T0 + 2 * MIN);
+
+  // Secreto de 2º preço: quem vence paga o segundo maior lance; os outros recebem tudo de volta
+  const a3 = eco.auctions[open({ film: "tt0325980", format: "vickrey", minBid: 2, ghost: true }).id];
+  assert.strictEqual(a3.ghost, false, "a Casa só disputa no Aberto");
+  assert.ok(bid(a3.id, "a", 1, T0 + MIN), "abaixo do lance mínimo");
+  [["b", 8], ["a", 5], ["c", 3]].forEach(([u, v]) => assert.strictEqual(bid(a3.id, u, v, T0 + MIN), null));
+  assert.deepStrictEqual([M.auctionView(eco, a3, "a").high, M.auctionView(eco, a3, "a").myBid], [0, 5], "lances escondidos até o fim");
+  M.tickAuctions(eco, a3.endsAt);
+  assert.deepStrictEqual([a3.result.winner, a3.result.price, a3.result.reveal.map((b) => b.v)], ["b", 5, [8, 5, 3]]);
+  assert.deepStrictEqual([eco.users.a.wallet, eco.users.b.wallet, eco.users.c.wallet], [{ free: 26, reserved: 0 }, { free: 25, reserved: 0 }, { free: 30, reserved: 0 }]);
+  assert.strictEqual(eco.copies["tt0325980#1"].owner, "b");
+
+  // Relógio holandês sorteado entre as faixas marcadas: o preço cai do inicial até o mínimo
+  const a4 = eco.auctions[open({ bands: ["comum"], format: "dutch", startPrice: 20, minBid: 2, minutes: 10 }).id];
+  assert.strictEqual(eco.films[a4.film].rarity, "comum");
+  assert.strictEqual(M.dutchPrice(a4, T0 + 5 * MIN), 11);
+  assert.strictEqual(bid(a4.id, "c", 0, T0 + 5 * MIN), null);
+  assert.deepStrictEqual([a4.status, a4.result.price, eco.users.c.wallet.free, eco.copies[a4.film + "#1"].owner], ["closed", 11, 19, "c"]);
+
+  // sorteio por gênero (soma com as raridades): Romance só tem Crepúsculo
+  const a6 = eco.auctions[open({ genres: ["Romance"] }).id];
+  assert.strictEqual(a6.film, "tt1099212");
+  assert.ok(open({ genres: ["Romance"] }).error, "o único filme do gênero já está numa estreia aberta");
+  assert.ok(open({ genres: ["Drama"], bands: ["incomum"] }).error, "nenhum Incomum é Drama");
+  const a7 = eco.auctions[open({ genres: ["Terror", "Animação"], bands: ["raro", "comum", "podre"] }, T0 + MIN).id];
+  assert.ok(["tt0441773", "tt0795461"].includes(a7.film), "qualquer um dos gêneros marcados");
+  M.cancelAuction(eco, a7.id, T0 + 2 * MIN);
+
+  // várias de uma vez: filmes diferentes, mesmas regras; tudo ou nada
+  const openNow = () => Object.values(eco.auctions).filter((a) => a.status === "open").length;
+  assert.ok(open({ count: 0 }).error && open({ count: M.CONFIG.customEstreia.maxCount + 1 }).error, "quantidade de 1 ao máximo");
+  assert.ok(open({ film: "tt0418279", count: 2 }).error, "filme escolhido é uma por vez");
+  const before = openNow();
+  assert.ok(/Só 3 filmes/.test(open({ genres: ["Crimes"], count: 4 }).error), "faltou filme: avisa quantos entram");
+  assert.ok(open({ genres: ["Crimes", "Animação"], format: "dutch", startPrice: 20, count: 3 }).error, "um preço que não serve para um dos filmes barra todos");
+  assert.strictEqual(openNow(), before, "nada abriu");
+  const many = open({ genres: ["Crimes", "Animação"], format: "sealed", minBid: 3, minutes: 45, name: "Maratona", count: 3 }, T0 + 3 * MIN);
+  assert.strictEqual(many.ids.length, 3);
+  assert.deepStrictEqual(many.films.slice().sort(), ["tt0068646", "tt0111161", "tt0441773"], "três filmes diferentes");
+  many.ids.forEach((id) => { const a = eco.auctions[id]; assert.deepStrictEqual([a.eventName, a.format, a.minBid, a.endsAt - a.startsAt], ["Maratona", "sealed", 3, 45 * MIN]); });
+  many.ids.forEach((id) => M.cancelAuction(eco, id, T0 + 4 * MIN));
+
+  // tiragem esgotada e sem estoque: não abre
+  const podre = Object.values(eco.films).find((f) => f.rarity === "podre").id;
+  const a5 = eco.auctions[open({ film: podre, ghost: false }).id];
+  assert.strictEqual(bid(a5.id, "a", 25, T0 + MIN), null);
+  M.closeAuction(eco, a5.id, T0 + 2 * MIN);
+  assert.ok(/emitidas/.test(open({ film: podre }).error), "sem cópias para emitir nem no estoque");
+  assert.ok(open({ bands: ["podre"] }).error, "o sorteio também não acha");
+  assert.doesNotThrow(() => M.auctionsView(eco, "a"));
+  books(eco);
+  console.log("ok estreia personalizada");
 }
 // Leilões dos jogadores: anúncio, taxas, formatos, reserva secreta, agendamento e limites
 {

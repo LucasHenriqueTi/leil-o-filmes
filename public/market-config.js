@@ -34,19 +34,22 @@
     // Faixa invertida (`max`): vale para nota até `max`, vem antes das outras e o Garimpo não mexe nela.
     // Cortes calibrados num catálogo de 509 filmes para ~1% Tomate Podre, 40% Comum, 28% Incomum,
     // 18% Raro, 9% Épico, 3% Lendário e 1% Obra de Arte (com o Garimpo abaixo de 25 páginas)
+    // `key` é o id salvo no Mercado (não mude); `name` é o que aparece na tela.
+    // No modo de teste, o admin pode trocar os nomes só no próprio navegador (editor no canto da tela, `ml-rarnames`).
     rarities: [
-      { key: "comum", name: "Comum", min: 0, copies: 20, minBid: 1 },
-      { key: "incomum", name: "Incomum", min: 6.6, copies: 10, minBid: 3 },
-      { key: "raro", name: "Raro", min: 7.6, copies: 5, minBid: 6 },
-      { key: "epico", name: "Épico", min: 8.4, copies: 3, minBid: 10 },
-      { key: "lendario", name: "Lendário", min: 8.8, copies: 1, minBid: 15 },
+      { key: "comum", name: "Sessão da Tarde", min: 0, copies: 20, minBid: 1 },
+      { key: "incomum", name: "Bem na Crítica", min: 6.6, copies: 10, minBid: 3 },
+      { key: "raro", name: "Indicado", min: 7.6, copies: 5, minBid: 6 },
+      { key: "epico", name: "Aclamado", min: 8.4, copies: 3, minBid: 10 },
+      { key: "lendario", name: "Imortal", min: 8.8, copies: 1, minBid: 15 },
       { key: "podre", name: "Tomate Podre", max: 1.5, copies: 1, minBid: 25, requireScores: 2 },   // o avesso da Obra de Arte
-      { key: "obra", name: "Obra de Arte", min: 9.2, copies: 1, minBid: 25, requireScores: 2 }
+      { key: "obra", name: "Absolute Cinema", min: 9.2, copies: 1, minBid: 25, requireScores: 2 }
     ],
     minScores: 2,             // notas (de IMDb, Metacritic e Rotten Tomatoes) para o filme entrar no Mercado
     // peso de cada fonte na média: o Tomatometer do RT é a % de críticas positivas, não uma nota,
     // e puxa a média para cima (87% não quer dizer nota 8,7); por isso vale metade
     scoreWeights: { imdb: 1, metacritic: 1, rt: 0.5 },
+    imdbMinVotes: 1000,       // nota do IMDb (arquivo oficial) só conta com pelo menos estes votos
     unanimityMaxSpread: 1.0,  // selo "Unanimidade": maior nota - menor nota até isto
     garimpoBelowLinks: 25,    // Garimpo = filme com menos páginas que isto na Wikipédia (com 30, um terço do catálogo subia de faixa)
     garimpoBoost: 1,          // faixas que o Garimpo sobe
@@ -72,6 +75,9 @@
       { key: "week", name: "Estreia da semana", every: "week", weekday: 6, hour: 20, bands: ["raro", "epico"], minutes: 30 },
       { key: "month", name: "Estreia do mês", every: "month", day: 1, hour: 20, bands: ["lendario", "podre", "obra"], minutes: 60 }
     ],
+    // estreia personalizada do admin: filme sorteado (das faixas marcadas) ou escolhido, qualquer formato,
+    // lance mínimo livre (de 1 a dutchMaxStart), duração de 1 minuto até maxMinutes e até maxCount de uma vez (no sorteio)
+    customEstreia: { name: "Estreia especial", maxName: 40, maxMinutes: 10080, maxCount: 10 },
     extendWindowSec: 30,      // lance nos últimos 30 s...
     extendBySec: 30,          // ...soma mais 30 s ao relógio (Aberto: estreias e leilões dos jogadores)
 

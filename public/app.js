@@ -71,10 +71,13 @@ function poster(f, cls) {
   const img = C.posterOf(f), h = hue(f.title);
   return `<div class="poster ${cls || ""}" style="background:linear-gradient(160deg,hsl(${h} 50% 34%),hsl(${(h + 50) % 360} 55% 12%))"><div class="gen"><i>${esc(f.year)}</i><b>${esc(f.title)}</b></div>${img ? `<img src="${esc(img)}" alt="Pôster de ${esc(f.title)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>`;
 }
-function zoomable(f, extra) {
+function zoomKeyOf(f, extra) {
   const key = String(f.id) + (f.paid != null ? "-p" : "");
   S.zoom[key] = Object.assign({}, f, extra || {});
-  return `<button type="button" class="zoom" data-zoom="${key}" aria-label="Ampliar pôster de ${esc(f.title)}">${poster(f)}</button>`;
+  return key;
+}
+function zoomable(f, extra) {
+  return `<button type="button" class="zoom" data-zoom="${zoomKeyOf(f, extra)}" aria-label="Ampliar pôster de ${esc(f.title)}">${poster(f)}</button>`;
 }
 
 /* ---------- painel que esconde: o título vira botão e o conteúdo só é montado aberto ---------- */
@@ -665,7 +668,7 @@ function miniAuction(a, mode) {
   const who = user ? `${FMT_ICO[fmt]} ${esc(a.formatName)} · ${esc(a.sellerName)}` : `${EVENT_ICON[a.event] || "🎬"} ${esc(a.eventName)}`;
   const goto = mode === "join" ? `data-act="market-join" data-after="${user ? "leiloes" : "estreias"}"` : `data-mtab="${user ? "leiloes" : "estreias"}"`;
   return `<button type="button" class="mini r-${esc(f.rarity)}" ${goto}>
-    <span class="mp">${poster(f)}</span>
+    <span class="mp" data-zoom="${zoomKeyOf(f, { r: f.ref, rsrc: "nota de referência" })}">${poster(f)}</span>
     <span class="mi"><span class="ev">${who}</span><b class="t">${esc(f.title)}</b>${genreLine(f, 2)}<span class="tags">${rarBadge(f.rarity)}${isHot(f) ? `<span class="chip hot">🔥 em alta</span>` : ""}<span class="hint num">${esc(a.lot)}</span></span></span>
     <span class="mr"><span class="clock num" data-clock="${a.endsAt}"></span>${price}<span class="hint">${fmt === "dutch" ? "preço agora" : secret ? "secretos" : a.highBy ? (a.highBy === "house" ? "da Casa" : a.mine ? "seu lance" : "maior lance") : "lance mínimo"}</span></span>
   </button>`;
@@ -801,13 +804,20 @@ const hotChip = (f) => (isHot(f) ? `<span class="chip hot" tabindex="0" ${tipAtt
 const genreLine = (f, n) => ((f.g || []).length ? `<span class="hint fgenres">${esc(f.g.slice(0, n || 3).join(" · "))}</span>` : "");
 const rarName = (k) => (MK.rarity(k) || {}).name || k;
 const rarBadge = (k) => `<span class="rar r-${esc(k)}">${esc(rarName(k))}</span>`;
-const filmScores = (f) => Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null).map(([k, n]) => `${n} ${pts(f.scores[k])}`).join(" · ");
+// card da lista: pôster grande à esquerda; título e nota no topo, selos, gêneros, notas por fonte e o rodapé (side) embaixo
+const SRC_SHORT = { imdb: "IMDb", metacritic: "Metacritic", rt: "RT" };
+const scoreChips = (f) => Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null)
+  .map(([k, n]) => `<span class="msrc" title="${esc(n)}"><small>${esc(SRC_SHORT[k] || n)}</small><b class="num">${pts(f.scores[k])}</b></span>`).join("");
 function filmRow(f, side) {
   return `<div class="mfilm r-${esc(f.rarity)}"><div class="ph">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}</div>
-    <div class="meta"><b>${esc(f.title)}</b><span class="hint">${esc(f.year)}${f.dir ? " · " + esc(f.dir) : ""}</span>
+    <div class="mbody">
+      <div class="mhead"><div class="mtitle"><b title="${esc(f.title)}">${esc(f.title)}</b><span class="hint">${esc(f.year)}${f.dir ? " · " + esc(f.dir) : ""}</span></div>
+        <div class="mref" title="Nota de referência"><b class="num">${pts(f.ref)}</b><small>nota</small></div></div>
       <div class="tags">${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal" title="As notas quase não discordam">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip" title="Pouco lembrado: subiu uma raridade">Garimpo</span>` : ""}${hotChip(f)}${tagChips(f)}</div>
-      ${genreLine(f)}<span class="hint num">${esc(filmScores(f))}</span></div>
-    <div class="ref"><b class="num">${pts(f.ref)}</b>${side || ""}</div></div>`;
+      ${genreLine(f)}
+      <div class="mscores">${scoreChips(f)}</div>
+      ${side ? `<div class="mside">${side}</div>` : ""}
+    </div></div>`;
 }
 function catalogPanel(me) {
   const c = S.catalog;
@@ -900,7 +910,7 @@ function resultShort(a) {
   return a.status === "canceled" ? "cancelado" : r.house ? "a Casa ficou na frente" : r.reserveMissed ? "reserva não atingida" : "sem lances";
 }
 /* ---------- estreias da Casa: leilões que emitem as cópias ---------- */
-const EVENT_ICON = { day: "🎟️", week: "🎬", month: "🏆" };
+const EVENT_ICON = { day: "🎟️", week: "🎬", month: "🏆", custom: "✨" };
 const bidDrafts = {};   // valor digitado em cada leilão (sobrevive ao re-render)
 const FMT_ICO = { open: "🔨", sealed: "✉️", vickrey: "🥈", dutch: "⏱️" };
 const bidBox = (a, min, label, start) => `<form class="bid-form" id="bidForm-${esc(a.id)}"><div class="stepper"><button type="button" data-mstep="-1" data-aid="${esc(a.id)}" aria-label="Diminuir">−</button>
@@ -1001,6 +1011,70 @@ async function submitListing() {
   if (r.error) { d.err = r.error; return showListModal(); }   // reabre com o erro, sem perder o que foi preenchido
   listDraft = null; toast(d.schedule ? "Leilão agendado." : "Leilão aberto!");
 }
+/* ---------- estreia personalizada (admin): mesmo esquema do anúncio, num modal que sobrevive aos re-renders ---------- */
+let ceDraft = null;
+const CE_UNITS = { min: [1, "min"], h: [60, "horas"], d: [1440, "dias"] };
+// filmes que ainda podem sair numa estreia: com cópia para emitir ou no estoque da Casa, e fora das estreias abertas
+const ceFilms = () => {
+  const busy = new Set(((S.auctions || {}).open || []).map((a) => a.film.id));
+  return ((S.catalog || {}).films || []).filter((f) => (f.left > 0 || f.house > 0) && !busy.has(f.id));
+};
+// quantos filmes entram no sorteio com as raridades e os gêneros marcados
+const cePool = (d, films) => (films || ceFilms()).filter((x) => (!d.bands.length || d.bands.includes(x.rarity)) && (!d.genres.length || (x.g || []).some((g) => d.genres.includes(g)))).length;
+function ceFormHtml() {
+  const d = ceDraft, films = ceFilms(), f = d.pick === "film" ? films.find((x) => x.id === d.film) : null;
+  const dutch = d.format === "dutch", rmin = f ? (MK.rarity(f.rarity) || {}).minBid : null;
+  const avail = (x) => `${x.left} ${x.left === 1 ? "cópia" : "cópias"} para emitir${x.house ? ` · ${x.house} no estoque` : ""}`;
+  const groups = MC.rarities.slice().reverse().map((r) => {
+    const list = films.filter((x) => x.rarity === r.key);
+    return list.length ? `<optgroup label="${esc(r.name)}">${list.map((x) => `<option value="${esc(x.id)}" ${x.id === d.film ? "selected" : ""}>${esc(x.title)} (${esc(x.year)}) · ${pts(x.ref)}</option>`).join("")}</optgroup>` : "";
+  }).join("");
+  // sorteio: raridades E gêneros (vazio = todos); a contagem dos gêneros já respeita as raridades marcadas
+  const inBands = films.filter((x) => !d.bands.length || d.bands.includes(x.rarity)), gcount = {};
+  inBands.forEach((x) => (x.g || []).forEach((g) => (gcount[g] = (gcount[g] || 0) + 1)));
+  d.genres.forEach((g) => (gcount[g] = gcount[g] || 0));
+  const pool = cePool(d, films);
+  const filmField = d.pick === "random"
+    ? `<div class="field"><span class="label">Raridades</span><div class="seg" role="group" aria-label="Raridades do sorteio">${MC.rarities.slice().reverse().map((r) => `<button type="button" data-ce-band="${r.key}" aria-pressed="${d.bands.includes(r.key)}">${esc(r.name)}</button>`).join("")}</div></div>
+      <div class="field"><span class="label">Gêneros</span><div class="seg ce-genres" role="group" aria-label="Gêneros do sorteio">${Object.entries(gcount).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([g, n]) => `<button type="button" data-ce-genre="${esc(g)}" aria-pressed="${d.genres.includes(g)}">${esc(g)} <small class="num">${n}</small></button>`).join("") || `<span class="hint">Nenhum filme livre nessas raridades.</span>`}</div></div>
+      <p class="hint num"><b>${pool} ${pool === 1 ? "filme entra" : "filmes entram"} no sorteio.</b> Sai um que tenha uma das raridades e um dos gêneros marcados e ainda tenha cópia para emitir ou no estoque da Casa. Nada marcado vale como todos.</p>
+      <div class="field ce-count"><label for="ce-count">Quantas estreias</label><input class="input num" id="ce-count" type="number" min="1" max="${MC.customEstreia.maxCount}" value="${esc(d.count)}">
+        <p class="hint">Todas com as mesmas regras, cada uma com um filme diferente do sorteio (até ${MC.customEstreia.maxCount}).${+d.count > pool ? ` <span class="err">Só ${pool} ${pool === 1 ? "filme entra" : "filmes entram"} no sorteio.</span>` : ""}</p></div>`
+    : `<div class="field"><label for="ce-film">Filme</label><select class="input" id="ce-film"><option value="">Escolha um filme…</option>${groups}</select>
+        ${films.length ? "" : `<p class="hint">Nenhum filme do catálogo tem cópia livre agora.</p>`}</div>
+      ${f ? filmRow(f, `<span class="hint num">${avail(f)}</span>`) : ""}`;
+  return `<div class="field"><label for="ce-name">Nome da estreia</label><input class="input" id="ce-name" maxlength="${MC.customEstreia.maxName}" placeholder="${esc(MC.customEstreia.name)}" value="${esc(d.name)}"></div>
+    <div class="field"><span class="label">Filme</span><div class="seg" role="group"><button type="button" data-ce-pick="random" aria-pressed="${d.pick === "random"}">🎲 Aleatório</button><button type="button" data-ce-pick="film" aria-pressed="${d.pick === "film"}">🎯 Escolher</button></div></div>
+    ${filmField}
+    <div class="field"><span class="label">Tipo de lance</span><div class="seg" role="group">${Object.keys(MK.FORMATS).map((k) => `<button type="button" data-ce-format="${k}" aria-pressed="${d.format === k}">${FMT_ICO[k]} ${esc(MK.FORMATS[k].name)}</button>`).join("")}</div>
+      <p class="hint">${esc(MK.FORMATS[d.format].desc)}</p></div>
+    <div class="ce-grid">
+      ${dutch ? `<div class="field"><label for="ce-startPrice">Preço inicial</label><input class="input num" id="ce-startPrice" type="number" min="2" max="${MC.dutchMaxStart}" value="${esc(d.startPrice)}"></div>` : ""}
+      <div class="field"><label for="ce-minBid">${dutch ? "Preço mínimo" : "Lance mínimo"}</label><input class="input num" id="ce-minBid" type="number" min="1" max="${MC.dutchMaxStart}" placeholder="${rmin || "da raridade"}" value="${esc(d.minBid)}"></div>
+      <div class="field"><label for="ce-dur">Fica aberta por</label><div class="ce-dur"><input class="input num" id="ce-dur" type="number" min="1" value="${esc(d.dur)}"><select class="input" id="ce-unit">${Object.entries(CE_UNITS).map(([k, [, n]]) => `<option value="${k}" ${d.unit === k ? "selected" : ""}>${n}</option>`).join("")}</select></div></div>
+    </div>
+    <p class="hint">${dutch ? "O preço cai em linha reta do inicial até o mínimo ao longo da duração. " : ""}Em branco, o ${dutch ? "preço mínimo" : "lance mínimo"} é o da raridade do filme${rmin ? ` (${mny(rmin)})` : ""}. Duração de 1 minuto a ${Math.floor(MC.customEstreia.maxMinutes / 1440)} dias.</p>
+    ${d.format === "open" ? `<label class="check"><input type="checkbox" id="ce-ghost" ${d.ghost ? "checked" : ""}> A Casa disputa os lances (comprador fantasma, de Raro para cima) ${tip("Igual às estreias da agenda: a cada lance abaixo do teto escondido, a Casa pode cobrir. O teto é o lance mínimo desta estreia mais a porcentagem da faixa.")}</label>` : ""}
+    ${d.err ? `<p class="err">${esc(d.err)}</p>` : ""}`;
+}
+function openCeForm() {
+  ceDraft = { pick: "random", bands: [], genres: [], count: 1, film: "", format: "open", minBid: "", startPrice: "", dur: 30, unit: "min", ghost: true, name: "", err: "" };
+  if (!S.catalog) loadCatalog();
+  showCeModal();
+}
+function showCeModal() {
+  S.ui.modal = { title: "Estreia personalizada", body: ceFormHtml, cls: "wide", actions: [{ label: "Cancelar", run: () => { ceDraft = null; } }, { label: "Abrir estreia", cls: "go", run: submitCe }] };
+  render();
+}
+async function submitCe() {
+  const d = ceDraft; if (!d) return;
+  if (d.pick === "film" && !d.film) { d.err = "Escolha um filme."; return showCeModal(); }
+  const r = await N.call("admin:customEstreia", { name: d.name, film: d.pick === "film" ? d.film : "", bands: d.pick === "random" ? d.bands : [], genres: d.pick === "random" ? d.genres : [], count: d.pick === "random" ? Math.floor(+d.count) || 1 : 1, format: d.format,
+    minutes: Math.floor(+d.dur) * CE_UNITS[d.unit][0], minBid: d.minBid === "" ? 0 : +d.minBid, startPrice: +d.startPrice, ghost: d.ghost });
+  if (r.error) { d.err = r.error; return showCeModal(); }
+  ceDraft = null; toast(r.titles.length > 1 ? `${r.titles.length} estreias abertas: ${r.titles.join(", ")}.` : `Estreia aberta: ${r.titles[0]}.`);
+}
 // ferramentas de teste: abrir estreias, dar M$ e conferir carteiras e coleções de todas as contas
 function adminPanel(me) {
   if (!me.admin) return "";
@@ -1008,7 +1082,7 @@ function adminPanel(me) {
   const rows = accs.map((u) => `<div class="acc-row"><b>${esc(u.name)}${u.admin ? ` <span class="pill top">admin</span>` : ""}</b>
     <span class="num">${mny(u.wallet.free)} livres${u.wallet.reserved ? ` · ${mny(u.wallet.reserved)} reservados` : ""}</span>
     <span class="copies">${u.copies.length ? u.copies.map((c) => `${rarBadge(c.rarity)} ${esc(c.title)} <small class="num">${esc(c.label)}</small>`).join("<br>") : `<span class="hint">sem cópias</span>`}</span></div>`).join("");
-  return mpanel("admin", `Ferramentas do admin ${tip("Para testar: abra estreias fora da agenda, encerre antes do tempo (o vencedor recebe a cópia na hora) e confira abaixo a carteira e a coleção de cada conta.")}`, `    <div class="toolbar"><span class="label">Abrir estreia agora:</span>${MC.estreias.map((ev) => `<button class="btn" data-adm-open="${esc(ev.key)}">${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}</button>`).join("")}</div>
+  return mpanel("admin", `Ferramentas do admin ${tip("Para testar: abra estreias fora da agenda, encerre antes do tempo (o vencedor recebe a cópia na hora) e confira abaixo a carteira e a coleção de cada conta.")}`, `    <div class="toolbar"><span class="label">Abrir estreia agora:</span>${MC.estreias.map((ev) => `<button class="btn" data-adm-open="${esc(ev.key)}">${EVENT_ICON[ev.key] || ""} ${esc(ev.name)}</button>`).join("")}<button class="btn coin" data-act="adm-custom">${EVENT_ICON.custom} Estreia personalizada</button></div>
     <form class="acct-form" id="admGrant" autocomplete="off"><input class="input" id="adm-name" maxlength="18" placeholder="Nome da conta"><input class="input num" id="adm-amount" type="number" min="1" max="10000" placeholder="M$"><button class="btn" type="submit">Dar M$</button></form>
     <div class="panel-head"><span class="label">Contas (${accs.length})</span><button class="btn quiet" data-act="adm-refresh">Atualizar</button></div>
     <div class="accs">${rows || `<p class="hint">Carregando…</p>`}</div>
@@ -1098,7 +1172,7 @@ function render() {
   const ct = document.getElementById("chatText"); if (ct) ct.value = chatDraft;
   const fd = document.getElementById("feed"); if (fd && feedAtBottom) fd.scrollTop = fd.scrollHeight;
   if (fid) { const el = document.getElementById(fid); if (el && el.tagName === "INPUT") { el.focus(); try { if (sel != null && el.type === "text") el.setSelectionRange(sel, sel); } catch (e) {} } }
-  renderToast(); tickClocks();
+  renderToast(); tickClocks(); syncRarEditor();
 }
 function renderToast() {
   let t = document.getElementById("toast");
@@ -1295,6 +1369,40 @@ function hideZoom() { zoomPop.hidden = true; zoomPop.style.display = "none"; zoo
 document.addEventListener("mousemove", (e) => { const z = e.target.closest && e.target.closest("[data-zoom]"); if (z) showZoom(z.dataset.zoom, e.clientX, e.clientY); else if (zoomKey) hideZoom(); });
 document.addEventListener("focusin", (e) => { const z = e.target.closest && e.target.closest("[data-zoom]"); if (z) { const r = z.getBoundingClientRect(); showZoom(z.dataset.zoom, r.right, r.top + r.height / 2); } });
 document.addEventListener("focusout", (e) => { if (e.target.closest && e.target.closest("[data-zoom]")) hideZoom(); });
+/* ---------- nomes das raridades: no modo de teste, o admin troca só neste navegador (ml-rarnames) ---------- */
+const RAR_NAMES = Object.fromEntries(MC.rarities.map((r) => [r.key, r.name]));   // os nomes do market-config.js
+function applyRarNames() {
+  const o = (MC.testMode && store.get("ml-rarnames")) || {};
+  for (const r of MC.rarities) r.name = String(o[r.key] || "").trim() || RAR_NAMES[r.key];
+}
+applyRarNames();
+const rarEdit = document.createElement("div"); rarEdit.id = "rarEdit"; rarEdit.hidden = true; document.body.appendChild(rarEdit);
+// fica fora do #app: o re-render não apaga o que está sendo digitado
+function syncRarEditor() {
+  const on = !!(MC.testMode && screen() === "market" && S.me && S.me.admin);
+  rarEdit.hidden = !on;
+  if (!on || rarEdit.firstChild) return;
+  const o = store.get("ml-rarnames") || {};
+  rarEdit.classList.toggle("open", !!store.get("ml-rarnames-open"));
+  rarEdit.innerHTML = `<button type="button" class="rn-head" data-rn-toggle><span>🏷️ Nomes das raridades</span><span class="pill">teste</span></button>
+    <div class="rn-body">
+      ${MC.rarities.map((r) => `<label for="rn-${r.key}">${esc(RAR_NAMES[r.key])}</label><input class="input" id="rn-${r.key}" data-rn="${r.key}" maxlength="30" placeholder="${esc(RAR_NAMES[r.key])}" value="${esc(o[r.key] || "")}">`).join("")}
+      <p class="hint">Só neste navegador e só no modo de teste. Em branco, vale o nome do market-config.js.</p>
+      <button type="button" class="btn quiet" data-rn-reset>Voltar aos nomes padrão</button>
+    </div>`;
+}
+let rarTimer = null;
+rarEdit.addEventListener("input", (e) => {
+  if (!e.target.dataset.rn) return;
+  const o = {}; rarEdit.querySelectorAll("[data-rn]").forEach((i) => { if (i.value.trim()) o[i.dataset.rn] = i.value.trim(); });
+  store.set("ml-rarnames", o); applyRarNames();
+  clearTimeout(rarTimer); rarTimer = setTimeout(render, 200);
+});
+rarEdit.addEventListener("click", (e) => {
+  if (e.target.closest("[data-rn-toggle]")) { const open = rarEdit.classList.toggle("open"); store.set("ml-rarnames-open", open); return; }
+  if (e.target.closest("[data-rn-reset]")) { store.del("ml-rarnames"); rarEdit.querySelectorAll("[data-rn]").forEach((i) => { i.value = ""; }); applyRarNames(); render(); }
+});
+
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { hideZoom(); if (S.ui.modal) { S.ui.modal = null; render(); } } });
 addEventListener("scroll", hideZoom, { passive: true });
 
@@ -1451,7 +1559,8 @@ function copyText(text, msg) {
 
 /* ---------- eventos ---------- */
 $app.addEventListener("click", async (e) => {
-  const b = e.target.closest("button, [data-zoom], [data-tip], [data-rank]"); if (!b) return;
+  let b = e.target.closest("button, [data-zoom], [data-tip], [data-rank]"); if (!b) return;
+  if (b.dataset.zoom && b.tagName !== "BUTTON" && HOVER.matches && b.closest("button")) { hideZoom(); b = b.closest("button"); } // pôster dentro de um card-botão: com mouse o zoom já abriu, o clique vale para o card
   const d = b.dataset;
   if (d.zoom) { const r = b.getBoundingClientRect(); if (zoomKey === d.zoom) hideZoom(); else showZoom(d.zoom, r.right, r.top + r.height / 2); return; }
   if (d.rank) return openCollection(d.rank);
@@ -1492,6 +1601,10 @@ $app.addEventListener("click", async (e) => {
     return r.error ? toast(r.error, true) : toast(`Comprado por ${mny(r.price)}!`);
   }
   if (d.admOpen) return adminCall("admin:openEstreia", { event: d.admOpen }, "Estreia aberta.");
+  if (d.cePick && ceDraft) { ceDraft.pick = d.cePick; ceDraft.err = ""; return render(); }
+  if (d.ceBand && ceDraft) { const s = new Set(ceDraft.bands); s.has(d.ceBand) ? s.delete(d.ceBand) : s.add(d.ceBand); ceDraft.bands = [...s]; return render(); }
+  if (d.ceGenre && ceDraft) { const s = new Set(ceDraft.genres); s.has(d.ceGenre) ? s.delete(d.ceGenre) : s.add(d.ceGenre); ceDraft.genres = [...s]; ceDraft.err = ""; return render(); }
+  if (d.ceFormat && ceDraft) { ceDraft.format = d.ceFormat; ceDraft.err = ""; return render(); }
   if (d.admCancel) return adminCall("admin:cancelAuction", { id: d.admCancel }, "Leilão cancelado; os lances voltaram para as carteiras.");
   if (d.admClose) return adminCall("admin:closeAuction", { id: d.admClose }, (r) => (r.result && r.result.winner ? `Encerrada: ${r.result.winnerName} levou por ${mny(r.result.price)}.` : "Encerrada sem lances."));
   if (d.mstep) {
@@ -1538,6 +1651,7 @@ $app.addEventListener("click", async (e) => {
     case "market-join": if (!S.me) S.acct.tab = "register"; if (d.after) { S.mtab = d.after; store.set("ml-mtab", d.after); } return openMarket();
     case "market-login": S.acct.tab = "login"; return openMarket();
     case "adm-refresh": return loadAccounts();
+    case "adm-custom": return openCeForm();
     case "adm-season": { const g = document.getElementById("adm-season").value; return adminCall("admin:season", { genre: g }, (r) => `Temporada: ${r.season.genre}.`); }
     case "refill": {
       if (S.catalog) { S.catalog.refilling = true; render(); }
@@ -1660,6 +1774,12 @@ $app.addEventListener("input", (e) => {
     const k = t.id.slice(3);
     listDraft[k] = t.type === "checkbox" ? t.checked : t.value;
     if (k === "featured") render();   // o custo muda na hora
+  }
+  if (t.id && t.id.startsWith("ce-") && ceDraft) {
+    const k = t.id.slice(3);
+    ceDraft[k] = t.type === "checkbox" ? t.checked : t.value;
+    if (k === "film") render();   // mostra o card do filme escolhido
+    if (k === "count") { const e = document.querySelector(".ce-count .err"); if ((+t.value > cePool(ceDraft)) !== !!e) render(); }   // aviso de filmes insuficientes, sem tirar o foco à toa
   }
   if (t.id === "donText") { S.ui.donate.text = t.value; return; }
 });

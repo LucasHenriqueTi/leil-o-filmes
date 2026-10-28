@@ -41,6 +41,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   | `admin:closeAuction` | `{id}` | `{result}`. Encerra agora: o vencedor paga e recebe a cópia, como no fim normal. Só admin. |
   | `admin:cancelAuction` | `{id}` | Cancela e devolve o lance. Só admin. |
   | `admin:openEstreia` | `{event}` (`day`, `week`, `month`) | `{id}`. Abre agora, sem mexer na agenda. Só admin. |
+  | `admin:customEstreia` | `{film?, bands?, genres?, count?, format, minutes, minBid?, startPrice?, ghost?, name?}` | `{id, ids, titles}`. Estreias personalizadas (`openCustomEstreia`), abertas agora e avisadas a todos numa mensagem só. Só admin. |
   | `market:showcase` | — | Pública, sem login. `{open, featured, next, ranking (top 5), recent (10 filmes mais novos), season, stats}`: a vitrine da tela inicial. |
   | `market:ranking` | — | `{ranking, season}`: pontos de cada conta (com os bônus) e o gênero em alta no mês. |
   | `market:collection` | `{id}` | `{id, name, score, copies}`: a coleção de qualquer conta, aberta pelo ranking (`publicCollection`). Só filmes, cópias e pontos, nada da carteira. |
@@ -69,6 +70,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   - `loadPool`: sorteio, numa consulta que já filtra quem tem 2 notas;
   - `fetchFilms`: título (pt-BR, depois artigo da Wikipédia em português, depois rótulo pt e en), ano, diretor, gêneros e notas P444;
   - uma nota por fonte: a de data mais recente; no RT, o Tomatometer (%) vem antes da média x/10;
+  - nota do IMDb pelo arquivo oficial do IMDb (`title.ratings.tsv.gz` de datasets.imdbws.com, atualizado todo dia, uso pessoal e não comercial), porque o Wikidata quase não tem mais essa nota. `imdbRatings` baixa o arquivo no máximo a cada 12 h e `scanRatings` (pura, testada) lê em fluxo só os filmes pedidos, com pelo menos `imdbMinVotes` votos. Vale mais que a nota do Wikidata; se o arquivo não responder, fica a do Wikidata. No início do servidor, `backfillImdb` atualiza os filmes ainda sem cópias (`updateScores`, que respeita as notas corrigidas em `fix` e chama o `refreeze`);
   - pôster pela Wikipédia (`pageimages`), só de `upload.wikimedia.org`;
   - tags do Wikidata: `oscars` (prêmios P166 do filme, agrupados nas famílias de `OSCAR_FAMILIES`; Direção fica de fora porque o Wikidata registra no diretor, e Animação porque quase nenhum filme tem) e `nacional` (país de origem Brasil, P495 = Q155); `loadTagPool` sorteia filmes com a tag (`nacional` ou `oscar:<família>`) e notas suficientes, `fetchFacts` busca só as tags (para filmes antigos);
   - `fromSparql` é pura e testada sem rede.
@@ -78,7 +80,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
 - `public/catalog.js`: fontes de dados gratuitas e sem chave, chamadas pelo navegador.
   - Wikidata (SPARQL): sorteio de filmes, gêneros e notas (propriedade P444).
   - Wikipédia: pôsteres e sinopses, buscando primeiro em português, depois em inglês e por último no IMDb.
-  - api.imdbapi.dev: nota ao vivo.
+  - api.imdbapi.dev: nota ao vivo. O domínio saiu do ar (out/2026), então hoje essa busca sempre falha e fica a nota da reserva ou do Wikidata.
   - Reserva: 77 filmes embutidos (lista `RAW`), incluindo os 16 indicados pelo grupo.
   - Antes de começar, `finalize()` congela título, nota e pôster de cada lote.
 - `public/net.js`: conexão WebSocket com reconexão automática e ajuste de relógio com o servidor. Com `window.ML_OFFLINE = true`, o online fica desligado.
@@ -108,15 +110,18 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   - **Unanimidade:** selo quando a maior nota menos a menor dá até `unanimityMaxSpread` (1,0).
   - **Faixas** (`rarities`; nota mínima, cópias, lance mínimo):
 
-    | Faixa | Nota | Cópias | Lance mínimo | Alvo no catálogo |
-    |---|---|---|---|---|
-    | Tomate Podre | até 1,5 | 1 | M$ 25 | ~1% |
-    | Comum | até 6,5 | 20 | M$ 1 | ~40% |
-    | Incomum | 6,6 | 10 | M$ 3 | ~28% |
-    | Raro | 7,6 | 5 | M$ 6 | ~18% |
-    | Épico | 8,4 | 3 | M$ 10 | ~9% |
-    | Lendário | 8,8 | 1 | M$ 15 | ~3% |
-    | Obra de Arte | 9,2 | 1 | M$ 25 | ~1% |
+    | Faixa (`key`) | Nome na tela | Nota | Cópias | Lance mínimo | Alvo no catálogo |
+    |---|---|---|---|---|---|
+    | Tomate Podre (`podre`) | Tomate Podre | até 1,5 | 1 | M$ 25 | ~1% |
+    | Comum (`comum`) | Sessão da Tarde | até 6,5 | 20 | M$ 1 | ~40% |
+    | Incomum (`incomum`) | Bem na Crítica | 6,6 | 10 | M$ 3 | ~28% |
+    | Raro (`raro`) | Indicado | 7,6 | 5 | M$ 6 | ~18% |
+    | Épico (`epico`) | Aclamado | 8,4 | 3 | M$ 10 | ~9% |
+    | Lendário (`lendario`) | Imortal | 8,8 | 1 | M$ 15 | ~3% |
+    | Obra de Arte (`obra`) | Absolute Cinema | 9,2 | 1 | M$ 25 | ~1% |
+
+    Neste arquivo, as faixas são chamadas pelo nome antigo (o do `key`). O nome na tela é o `name` de `rarities` e pode mudar sem mexer nos dados salvos.
+    - **Editor de nomes** (só com `testMode`, só para admin, no Mercado): painel "🏷️ Nomes das raridades" no canto da tela. Troca os nomes na hora, só naquele navegador (`ml-rarnames`; aberto ou fechado em `ml-rarnames-open`). Fora do modo de teste, valem os nomes do `market-config.js`. O servidor sempre usa os do `market-config.js` nos avisos.
 
     Os cortes foram calibrados num catálogo de 509 filmes para chegar nos alvos (já contando o Garimpo).
     - `requireScores` faz uma faixa exigir mais notas; hoje a Obra de Arte e o Tomate Podre pedem 2, o mesmo que `minScores`.
@@ -143,7 +148,14 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
     | da semana | sábado às 20h | Raro e Épico | 30 min |
     | do mês | dia 1º às 20h | Lendário, Tomate Podre e Obra de Arte | 60 min |
 
-    A agenda fica em `eco.house.next` e sobrevive a reinícios. `auctionTick` roda a cada segundo, mas só entra na fila quando há algo vencido (`dueAuctions`).
+    A agenda fica em `eco.house.next` e sobrevive a reinícios.
+  - **Estreia personalizada** (admin, botão "✨ Estreia personalizada" no painel do admin; `event: "custom"`, limites em `customEstreia`):
+    - filme sorteado (`lotCandidates`, a mesma lista do `pickLot`) entre as raridades **e** os gêneros marcados (qualquer gênero do filme vale; nada marcado = todos), ou escolhido no catálogo;
+    - no sorteio, dá para abrir várias de uma vez (`count`, até `customEstreia.maxCount`, 10): mesmas regras, um filme diferente em cada. É tudo ou nada: se faltar filme ou um valor não servir para algum deles (por exemplo, o preço inicial do relógio abaixo do mínimo da raridade), nenhuma abre. Com filme escolhido, é uma por vez; precisa ter cópia para emitir ou no estoque da Casa e não estar em outra estreia aberta;
+    - qualquer formato dos jogadores (Aberto, Lance secreto, Secreto de 2º preço, Relógio holandês), com o mesmo fechamento: o vencedor paga e a cópia nasce (ou sai do estoque) para ele. Nos secretos, `settleSealed` (o mesmo dos leilões dos jogadores) escolhe o vencedor e o preço;
+    - lance mínimo livre de M$ 1 a `dutchMaxStart` (em branco, o da raridade); no relógio, também o preço inicial;
+    - duração de 1 minuto a `customEstreia.maxMinutes` (7 dias) e nome opcional (padrão "Estreia especial");
+    - a Casa disputa (`ghost`) só no Aberto, e o admin pode desligar. O teto dela é o lance mínimo escolhido mais a porcentagem da faixa. `auctionTick` roda a cada segundo, mas só entra na fila quando há algo vencido (`dueAuctions`).
   - **Lance (`bid`):**
     - precisa ser pelo menos o lance mínimo da faixa, ou o maior lance + 1;
     - sai do saldo livre e fica reservado; quem foi superado recebe o reservado de volta na hora;
@@ -224,7 +236,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
 Tema de live stream. A base é ameixa escura (`--ground #150f1f`), o vermelho "no ar" é `--live #ff4f6d`, o dourado do dinheiro é `--coin #ffd166` e a menta da "sua vez" é `--mint #4be3b0`. Fontes: Unbounded nos títulos e Onest no texto. O lote aparece num "palco" 16:9 com o pôster desfocado ao fundo; os lances viram alertas, a venda vira o carimbo "Vendido!" e há chat com reações. O donate vira um alerta no topo da tela: `--lvl` cresce a cada real (tamanho, brilho, itens caindo, tempo na tela, notas do som) e as faixas `DON_TIERS` (1, 2, 3, 5, 8, 10, 15, 20, 30, 50 e 100 reais) trocam o visual e somam efeitos: tela tremendo, buzina, sirene, clarão, raios e voz lendo a mensagem. Os sons são gerados com Web Audio, sem arquivos, e o botão 🔊 do chat liga ou desliga (`ml-sound`). O chat tem seletor de emoji, e mensagens só de emoji aparecem grandes. O Mercado é organizado em abas no topo (`MTABS`): Painel, Estreias, Leilões, Coleção, Catálogo, Ranking, Carteira e Admin. A aba aberta fica em `S.mtab` (`ml-mtab`); qualquer botão com `data-mtab` troca de aba. Dentro das abas, os painéis usam `mpanel()` (sem esconder). O catálogo, a coleção e os últimos leilões encerrados têm dois modos, cada um com a própria escolha (`S.views`, salva em `ml-views`; o seletor é `viewToggle(chave)`): **Lista** (`filmRow`) e **Pôsteres** (`posterCard(f, {foot, detail, below, label})`: `foot` troca a linha do rodapé, `detail` soma ao detalhe, `below` põe botões embaixo do card, como Anunciar e Vender na coleção). No modo Pôsteres, a moldura do card mostra a raridade (cor de `--rar`; Lendário com reflexo; Obra de Arte com borda arco-íris animada; Tomate Podre com moldura verde de gosma e 🍅 no selo), o rodapé mostra título, ano, nota e cópias, e os detalhes (`.pdetail`) sobem por cima do pôster com o mouse em cima ou com foco (toque no celular, Tab no teclado). O Painel resume tudo: números clicáveis (`stat`), temporada, "Acontecendo agora" (`liveNow` + `miniAuction`), top do ranking (`rankList`) e filmes recém-chegados (`filmStrip`). A tela inicial mostra a vitrine pública do Mercado (`marketShowcase`, atualizada a cada 20 s), com o convite "Criar conta e ganhar M$ 30". A tela de criar conta mostra as vantagens e o que está acontecendo ao lado do formulário. O pôster ampliado abre ao passar o mouse em qualquer `[data-zoom]` e fecha ao tirar o mouse, clicar fora ou apertar Esc. Explicações não ocupam a tela: o texto fica resumido (por exemplo "Temporada: Ficção científica") e a descrição abre num balão (`#tipPop`) com o mouse em cima, foco pelo teclado ou toque (outro toque ou toque fora fecha). Use `tip(html)` para o botão "?" ao lado de um título ou `tipAttr(html)` em qualquer botão.
 
 ## Cuidados
-- O estado do cliente é salvo no `localStorage` com o prefixo `ml-` (token, nome, configuração, partida local, painéis escondidos em `ml-fold`, cache de metadados, `ml-sound` e `ml-auth`, que é o token da conta do Mercado).
+- O estado do cliente é salvo no `localStorage` com o prefixo `ml-` (token, nome, configuração, partida local, painéis escondidos em `ml-fold`, cache de metadados, `ml-sound`, `ml-auth`, que é o token da conta do Mercado, e `ml-rarnames`, os nomes de teste das raridades).
 - Todo painel usa `panel(key, título, corpo, extra, classe)` em `app.js`: o título vira botão de esconder e o corpo só é montado aberto. Informações da sala (`info`), donate e regras começam escondidos.
 - As salas se perdem quando o servidor reinicia. No plano gratuito do Render, o servidor dorme depois de uns 15 minutos sem uso.
 - O Mercado não se perde ao reiniciar, porque fica em `ML_DATA`. Mas o disco do Render gratuito é apagado a cada deploy, então o banco de produção do Mercado ainda precisa ser escolhido antes de publicar.
