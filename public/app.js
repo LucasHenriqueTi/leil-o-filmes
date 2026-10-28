@@ -792,13 +792,20 @@ const hotChip = (f) => (isHot(f) ? `<span class="chip hot" tabindex="0" ${tipAtt
 const genreLine = (f, n) => ((f.g || []).length ? `<span class="hint fgenres">${esc(f.g.slice(0, n || 3).join(" · "))}</span>` : "");
 const rarName = (k) => (MK.rarity(k) || {}).name || k;
 const rarBadge = (k) => `<span class="rar r-${esc(k)}">${esc(rarName(k))}</span>`;
-const filmScores = (f) => Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null).map(([k, n]) => `${n} ${pts(f.scores[k])}`).join(" · ");
+// card da lista: pôster grande à esquerda; título e nota no topo, selos, gêneros, notas por fonte e o rodapé (side) embaixo
+const SRC_SHORT = { imdb: "IMDb", metacritic: "Metacritic", rt: "RT" };
+const scoreChips = (f) => Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null)
+  .map(([k, n]) => `<span class="msrc" title="${esc(n)}"><small>${esc(SRC_SHORT[k] || n)}</small><b class="num">${pts(f.scores[k])}</b></span>`).join("");
 function filmRow(f, side) {
   return `<div class="mfilm r-${esc(f.rarity)}"><div class="ph">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}</div>
-    <div class="meta"><b>${esc(f.title)}</b><span class="hint">${esc(f.year)}${f.dir ? " · " + esc(f.dir) : ""}</span>
+    <div class="mbody">
+      <div class="mhead"><div class="mtitle"><b title="${esc(f.title)}">${esc(f.title)}</b><span class="hint">${esc(f.year)}${f.dir ? " · " + esc(f.dir) : ""}</span></div>
+        <div class="mref" title="Nota de referência"><b class="num">${pts(f.ref)}</b><small>nota</small></div></div>
       <div class="tags">${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal" title="As notas quase não discordam">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip" title="Pouco lembrado: subiu uma raridade">Garimpo</span>` : ""}${hotChip(f)}${tagChips(f)}</div>
-      ${genreLine(f)}<span class="hint num">${esc(filmScores(f))}</span></div>
-    <div class="ref"><b class="num">${pts(f.ref)}</b>${side || ""}</div></div>`;
+      ${genreLine(f)}
+      <div class="mscores">${scoreChips(f)}</div>
+      ${side ? `<div class="mside">${side}</div>` : ""}
+    </div></div>`;
 }
 function catalogPanel(me) {
   const c = S.catalog;
