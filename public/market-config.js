@@ -141,6 +141,11 @@
     // temporada: a cada mês um gênero desta lista está em alta (sorteio fixo pelo mês)
     seasonGenres: ["Ação", "Aventura", "Comédia", "Drama", "Ficção científica", "Terror", "Suspense", "Romance", "Animação", "Crimes", "Fantasia", "Mistério"],
     seasonPts: 2,             // pontos extras por filme do gênero em alta
-    seasonValueBoost: 1.25    // o valor de referência dos filmes do gênero em alta sobe isto
+    seasonValueBoost: 1.25,   // o valor de referência dos filmes do gênero em alta sobe isto
+    // animação dos filmes do gênero em alta, uma por modo de exibição: `grid` nos pôsteres (e em "Chegaram ao catálogo"),
+    // `list` na lista (e no card inteiro do "Acontecendo agora"). Variantes (HOT_FX no app.js): brasas, aura, anel,
+    // faisca, labaredas, brilho, fita, nenhuma. No modo de teste, o admin pode trocar só no próprio navegador
+    // (editor no canto da tela, `ml-hotfx-grid` e `ml-hotfx-list`).
+    hotFx: { grid: "brasas", list: "fita" }
   };
 });
