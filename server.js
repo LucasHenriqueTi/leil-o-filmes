@@ -471,7 +471,7 @@ attachWebSocket(server, "/ws", (socket) => {
   // anunciar uma cópia da coleção (leilão de jogador)
   socket.on("market:list", async (d = {}, cb) => {
     const uid = meOf(cb); if (!uid) return;
-    const o = { copy: String(d.copy || ""), format: String(d.format || ""), minutes: d.minutes, startsAt: d.startsAt, reserve: d.reserve, startPrice: d.startPrice, featured: !!d.featured };
+    const o = { copy: String(d.copy || ""), format: String(d.format || ""), minutes: d.minutes, startsAt: d.startsAt, reserve: d.reserve, startPrice: d.startPrice, startBid: d.startBid, featured: !!d.featured };
     const r = await mutate((e, now) => Market.listCopy(e, uid, o, now));
     if (r.error) return reply(cb, r);
     reply(cb, { ok: true, id: r.id });

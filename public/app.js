@@ -910,7 +910,7 @@ function auctionCard(a, me) {
     ctl = `${a.myBid ? `<p class="lead-ok">Seu lance secreto: ${mny(a.myBid)}. Dá para trocar até o fim.</p>` : ""}${bidBox(a, a.minBid, a.myBid ? "Trocar lance" : "Lance secreto", a.myBid)}<p class="hint num">Mínimo ${mny(a.minBid)} · ${free}</p>`;
   } else {
     const min = a.highBy ? a.high + 1 : a.minBid;
-    read = `<span class="label">${a.highBy ? "Maior lance" : "Lance mínimo"}</span><b class="num">${mny(a.highBy ? a.high : a.minBid)}</b>
+    read = `<span class="label">${a.highBy ? "Maior lance" : user ? "Lance inicial" : "Lance mínimo"}</span><b class="num">${mny(a.highBy ? a.high : a.minBid)}</b>
       <span class="hint">${a.highBy ? (a.mine ? "é seu" : a.highBy === "house" ? "da Casa" : `de ${esc(a.highName)}`) : "ninguém deu lance ainda"}</span>`;
     ctl = a.mine ? `<p class="lead-ok">Seu lance está na frente. Se alguém passar, o dinheiro volta para você na hora.</p>`
       : `${bidBox(a, min, "Dar lance")}<p class="hint num">Mínimo ${mny(min)} · ${free}</p>`;
@@ -968,16 +968,17 @@ function listFormHtml() {
       ${d.schedule ? `<div class="field"><label for="lf-start">Começa em</label><input class="input" id="lf-start" type="datetime-local" value="${esc(d.start)}"></div>` : ""}
     </div>
     <div class="grid-3">
-      ${dutch ? `<div class="field"><label for="lf-startPrice">Preço inicial</label><input class="input num" id="lf-startPrice" type="number" min="${r.minBid + 1}" value="${esc(d.startPrice)}"></div>` : ""}
+      ${dutch ? `<div class="field"><label for="lf-startPrice">Preço inicial</label><input class="input num" id="lf-startPrice" type="number" min="${r.minBid + 1}" value="${esc(d.startPrice)}"></div>`
+        : `<div class="field"><label for="lf-startBid">Lance inicial (opcional)</label><input class="input num" id="lf-startBid" type="number" min="${r.minBid}" placeholder="${r.minBid}" value="${esc(d.startBid)}"></div>`}
       <div class="field"><label for="lf-reserve">${dutch ? "Preço mínimo (o relógio para aqui)" : "Reserva secreta (opcional)"}</label><input class="input num" id="lf-reserve" type="number" min="0" placeholder="${dutch ? r.minBid : "sem reserva"}" value="${esc(d.reserve)}"></div>
     </div>
-    <p class="hint">Lance mínimo da raridade ${esc(r.name)}: ${mny(r.minBid)}. ${dutch ? "Todos veem o preço caindo até o mínimo." : "A reserva fica escondida: abaixo dela, a cópia continua sua e os lances voltam."}</p>
+    <p class="hint">Lance mínimo da raridade ${esc(r.name)}: ${mny(r.minBid)}. ${dutch ? "Todos veem o preço caindo até o mínimo." : `Sem lance inicial, começa em ${mny(r.minBid)}. ${tip("O lance inicial aparece para todos: ninguém pode dar menos que ele. A reserva fica escondida: abaixo dela, a cópia continua sua e os lances voltam.")}`}</p>
     <label class="check"><input type="checkbox" id="lf-featured" ${d.featured || freeFeat ? "checked" : ""} ${freeFeat ? "disabled" : ""}> Pôr na vitrine e avisar todo mundo ${freeFeat ? "(de graça para esta raridade)" : `(+${mny(MC.featureFee)})`}</label>
     <p class="cost num">Custa ${mny(cost)} para anunciar (não volta). Se vender, você recebe o preço menos ${Math.round(MC.saleFeePct * 100)}%.</p>
     ${d.err ? `<p class="err">${esc(d.err)}</p>` : ""}`;
 }
 function openListForm(copyId) {
-  listDraft = { copy: copyId, format: "open", minutes: 60, schedule: false, start: toLocalInput(Date.now() + 3600e3), reserve: "", startPrice: "", featured: false, err: "" };
+  listDraft = { copy: copyId, format: "open", minutes: 60, schedule: false, start: toLocalInput(Date.now() + 3600e3), reserve: "", startPrice: "", startBid: "", featured: false, err: "" };
   showListModal();
 }
 function showListModal() {
@@ -987,7 +988,7 @@ function showListModal() {
 async function submitListing() {
   const d = listDraft; if (!d) return;
   const r = await N.call("market:list", { copy: d.copy, format: d.format, minutes: +d.minutes, startsAt: d.schedule ? new Date(d.start).getTime() : null,
-    reserve: d.reserve === "" ? 0 : +d.reserve, startPrice: +d.startPrice, featured: d.featured });
+    reserve: d.reserve === "" ? 0 : +d.reserve, startPrice: +d.startPrice, startBid: d.startBid === "" ? 0 : +d.startBid, featured: d.featured });
   if (r.error) { d.err = r.error; return showListModal(); }   // reabre com o erro, sem perder o que foi preenchido
   listDraft = null; toast(d.schedule ? "Leilão agendado." : "Leilão aberto!");
 }

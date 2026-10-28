@@ -557,6 +557,9 @@
     const f = eco.films[c.film], minBid = rarity(f.rarity, cfg).minBid;
     const reserve = o.reserve ? Math.floor(+o.reserve) : 0;
     if (!(reserve >= 0 && reserve <= cfg.dutchMaxStart)) return { error: "Preço de reserva inválido." };
+    // lance inicial (Aberto e secretos): o dono escolhe; sem escolha, começa no lance mínimo da raridade
+    const startBid = o.format !== "dutch" && o.startBid ? Math.floor(+o.startBid) : 0;
+    if (startBid && !(startBid >= minBid && startBid <= cfg.dutchMaxStart)) return { error: `O lance inicial precisa ser de ${money(minBid)} a ${money(cfg.dutchMaxStart)}.` };
     let startPrice = 0;
     if (o.format === "dutch") {
       startPrice = Math.floor(+o.startPrice);
@@ -572,7 +575,7 @@
     const st = Math.max(startsAt, now);
     eco.auctionSeq = (eco.auctionSeq || 0) + 1;
     const id = "a" + eco.auctionSeq;
-    eco.auctions[id] = { id, kind: "user", seller: uid, format: o.format, film: f.id, copy: c.id, rarity: f.rarity, minBid, reserve, startPrice, featured,
+    eco.auctions[id] = { id, kind: "user", seller: uid, format: o.format, film: f.id, copy: c.id, rarity: f.rarity, minBid: Math.max(minBid, startBid), reserve, startPrice, featured,
       startsAt: st, endsAt: st + minutes * 60e3, high: 0, highBy: null, bids: [], sealed: {}, extended: 0, status: st > now ? "scheduled" : "open", result: null, createdAt: now };
     eco.seq++;
     return { id };

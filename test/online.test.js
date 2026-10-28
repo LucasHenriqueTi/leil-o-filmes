@@ -253,13 +253,15 @@ class Client {
     const copyId = meWin.collection[0].id;
     assert.ok((await U2.call("market:list", { copy: copyId, format: "open", minutes: 15 })).error, "só o dono anuncia");
     assert.ok((await U1.call("market:list", { copy: copyId, format: "open", minutes: 7 })).error, "duração inválida");
-    const listed = await U1.call("market:list", { copy: copyId, format: "open", minutes: 15, reserve: 0 });
+    const listed = await U1.call("market:list", { copy: copyId, format: "open", minutes: 15, reserve: 0, startBid: 10 });
     assert.ok(listed.ok, "anunciar: " + JSON.stringify(listed));
     assert.ok((await U1.call("market:sell", { copy: copyId })).error, "anunciada não vai para a Casa");
     const pl = (await U2.call("market:auctions")).players;
     assert.strictEqual(pl.length, 1, "aparece para os outros");
     assert.strictEqual(pl[0].sellerName, "Cibele");
     assert.ok((await U1.call("market:bid", { id: listed.id, amount: 50 })).error, "não dá lance no próprio leilão");
+    assert.strictEqual(pl[0].minBid, 10, "o lance inicial do dono chega à tela");
+    assert.ok((await U2.call("market:bid", { id: listed.id, amount: 9 })).error, "abaixo do lance inicial não vale");
     assert.ok((await U2.call("market:bid", { id: listed.id, amount: 12 })).ok, "André dá lance");
     const sellerBefore = (await U1.call("market:me")).me.wallet.free;
     const sold = await U1.call("admin:closeAuction", { id: listed.id });

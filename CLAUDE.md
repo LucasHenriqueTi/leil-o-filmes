@@ -33,7 +33,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   | `market:auctions` | — | `{open, recent, next}`: estreias abertas, as últimas encerradas e a agenda. |
   | `market:bid` | `{id, amount}` | `{ok}`. Avisa quem foi superado. |
   | `market:sell` | `{copy}` | `{price}`. Vende a cópia para a Casa. |
-  | `market:list` | `{copy, format, minutes, startsAt?, reserve?, startPrice?, featured?}` | `{id}`. Anuncia uma cópia da coleção (leilão de jogador). |
+  | `market:list` | `{copy, format, minutes, startsAt?, reserve?, startPrice?, startBid?, featured?}` | `{id}`. Anuncia uma cópia da coleção (leilão de jogador). |
   | `market:unlist` | `{id}` | Desiste do anúncio. Só o dono, só antes de ter lance; a taxa não volta. |
 
   O `market:bid` serve para todos os formatos: no Aberto é lance à vista; no Lance secreto e no Secreto de 2º preço, é lance escondido (dá para trocar); no Relógio holandês, compra na hora pelo preço atual (`amount` é ignorado) e responde `{closed: true, price}`. Nas estreias, se a Casa (comprador fantasma) cobriu o lance, responde `{house: true, high}`.
@@ -156,6 +156,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
     - formato (`userFormats`);
     - duração (`userDurations`, de 5 min a 3 dias);
     - início agora ou agendado (até `maxScheduleDays`, 7 dias);
+    - lance inicial opcional (`startBid`, no Aberto e nos secretos): visível para todos, vira o `minBid` do leilão (de lance mínimo da raridade a `dutchMaxStart`). Sem escolha, começa no lance mínimo da raridade. No Secreto de 2º preço, quem vence paga pelo menos o lance inicial;
     - reserva secreta opcional;
     - vitrine.
 

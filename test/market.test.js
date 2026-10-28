@@ -551,6 +551,33 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   console.log("ok coleção pública");
 }
 
+// lance inicial escolhido pelo dono (Aberto e secretos); sem escolha, começa no lance mínimo da raridade
+{
+  const X = require("../public/market-films.js");
+  const eco = M.create(), T0 = MON, MIN = 60e3;
+  ["a", "b"].forEach((id) => { M.addUser(eco, { id, name: "Conta " + id, auth }, T0, cfg()); M.credit(eco, id, 70, "admin", T0); });
+  X.examples.forEach((f) => M.addFilm(eco, f, T0));
+  const give = (film) => { M.mintCopy(eco, film, "a", T0); return `${film}#${eco.films[film].minted}`; };
+  const raro = give("tt0441773"), raro2 = give("tt0816692");   // Raro: lance mínimo M$ 6
+  const list = (o) => M.listCopy(eco, "a", Object.assign({ format: "open", minutes: 15 }, o), T0);
+  assert.ok(list({ copy: raro, startBid: 5 }).error, "lance inicial abaixo do mínimo da raridade");
+  assert.ok(list({ copy: raro, startBid: 5000 }).error, "lance inicial alto demais");
+  const op = list({ copy: raro, startBid: 12 }).id;
+  assert.strictEqual(eco.auctions[op].minBid, 12, "o Aberto começa no lance inicial");
+  assert.ok(M.bid(eco, op, "b", 11, T0 + MIN), "não aceita lance abaixo do inicial");
+  assert.strictEqual(M.bid(eco, op, "b", 12, T0 + MIN), null);
+  const vk = list({ copy: raro2, format: "vickrey", startBid: 15 }).id;
+  assert.ok(M.bid(eco, vk, "b", 14, T0 + MIN), "secreto também respeita o lance inicial");
+  assert.strictEqual(M.bid(eco, vk, "b", 30, T0 + MIN), null);
+  M.closeAuction(eco, vk, T0 + 16 * MIN);
+  assert.strictEqual(eco.auctions[vk].result.price, 15, "2º preço sozinho paga o lance inicial");
+  M.cancelAuction(eco, op, T0 + 2 * MIN);
+  const plain = M.listCopy(eco, "b", { copy: raro2, format: "open", minutes: 15 }, T0 + 20 * MIN).id;
+  assert.strictEqual(eco.auctions[plain].minBid, 6, "sem lance inicial, começa no mínimo da raridade");
+  books(eco);
+  console.log("ok lance inicial");
+}
+
 // tags dos filmes (Cult, Oscar, Nacional) e os conjuntos de bônus
 {
   const X = require("../public/market-films.js");
