@@ -41,6 +41,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   | `admin:closeAuction` | `{id}` | `{result}`. Encerra agora: o vencedor paga e recebe a cópia, como no fim normal. Só admin. |
   | `admin:cancelAuction` | `{id}` | Cancela e devolve o lance. Só admin. |
   | `admin:openEstreia` | `{event}` (`day`, `week`, `month`) | `{id}`. Abre agora, sem mexer na agenda. Só admin. |
+  | `admin:customEstreia` | `{film?, bands?, genres?, count?, format, minutes, minBid?, startPrice?, ghost?, name?}` | `{id, ids, titles}`. Estreias personalizadas (`openCustomEstreia`), abertas agora e avisadas a todos numa mensagem só. Só admin. |
   | `market:showcase` | — | Pública, sem login. `{open, featured, next, ranking (top 5), recent (10 filmes mais novos), season, stats}`: a vitrine da tela inicial. |
   | `market:ranking` | — | `{ranking, season}`: pontos de cada conta (com os bônus) e o gênero em alta no mês. |
   | `market:collection` | `{id}` | `{id, name, score, copies}`: a coleção de qualquer conta, aberta pelo ranking (`publicCollection`). Só filmes, cópias e pontos, nada da carteira. |
@@ -143,7 +144,14 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
     | da semana | sábado às 20h | Raro e Épico | 30 min |
     | do mês | dia 1º às 20h | Lendário, Tomate Podre e Obra de Arte | 60 min |
 
-    A agenda fica em `eco.house.next` e sobrevive a reinícios. `auctionTick` roda a cada segundo, mas só entra na fila quando há algo vencido (`dueAuctions`).
+    A agenda fica em `eco.house.next` e sobrevive a reinícios.
+  - **Estreia personalizada** (admin, botão "✨ Estreia personalizada" no painel do admin; `event: "custom"`, limites em `customEstreia`):
+    - filme sorteado (`lotCandidates`, a mesma lista do `pickLot`) entre as raridades **e** os gêneros marcados (qualquer gênero do filme vale; nada marcado = todos), ou escolhido no catálogo;
+    - no sorteio, dá para abrir várias de uma vez (`count`, até `customEstreia.maxCount`, 10): mesmas regras, um filme diferente em cada. É tudo ou nada: se faltar filme ou um valor não servir para algum deles (por exemplo, o preço inicial do relógio abaixo do mínimo da raridade), nenhuma abre. Com filme escolhido, é uma por vez; precisa ter cópia para emitir ou no estoque da Casa e não estar em outra estreia aberta;
+    - qualquer formato dos jogadores (Aberto, Lance secreto, Secreto de 2º preço, Relógio holandês), com o mesmo fechamento: o vencedor paga e a cópia nasce (ou sai do estoque) para ele. Nos secretos, `settleSealed` (o mesmo dos leilões dos jogadores) escolhe o vencedor e o preço;
+    - lance mínimo livre de M$ 1 a `dutchMaxStart` (em branco, o da raridade); no relógio, também o preço inicial;
+    - duração de 1 minuto a `customEstreia.maxMinutes` (7 dias) e nome opcional (padrão "Estreia especial");
+    - a Casa disputa (`ghost`) só no Aberto, e o admin pode desligar. O teto dela é o lance mínimo escolhido mais a porcentagem da faixa. `auctionTick` roda a cada segundo, mas só entra na fila quando há algo vencido (`dueAuctions`).
   - **Lance (`bid`):**
     - precisa ser pelo menos o lance mínimo da faixa, ou o maior lance + 1;
     - sai do saldo livre e fica reservado; quem foi superado recebe o reservado de volta na hora;

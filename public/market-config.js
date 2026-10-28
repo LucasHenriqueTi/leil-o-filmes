@@ -72,6 +72,9 @@
       { key: "week", name: "Estreia da semana", every: "week", weekday: 6, hour: 20, bands: ["raro", "epico"], minutes: 30 },
       { key: "month", name: "Estreia do mês", every: "month", day: 1, hour: 20, bands: ["lendario", "podre", "obra"], minutes: 60 }
     ],
+    // estreia personalizada do admin: filme sorteado (das faixas marcadas) ou escolhido, qualquer formato,
+    // lance mínimo livre (de 1 a dutchMaxStart), duração de 1 minuto até maxMinutes e até maxCount de uma vez (no sorteio)
+    customEstreia: { name: "Estreia especial", maxName: 40, maxMinutes: 10080, maxCount: 10 },
     extendWindowSec: 30,      // lance nos últimos 30 s...
     extendBySec: 30,          // ...soma mais 30 s ao relógio (Aberto: estreias e leilões dos jogadores)
 

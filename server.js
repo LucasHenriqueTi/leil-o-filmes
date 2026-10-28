@@ -534,6 +534,21 @@ attachWebSocket(server, "/ws", (socket) => {
     pushAuctions();
   });
 
+  // estreia personalizada: filme sorteado ou escolhido, formato, lance mínimo e duração à escolha do admin
+  socket.on("admin:customEstreia", async (d = {}, cb) => {
+    const uid = adminOf(cb); if (!uid) return;
+    const o = { film: d.film ? String(d.film) : "", bands: Array.isArray(d.bands) ? d.bands.map(String) : [], genres: Array.isArray(d.genres) ? d.genres.slice(0, 50).map(String) : [], format: String(d.format || ""),
+      minutes: d.minutes, minBid: d.minBid, startPrice: d.startPrice, ghost: d.ghost !== false, name: String(d.name || ""), count: d.count };
+    const r = await mutate((e, now) => Market.openCustomEstreia(e, o, now));
+    if (r.error) return reply(cb, r);
+    const a = eco.auctions[r.id], titles = r.films.map((id) => eco.films[id].title);
+    reply(cb, { ok: true, id: r.id, ids: r.ids, titles });
+    pushAuctions();
+    const what = titles.length > 1 ? `${titles.length} estreias (${titles.join(", ")})` : `${titles[0]} (${Market.rarity(eco.films[a.film].rarity).name})`;
+    const text = `${a.eventName} aberta: ${what}, no formato ${Market.FORMATS[a.format].name}.`;
+    for (const c of conns.values()) if (c.data && c.data.uid && eco.users[c.data.uid] && c.data.uid !== uid) c.send({ t: "market:notice", d: { text } });
+  });
+
   // dá M$ para uma conta de teste (entra no extrato como "Ajuste do admin")
   // troca o gênero em alta neste mês (para testar a temporada); vazio volta ao sorteio do mês
   socket.on("admin:season", async (d = {}, cb) => {

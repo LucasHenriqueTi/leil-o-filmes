@@ -506,6 +506,12 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .modal.wide { width: min(640px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; }
 .modal .check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
 .modal .check input { width: 18px; height: 18px; accent-color: var(--coin); }
+.ce-genres { max-height: 132px; overflow-y: auto; padding: 2px; }
+.ce-genres small { opacity: 0.6; margin-left: 2px; }
+.ce-count .input { max-width: 120px; }
+.ce-count .err { display: inline; margin: 0; }
+.ce-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; align-items: end; }
+.ce-dur { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
 .modal .cost { margin: 0; font-weight: 600; color: var(--coin); }
 .modal select.input { appearance: auto; }
 /* pontuação, temporada e ranking */
