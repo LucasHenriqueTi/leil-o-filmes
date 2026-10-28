@@ -313,6 +313,19 @@
     if (n) eco.seq++;
     return n;
   }
+  // notas novas de uma fonte (ex.: {tt…: 8.1} do arquivo do IMDb) para os filmes ainda sem cópias; os congelados não mudam.
+  // `keep` lista os filmes com nota corrigida à mão para essa fonte. Depois recalcula nota de referência e raridade.
+  function updateScores(eco, src, vals, keep, cfg) {
+    let n = 0;
+    Object.entries(vals || {}).forEach(([id, v]) => {
+      const f = eco.films[id];
+      if (!f || f.minted > 0 || (keep && keep.has(id)) || !(v >= 0 && v <= 10) || (f.scores || {})[src] === v) return;
+      f.scores = Object.assign({}, f.scores, { [src]: v });
+      n++;
+    });
+    if (n) { eco.seq++; refreeze(eco, cfg); }
+    return n;
+  }
   // tira do catálogo os filmes sem cópias e sem estreia aberta, menos os que devem ficar;
   // as estreias encerradas sem venda desses filmes saem junto (não sobra histórico apontando para o nada)
   function pruneCatalog(eco, keep) {
@@ -857,7 +870,7 @@
     addSession, sessionUser, revokeSession, revokeSessions, pruneSessions,
     credit, debit, reserve, release, capture, tick, supply, view, ledgerOf, balanceFromLedger,
     SOURCES, parseScore, refRating, rarityOf, rarity, rarityIndex, filmPoints, filmTags, applyTags, applyOverrides,
-    addFilm, mintCopy, transferCopy, copyLabel, collectionOf, catalogView, openFilms, refreeze, pruneCatalog,
+    addFilm, mintCopy, transferCopy, copyLabel, collectionOf, catalogView, openFilms, refreeze, updateScores, pruneCatalog,
     money, refValue, buybackPrice, sellToHouse,
     FORMATS, listCopy, unlist, listingCost, dutchPrice, startDue,
     season, setSeason, setPoints, collectionScore, publicCollection, rankingView, showcase, capCheck, ghostCeiling, ghostChance,

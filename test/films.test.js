@@ -1,5 +1,6 @@
 // Teste da busca de filmes do Mercado: monta os filmes a partir de respostas do Wikidata salvas aqui (sem rede).
 const assert = require("assert");
+const zlib = require("zlib");
 const F = require("../lib/films.js");
 
 const lit = (value) => ({ type: "literal", value });
@@ -60,4 +61,11 @@ assert.strictEqual(F.genreName("filme de terror"), "Terror");
 assert.strictEqual(F.genreName("filmes de ação"), "Ação");
 assert.strictEqual(F.genreName("comédia"), "Comédia");
 console.log("ok nomes de gênero");
-console.log("Todos os testes de filmes passaram.");
+
+// arquivo de notas do IMDb: só os filmes pedidos, com votos suficientes (a última linha vem sem quebra)
+const gz = zlib.gzipSync("tconst\taverageRating\tnumVotes\ntt0075148\t8.1\t700000\ntt0000001\t5.7\t200\ntt0000002\t\\N\t5000\ntt0068646\t9.2\t2100000");
+F.scanRatings(gz, ["tt0075148", "tt0000001", "tt0000002", "tt0068646", "tt0000009"], 1000).then((r) => {
+  assert.deepStrictEqual(r, { tt0075148: 8.1, tt0068646: 9.2 }, "poucos votos, nota vazia e filme fora do arquivo ficam de fora");
+  console.log("ok notas do IMDb");
+  console.log("Todos os testes de filmes passaram.");
+}).catch((e) => { console.error(e); process.exit(1); });

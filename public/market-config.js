@@ -49,6 +49,7 @@
     // peso de cada fonte na média: o Tomatometer do RT é a % de críticas positivas, não uma nota,
     // e puxa a média para cima (87% não quer dizer nota 8,7); por isso vale metade
     scoreWeights: { imdb: 1, metacritic: 1, rt: 0.5 },
+    imdbMinVotes: 1000,       // nota do IMDb (arquivo oficial) só conta com pelo menos estes votos
     unanimityMaxSpread: 1.0,  // selo "Unanimidade": maior nota - menor nota até isto
     garimpoBelowLinks: 25,    // Garimpo = filme com menos páginas que isto na Wikipédia (com 30, um terço do catálogo subia de faixa)
     garimpoBoost: 1,          // faixas que o Garimpo sobe

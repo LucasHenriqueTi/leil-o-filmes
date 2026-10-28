@@ -70,6 +70,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   - `loadPool`: sorteio, numa consulta que já filtra quem tem 2 notas;
   - `fetchFilms`: título (pt-BR, depois artigo da Wikipédia em português, depois rótulo pt e en), ano, diretor, gêneros e notas P444;
   - uma nota por fonte: a de data mais recente; no RT, o Tomatometer (%) vem antes da média x/10;
+  - nota do IMDb pelo arquivo oficial do IMDb (`title.ratings.tsv.gz` de datasets.imdbws.com, atualizado todo dia, uso pessoal e não comercial), porque o Wikidata quase não tem mais essa nota. `imdbRatings` baixa o arquivo no máximo a cada 12 h e `scanRatings` (pura, testada) lê em fluxo só os filmes pedidos, com pelo menos `imdbMinVotes` votos. Vale mais que a nota do Wikidata; se o arquivo não responder, fica a do Wikidata. No início do servidor, `backfillImdb` atualiza os filmes ainda sem cópias (`updateScores`, que respeita as notas corrigidas em `fix` e chama o `refreeze`);
   - pôster pela Wikipédia (`pageimages`), só de `upload.wikimedia.org`;
   - tags do Wikidata: `oscars` (prêmios P166 do filme, agrupados nas famílias de `OSCAR_FAMILIES`; Direção fica de fora porque o Wikidata registra no diretor, e Animação porque quase nenhum filme tem) e `nacional` (país de origem Brasil, P495 = Q155); `loadTagPool` sorteia filmes com a tag (`nacional` ou `oscar:<família>`) e notas suficientes, `fetchFacts` busca só as tags (para filmes antigos);
   - `fromSparql` é pura e testada sem rede.
@@ -79,7 +80,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
 - `public/catalog.js`: fontes de dados gratuitas e sem chave, chamadas pelo navegador.
   - Wikidata (SPARQL): sorteio de filmes, gêneros e notas (propriedade P444).
   - Wikipédia: pôsteres e sinopses, buscando primeiro em português, depois em inglês e por último no IMDb.
-  - api.imdbapi.dev: nota ao vivo.
+  - api.imdbapi.dev: nota ao vivo. O domínio saiu do ar (out/2026), então hoje essa busca sempre falha e fica a nota da reserva ou do Wikidata.
   - Reserva: 77 filmes embutidos (lista `RAW`), incluindo os 16 indicados pelo grupo.
   - Antes de começar, `finalize()` congela título, nota e pôster de cada lote.
 - `public/net.js`: conexão WebSocket com reconexão automática e ajuste de relógio com o servidor. Com `window.ML_OFFLINE = true`, o online fica desligado.

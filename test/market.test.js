@@ -209,6 +209,13 @@ const books = (eco) => Object.values(eco.users).forEach((u) => assert.strictEqua
   M.addFilm(eco, { id: "tt0000103", title: "C", links: 80, scores: { imdb: 7, rt: 7 } }, MON);
   assert.strictEqual(M.pruneCatalog(eco, new Set(["tt0000103"])), 1, "tira só quem não tem cópias e não foi pedido");
   assert.deepStrictEqual(Object.keys(eco.films).sort(), ["tt0000102", "tt0000103"]);
+  // nota nova do IMDb (arquivo oficial): muda só quem não tem cópias, respeita a correção à mão e recalcula a raridade
+  assert.strictEqual(M.updateScores(eco, "imdb", { tt0000102: 9.9, tt0000103: 9.5, tt0000104: 8 }, new Set()), 1, "só o filme sem cópias muda");
+  assert.deepStrictEqual(eco.films.tt0000103.scores, { imdb: 9.5, rt: 7 });
+  assert.deepStrictEqual([eco.films.tt0000103.ref, eco.films.tt0000103.rarity], [8.7, "epico"], "a nota nova vale na raridade");
+  assert.strictEqual(eco.films.tt0000102.scores.imdb, undefined, "o congelado não ganha nota");
+  assert.strictEqual(M.updateScores(eco, "imdb", { tt0000103: 6 }, new Set(["tt0000103"])), 0, "a nota corrigida à mão fica");
+  assert.strictEqual(M.updateScores(eco, "imdb", { tt0000103: 9.5, tt0000102: 12 }), 0, "nota igual ou fora de 0 a 10 não conta");
   console.log("ok peso do RT e congelamento");
 }
 

@@ -660,6 +660,7 @@ async function bootMarket() {
     Market.applyTags(e, Object.fromEntries(EXAMPLES.map((f) => [f.id, { oscars: f.oscars || [], nacional: !!f.nacional }])));
   });
   backfillTags();
+  backfillImdb();
   if (MC.testMode) await refillCatalog({ count: MC.bootBatch });
   else refillCatalog();
   const r = await mutate((e, now) => ({ opened: MC.testMode ? Market.restartEstreias(e, now) : Market.openDueEstreias(e, now) }));
@@ -678,6 +679,18 @@ async function backfillTags() {
     const n = await mutate((e) => ({ n: Market.applyTags(e, facts) }));
     if (n.n) console.log(`Mercado: tags de Oscar e cinema nacional atualizadas em ${ids.length} filmes.`);
   } catch (e) { console.warn("Mercado: não deu para buscar as tags agora:", e.message); }
+}
+// nota do IMDb pelo arquivo oficial para os filmes ainda sem cópias (o Wikidata quase não tem mais), em segundo plano
+async function backfillImdb() {
+  if (FILMS_OFF) return;
+  const ids = Object.values(eco.films).filter((f) => !f.minted).map((f) => f.id);
+  if (!ids.length) return;
+  try {
+    const vals = await Films.imdbRatings(ids);
+    const fixed = new Set(Object.keys(OVERRIDES).filter((id) => OVERRIDES[id] && OVERRIDES[id].scores && OVERRIDES[id].scores.imdb != null));
+    const r = await mutate((e) => ({ n: Market.updateScores(e, "imdb", vals, fixed) }));
+    if (r.n) console.log(`Mercado: nota do IMDb atualizada em ${r.n} filmes.`);
+  } catch (e) { console.warn("Mercado: não deu para buscar as notas do IMDb agora:", e.message); }
 }
 // vagas reservadas para filmes com tag (Cult, Marvel e DC pelas listas; Oscar e Nacional pelo Wikidata) que ainda não estão no catálogo.
 // A vaga do Oscar troca de família a cada rodada (Melhor filme, Atuação, Roteiro…)
