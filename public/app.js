@@ -71,10 +71,13 @@ function poster(f, cls) {
   const img = C.posterOf(f), h = hue(f.title);
   return `<div class="poster ${cls || ""}" style="background:linear-gradient(160deg,hsl(${h} 50% 34%),hsl(${(h + 50) % 360} 55% 12%))"><div class="gen"><i>${esc(f.year)}</i><b>${esc(f.title)}</b></div>${img ? `<img src="${esc(img)}" alt="Pôster de ${esc(f.title)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>`;
 }
-function zoomable(f, extra) {
+function zoomKeyOf(f, extra) {
   const key = String(f.id) + (f.paid != null ? "-p" : "");
   S.zoom[key] = Object.assign({}, f, extra || {});
-  return `<button type="button" class="zoom" data-zoom="${key}" aria-label="Ampliar pôster de ${esc(f.title)}">${poster(f)}</button>`;
+  return key;
+}
+function zoomable(f, extra) {
+  return `<button type="button" class="zoom" data-zoom="${zoomKeyOf(f, extra)}" aria-label="Ampliar pôster de ${esc(f.title)}">${poster(f)}</button>`;
 }
 
 /* ---------- painel que esconde: o título vira botão e o conteúdo só é montado aberto ---------- */
@@ -665,7 +668,7 @@ function miniAuction(a, mode) {
   const who = user ? `${FMT_ICO[fmt]} ${esc(a.formatName)} · ${esc(a.sellerName)}` : `${EVENT_ICON[a.event] || "🎬"} ${esc(a.eventName)}`;
   const goto = mode === "join" ? `data-act="market-join" data-after="${user ? "leiloes" : "estreias"}"` : `data-mtab="${user ? "leiloes" : "estreias"}"`;
   return `<button type="button" class="mini r-${esc(f.rarity)}" ${goto}>
-    <span class="mp">${poster(f)}</span>
+    <span class="mp" data-zoom="${zoomKeyOf(f, { r: f.ref, rsrc: "nota de referência" })}">${poster(f)}</span>
     <span class="mi"><span class="ev">${who}</span><b class="t">${esc(f.title)}</b>${genreLine(f, 2)}<span class="tags">${rarBadge(f.rarity)}${isHot(f) ? `<span class="chip hot">🔥 em alta</span>` : ""}<span class="hint num">${esc(a.lot)}</span></span></span>
     <span class="mr"><span class="clock num" data-clock="${a.endsAt}"></span>${price}<span class="hint">${fmt === "dutch" ? "preço agora" : secret ? "secretos" : a.highBy ? (a.highBy === "house" ? "da Casa" : a.mine ? "seu lance" : "maior lance") : "lance mínimo"}</span></span>
   </button>`;
@@ -1513,7 +1516,8 @@ function copyText(text, msg) {
 
 /* ---------- eventos ---------- */
 $app.addEventListener("click", async (e) => {
-  const b = e.target.closest("button, [data-zoom], [data-tip], [data-rank]"); if (!b) return;
+  let b = e.target.closest("button, [data-zoom], [data-tip], [data-rank]"); if (!b) return;
+  if (b.dataset.zoom && b.tagName !== "BUTTON" && HOVER.matches && b.closest("button")) { hideZoom(); b = b.closest("button"); } // pôster dentro de um card-botão: com mouse o zoom já abriu, o clique vale para o card
   const d = b.dataset;
   if (d.zoom) { const r = b.getBoundingClientRect(); if (zoomKey === d.zoom) hideZoom(); else showZoom(d.zoom, r.right, r.top + r.height / 2); return; }
   if (d.rank) return openCollection(d.rank);
