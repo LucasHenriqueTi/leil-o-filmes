@@ -109,15 +109,18 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   - **Unanimidade:** selo quando a maior nota menos a menor dá até `unanimityMaxSpread` (1,0).
   - **Faixas** (`rarities`; nota mínima, cópias, lance mínimo):
 
-    | Faixa | Nota | Cópias | Lance mínimo | Alvo no catálogo |
-    |---|---|---|---|---|
-    | Tomate Podre | até 1,5 | 1 | M$ 25 | ~1% |
-    | Comum | até 6,5 | 20 | M$ 1 | ~40% |
-    | Incomum | 6,6 | 10 | M$ 3 | ~28% |
-    | Raro | 7,6 | 5 | M$ 6 | ~18% |
-    | Épico | 8,4 | 3 | M$ 10 | ~9% |
-    | Lendário | 8,8 | 1 | M$ 15 | ~3% |
-    | Obra de Arte | 9,2 | 1 | M$ 25 | ~1% |
+    | Faixa (`key`) | Nome na tela | Nota | Cópias | Lance mínimo | Alvo no catálogo |
+    |---|---|---|---|---|---|
+    | Tomate Podre (`podre`) | Tomate Podre | até 1,5 | 1 | M$ 25 | ~1% |
+    | Comum (`comum`) | Sessão da Tarde | até 6,5 | 20 | M$ 1 | ~40% |
+    | Incomum (`incomum`) | Bem na Crítica | 6,6 | 10 | M$ 3 | ~28% |
+    | Raro (`raro`) | Indicado | 7,6 | 5 | M$ 6 | ~18% |
+    | Épico (`epico`) | Aclamado | 8,4 | 3 | M$ 10 | ~9% |
+    | Lendário (`lendario`) | Imortal | 8,8 | 1 | M$ 15 | ~3% |
+    | Obra de Arte (`obra`) | Absolute Cinema | 9,2 | 1 | M$ 25 | ~1% |
+
+    Neste arquivo, as faixas são chamadas pelo nome antigo (o do `key`). O nome na tela é o `name` de `rarities` e pode mudar sem mexer nos dados salvos.
+    - **Editor de nomes** (só com `testMode`, só para admin, no Mercado): painel "🏷️ Nomes das raridades" no canto da tela. Troca os nomes na hora, só naquele navegador (`ml-rarnames`; aberto ou fechado em `ml-rarnames-open`). Fora do modo de teste, valem os nomes do `market-config.js`. O servidor sempre usa os do `market-config.js` nos avisos.
 
     Os cortes foram calibrados num catálogo de 509 filmes para chegar nos alvos (já contando o Garimpo).
     - `requireScores` faz uma faixa exigir mais notas; hoje a Obra de Arte e o Tomate Podre pedem 2, o mesmo que `minScores`.
@@ -232,7 +235,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
 Tema de live stream. A base é ameixa escura (`--ground #150f1f`), o vermelho "no ar" é `--live #ff4f6d`, o dourado do dinheiro é `--coin #ffd166` e a menta da "sua vez" é `--mint #4be3b0`. Fontes: Unbounded nos títulos e Onest no texto. O lote aparece num "palco" 16:9 com o pôster desfocado ao fundo; os lances viram alertas, a venda vira o carimbo "Vendido!" e há chat com reações. O donate vira um alerta no topo da tela: `--lvl` cresce a cada real (tamanho, brilho, itens caindo, tempo na tela, notas do som) e as faixas `DON_TIERS` (1, 2, 3, 5, 8, 10, 15, 20, 30, 50 e 100 reais) trocam o visual e somam efeitos: tela tremendo, buzina, sirene, clarão, raios e voz lendo a mensagem. Os sons são gerados com Web Audio, sem arquivos, e o botão 🔊 do chat liga ou desliga (`ml-sound`). O chat tem seletor de emoji, e mensagens só de emoji aparecem grandes. O Mercado é organizado em abas no topo (`MTABS`): Painel, Estreias, Leilões, Coleção, Catálogo, Ranking, Carteira e Admin. A aba aberta fica em `S.mtab` (`ml-mtab`); qualquer botão com `data-mtab` troca de aba. Dentro das abas, os painéis usam `mpanel()` (sem esconder). O catálogo, a coleção e os últimos leilões encerrados têm dois modos, cada um com a própria escolha (`S.views`, salva em `ml-views`; o seletor é `viewToggle(chave)`): **Lista** (`filmRow`) e **Pôsteres** (`posterCard(f, {foot, detail, below, label})`: `foot` troca a linha do rodapé, `detail` soma ao detalhe, `below` põe botões embaixo do card, como Anunciar e Vender na coleção). No modo Pôsteres, a moldura do card mostra a raridade (cor de `--rar`; Lendário com reflexo; Obra de Arte com borda arco-íris animada; Tomate Podre com moldura verde de gosma e 🍅 no selo), o rodapé mostra título, ano, nota e cópias, e os detalhes (`.pdetail`) sobem por cima do pôster com o mouse em cima ou com foco (toque no celular, Tab no teclado). O Painel resume tudo: números clicáveis (`stat`), temporada, "Acontecendo agora" (`liveNow` + `miniAuction`), top do ranking (`rankList`) e filmes recém-chegados (`filmStrip`). A tela inicial mostra a vitrine pública do Mercado (`marketShowcase`, atualizada a cada 20 s), com o convite "Criar conta e ganhar M$ 30". A tela de criar conta mostra as vantagens e o que está acontecendo ao lado do formulário. O pôster ampliado abre ao passar o mouse em qualquer `[data-zoom]` e fecha ao tirar o mouse, clicar fora ou apertar Esc. Explicações não ocupam a tela: o texto fica resumido (por exemplo "Temporada: Ficção científica") e a descrição abre num balão (`#tipPop`) com o mouse em cima, foco pelo teclado ou toque (outro toque ou toque fora fecha). Use `tip(html)` para o botão "?" ao lado de um título ou `tipAttr(html)` em qualquer botão.
 
 ## Cuidados
-- O estado do cliente é salvo no `localStorage` com o prefixo `ml-` (token, nome, configuração, partida local, painéis escondidos em `ml-fold`, cache de metadados, `ml-sound` e `ml-auth`, que é o token da conta do Mercado).
+- O estado do cliente é salvo no `localStorage` com o prefixo `ml-` (token, nome, configuração, partida local, painéis escondidos em `ml-fold`, cache de metadados, `ml-sound`, `ml-auth`, que é o token da conta do Mercado, e `ml-rarnames`, os nomes de teste das raridades).
 - Todo painel usa `panel(key, título, corpo, extra, classe)` em `app.js`: o título vira botão de esconder e o corpo só é montado aberto. Informações da sala (`info`), donate e regras começam escondidos.
 - As salas se perdem quando o servidor reinicia. No plano gratuito do Render, o servidor dorme depois de uns 15 minutos sem uso.
 - O Mercado não se perde ao reiniciar, porque fica em `ML_DATA`. Mas o disco do Render gratuito é apagado a cada deploy, então o banco de produção do Mercado ainda precisa ser escolhido antes de publicar.

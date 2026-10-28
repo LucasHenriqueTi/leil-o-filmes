@@ -1163,7 +1163,7 @@ function render() {
   const ct = document.getElementById("chatText"); if (ct) ct.value = chatDraft;
   const fd = document.getElementById("feed"); if (fd && feedAtBottom) fd.scrollTop = fd.scrollHeight;
   if (fid) { const el = document.getElementById(fid); if (el && el.tagName === "INPUT") { el.focus(); try { if (sel != null && el.type === "text") el.setSelectionRange(sel, sel); } catch (e) {} } }
-  renderToast(); tickClocks();
+  renderToast(); tickClocks(); syncRarEditor();
 }
 function renderToast() {
   let t = document.getElementById("toast");
@@ -1360,6 +1360,40 @@ function hideZoom() { zoomPop.hidden = true; zoomPop.style.display = "none"; zoo
 document.addEventListener("mousemove", (e) => { const z = e.target.closest && e.target.closest("[data-zoom]"); if (z) showZoom(z.dataset.zoom, e.clientX, e.clientY); else if (zoomKey) hideZoom(); });
 document.addEventListener("focusin", (e) => { const z = e.target.closest && e.target.closest("[data-zoom]"); if (z) { const r = z.getBoundingClientRect(); showZoom(z.dataset.zoom, r.right, r.top + r.height / 2); } });
 document.addEventListener("focusout", (e) => { if (e.target.closest && e.target.closest("[data-zoom]")) hideZoom(); });
+/* ---------- nomes das raridades: no modo de teste, o admin troca só neste navegador (ml-rarnames) ---------- */
+const RAR_NAMES = Object.fromEntries(MC.rarities.map((r) => [r.key, r.name]));   // os nomes do market-config.js
+function applyRarNames() {
+  const o = (MC.testMode && store.get("ml-rarnames")) || {};
+  for (const r of MC.rarities) r.name = String(o[r.key] || "").trim() || RAR_NAMES[r.key];
+}
+applyRarNames();
+const rarEdit = document.createElement("div"); rarEdit.id = "rarEdit"; rarEdit.hidden = true; document.body.appendChild(rarEdit);
+// fica fora do #app: o re-render não apaga o que está sendo digitado
+function syncRarEditor() {
+  const on = !!(MC.testMode && screen() === "market" && S.me && S.me.admin);
+  rarEdit.hidden = !on;
+  if (!on || rarEdit.firstChild) return;
+  const o = store.get("ml-rarnames") || {};
+  rarEdit.classList.toggle("open", !!store.get("ml-rarnames-open"));
+  rarEdit.innerHTML = `<button type="button" class="rn-head" data-rn-toggle><span>🏷️ Nomes das raridades</span><span class="pill">teste</span></button>
+    <div class="rn-body">
+      ${MC.rarities.map((r) => `<label for="rn-${r.key}">${esc(RAR_NAMES[r.key])}</label><input class="input" id="rn-${r.key}" data-rn="${r.key}" maxlength="30" placeholder="${esc(RAR_NAMES[r.key])}" value="${esc(o[r.key] || "")}">`).join("")}
+      <p class="hint">Só neste navegador e só no modo de teste. Em branco, vale o nome do market-config.js.</p>
+      <button type="button" class="btn quiet" data-rn-reset>Voltar aos nomes padrão</button>
+    </div>`;
+}
+let rarTimer = null;
+rarEdit.addEventListener("input", (e) => {
+  if (!e.target.dataset.rn) return;
+  const o = {}; rarEdit.querySelectorAll("[data-rn]").forEach((i) => { if (i.value.trim()) o[i.dataset.rn] = i.value.trim(); });
+  store.set("ml-rarnames", o); applyRarNames();
+  clearTimeout(rarTimer); rarTimer = setTimeout(render, 200);
+});
+rarEdit.addEventListener("click", (e) => {
+  if (e.target.closest("[data-rn-toggle]")) { const open = rarEdit.classList.toggle("open"); store.set("ml-rarnames-open", open); return; }
+  if (e.target.closest("[data-rn-reset]")) { store.del("ml-rarnames"); rarEdit.querySelectorAll("[data-rn]").forEach((i) => { i.value = ""; }); applyRarNames(); render(); }
+});
+
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { hideZoom(); if (S.ui.modal) { S.ui.modal = null; render(); } } });
 addEventListener("scroll", hideZoom, { passive: true });
 

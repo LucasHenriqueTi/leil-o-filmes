@@ -34,14 +34,16 @@
     // Faixa invertida (`max`): vale para nota até `max`, vem antes das outras e o Garimpo não mexe nela.
     // Cortes calibrados num catálogo de 509 filmes para ~1% Tomate Podre, 40% Comum, 28% Incomum,
     // 18% Raro, 9% Épico, 3% Lendário e 1% Obra de Arte (com o Garimpo abaixo de 25 páginas)
+    // `key` é o id salvo no Mercado (não mude); `name` é o que aparece na tela.
+    // No modo de teste, o admin pode trocar os nomes só no próprio navegador (editor no canto da tela, `ml-rarnames`).
     rarities: [
-      { key: "comum", name: "Comum", min: 0, copies: 20, minBid: 1 },
-      { key: "incomum", name: "Incomum", min: 6.6, copies: 10, minBid: 3 },
-      { key: "raro", name: "Raro", min: 7.6, copies: 5, minBid: 6 },
-      { key: "epico", name: "Épico", min: 8.4, copies: 3, minBid: 10 },
-      { key: "lendario", name: "Lendário", min: 8.8, copies: 1, minBid: 15 },
+      { key: "comum", name: "Sessão da Tarde", min: 0, copies: 20, minBid: 1 },
+      { key: "incomum", name: "Bem na Crítica", min: 6.6, copies: 10, minBid: 3 },
+      { key: "raro", name: "Indicado", min: 7.6, copies: 5, minBid: 6 },
+      { key: "epico", name: "Aclamado", min: 8.4, copies: 3, minBid: 10 },
+      { key: "lendario", name: "Imortal", min: 8.8, copies: 1, minBid: 15 },
       { key: "podre", name: "Tomate Podre", max: 1.5, copies: 1, minBid: 25, requireScores: 2 },   // o avesso da Obra de Arte
-      { key: "obra", name: "Obra de Arte", min: 9.2, copies: 1, minBid: 25, requireScores: 2 }
+      { key: "obra", name: "Absolute Cinema", min: 9.2, copies: 1, minBid: 25, requireScores: 2 }
     ],
     minScores: 2,             // notas (de IMDb, Metacritic e Rotten Tomatoes) para o filme entrar no Mercado
     // peso de cada fonte na média: o Tomatometer do RT é a % de críticas positivas, não uma nota,
