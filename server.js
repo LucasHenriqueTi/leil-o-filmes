@@ -576,7 +576,7 @@ function mutate(fn) {
 const marketPayload = (uid) => {
   const now = Date.now();
   const caps = Object.entries(MC.rarityCaps || {}).map(([k, cap]) => ({ rarity: k, cap, owned: Object.values(eco.copies).filter((c) => c.owner === uid && eco.films[c.film].rarity === k).length }));
-  return { me: Market.view(eco, uid), ledger: Market.ledgerOf(eco, uid, MC.ledgerView), collection: Market.collectionOf(eco, uid, now), score: Market.collectionScore(eco, uid, now), caps };
+  return { me: Market.view(eco, uid), ledger: Market.ledgerOf(eco, uid, MC.ledgerView), reserved: Market.reservedOf(eco, uid), collection: Market.collectionOf(eco, uid, now), score: Market.collectionScore(eco, uid, now), caps };
 };
 const socketsOf = (uid) => [...conns.values()].filter((c) => c.data && c.data.uid === uid);
 function pushMe(uid) { const d = marketPayload(uid); socketsOf(uid).forEach((c) => c.send({ t: "market:me", d })); }

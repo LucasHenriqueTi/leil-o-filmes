@@ -27,7 +27,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   | `auth:logout` | — | Revoga a sessão. |
   | `auth:password` | `{old, new}` | Troca a senha e revoga as outras sessões. |
   | `admin:reset` | `{name}` | `{name, temp}`. Só admin. Gera uma senha temporária e revoga as sessões da conta. |
-  | `market:me` | — | `{me, ledger, collection}`; `collection` traz as cópias da conta com os dados do filme. |
+  | `market:me` | — | `{me, ledger, reserved, collection}`; `collection` traz as cópias da conta com os dados do filme; `reserved` (`reservedOf`) diz em quais leilões abertos está o dinheiro reservado (lance na frente ou secreto), e a soma é `wallet.reserved`. O Extrato mostra essa lista no topo. |
   | `market:catalog` | — | `{films, refilledAt, refilling}`; do mais raro para o mais comum. |
   | `admin:refillCatalog` | — | `{added}`. Só admin. Busca `bootBatch` filmes novos. |
   | `market:auctions` | — | `{open, recent, next}`: estreias abertas, as últimas encerradas e a agenda. |

@@ -709,7 +709,7 @@ function walletView(m, me) {
   return `<div class="mgrid">
     <div class="col">
       ${mpanel("wallet", `Carteira de ${esc(me.name)}${me.admin ? ` <span class="pill top">admin</span>` : ""}`,
-        `<div class="bal"><span class="label">Saldo livre</span><b class="num">${mny(w.free)}</b>${w.reserved ? `<span class="hint num">Mais ${mny(w.reserved)} reservados em lances</span>` : ""}</div>
+        `<div class="bal"><span class="label">Saldo livre</span><b class="num">${mny(w.free)}</b>${w.reserved ? `<span class="hint num">Mais ${mny(w.reserved)} reservados em lances (veja onde no extrato)</span>` : ""}</div>
         <p class="hint">Próxima mesada de ${mny(MC.allowance)}: ${esc(fmtWhen(me.nextAllowanceAt))}.</p>`,
         `<button class="btn quiet" data-act="logout">Sair da conta</button>`, "wallet")}
       ${mpanel("account", "Conta", `<form class="acct-form" id="pwForm">
@@ -719,8 +719,17 @@ function walletView(m, me) {
         ${me.admin ? `<form class="acct-form" id="resetForm" autocomplete="off"><input class="input" id="rs-name" maxlength="18" placeholder="Nome da conta"><button class="btn" type="submit">Gerar senha temporária</button></form>
           <p class="hint">A pessoa sai da conta em todos os aparelhos e entra com a senha temporária.</p>` : ""}`)}
     </div>
-    ${mpanel("ledger", "Extrato", `<div class="ledger">${rows || `<p class="hint">Nenhuma movimentação ainda.</p>`}</div>`)}
+    ${mpanel("ledger", "Extrato", reservedBox(m.reserved || [], w.reserved) + `<span class="label">Movimentações</span><div class="ledger">${rows || `<p class="hint">Nenhuma movimentação ainda.</p>`}</div>`)}
   </div>`;
+}
+// onde está o dinheiro reservado: cada leilão em que você está na frente ou tem lance secreto (clicar leva até ele)
+function reservedBox(list, total) {
+  if (!total) return "";
+  const rows = list.map((r) => `<button type="button" class="lrow res r-${esc(r.rarity)}" data-mtab="${r.kind === "house" ? "estreias" : "leiloes"}">
+      <span>${r.kind === "house" ? "🎬" : FMT_ICO[r.format] || "🔨"} ${esc(r.title)} <small>${esc(r.where)}${r.secret ? " · lance secreto" : " · você está na frente"}</small></span>
+      <span class="when">termina em <span class="clock num" data-clock="${r.endsAt}"></span></span><b class="num">${mny(r.amount)}</b></button>`).join("");
+  return `<div class="reserved"><span class="label">Reservado agora: ${mny(total)} ${tip("Dinheiro preso nos lances: continua seu e volta na hora se alguém passar o seu lance (ou, nos secretos, se você não vencer). Se você vencer, ele paga a cópia.")}</span>
+    <div class="ledger">${rows || `<p class="hint">Atualizando…</p>`}</div></div>`;
 }
 /* ---------- pontuação da coleção, tetos, temporada e ranking ---------- */
 const BONUS_ICO = Object.assign({ series: "🎞️", director: "🎬", decade: "📅", genre: "🎭", season: "🔥" }, Object.fromEntries(Object.entries(MC.filmTags || {}).map(([k, t]) => [k, t.icon])));

@@ -569,6 +569,11 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   const vk = list({ copy: raro2, format: "vickrey", startBid: 15 }).id;
   assert.ok(M.bid(eco, vk, "b", 14, T0 + MIN), "secreto também respeita o lance inicial");
   assert.strictEqual(M.bid(eco, vk, "b", 30, T0 + MIN), null);
+  // onde está o reservado: a soma bate com a carteira
+  const res = M.reservedOf(eco, "b");
+  assert.deepStrictEqual(res.map((r) => [r.id, r.amount, r.secret, r.where]), [[op, 12, false, "Aberto de Conta a"], [vk, 30, true, "Secreto de 2º preço de Conta a"]], "reservado por leilão");
+  assert.strictEqual(res.reduce((s, r) => s + r.amount, 0), eco.users.b.wallet.reserved, "a lista soma o reservado da carteira");
+  assert.deepStrictEqual(M.reservedOf(eco, "a"), [], "quem não deu lance não tem nada reservado");
   M.closeAuction(eco, vk, T0 + 16 * MIN);
   assert.strictEqual(eco.auctions[vk].result.price, 15, "2º preço sozinho paga o lance inicial");
   M.cancelAuction(eco, op, T0 + 2 * MIN);

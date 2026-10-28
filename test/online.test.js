@@ -263,6 +263,8 @@ class Client {
     assert.strictEqual(pl[0].minBid, 10, "o lance inicial do dono chega à tela");
     assert.ok((await U2.call("market:bid", { id: listed.id, amount: 9 })).error, "abaixo do lance inicial não vale");
     assert.ok((await U2.call("market:bid", { id: listed.id, amount: 12 })).ok, "André dá lance");
+    const resv = (await U2.call("market:me")).reserved;
+    assert.deepStrictEqual(resv.map((r) => [r.id, r.amount, r.where]), [[listed.id, 12, "Aberto de Cibele"]], "a carteira mostra onde está o reservado");
     const sellerBefore = (await U1.call("market:me")).me.wallet.free;
     const sold = await U1.call("admin:closeAuction", { id: listed.id });
     assert.deepStrictEqual([sold.result.winnerName, sold.result.price, sold.result.fee], ["André", 12, 1], "vendido com taxa de 8%");

@@ -787,10 +787,21 @@
     return out;
   }
   const balanceFromLedger = (eco, uid) => eco.ledger.reduce((a, e) => a + (e.uid === uid ? e.delta : 0), 0);
+  // onde está o dinheiro reservado: lances à vista na frente e lances secretos, nos leilões abertos (a soma é wallet.reserved)
+  function reservedOf(eco, uid) {
+    return Object.values(eco.auctions).filter((a) => a.status === "open").map((a) => {
+      const fmt = a.format || "open", sealed = (a.sealed || {})[uid];
+      const amount = sealed ? sealed.v : a.highBy === uid ? a.high : 0;
+      if (!amount) return null;
+      const f = eco.films[a.film];
+      return { id: a.id, kind: a.kind, where: a.kind === "house" ? a.eventName : `${FORMATS[fmt].name} de ${(eco.users[a.seller] || {}).name || "alguém"}`,
+        format: fmt, secret: !!sealed, title: f.title, rarity: f.rarity, amount, endsAt: a.endsAt };
+    }).filter(Boolean).sort((x, y) => x.endsAt - y.endsAt);
+  }
 
   return { CONFIG, KINDS, WEEK, cleanName, nameKey, create, nextCycle, findByName, checkName, addUser, setAuth,
     addSession, sessionUser, revokeSession, revokeSessions, pruneSessions,
-    credit, debit, reserve, release, capture, tick, supply, view, ledgerOf, balanceFromLedger,
+    credit, debit, reserve, release, capture, tick, supply, view, ledgerOf, balanceFromLedger, reservedOf,
     SOURCES, parseScore, refRating, rarityOf, rarity, rarityIndex, filmPoints, filmTags, applyTags, applyOverrides,
     addFilm, mintCopy, transferCopy, copyLabel, collectionOf, catalogView, openFilms, refreeze, pruneCatalog,
     money, refValue, buybackPrice, sellToHouse,

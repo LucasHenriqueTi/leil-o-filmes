@@ -472,6 +472,11 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .lrow b { font-family: var(--display); font-size: 15px; }
 .lrow b.in { color: var(--mint); }
 .lrow b.out { color: var(--live); }
+.reserved { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.reserved .ledger { max-height: 220px; }
+button.lrow.res { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; border-left: 3px solid var(--rar, var(--coin)); }
+button.lrow.res:hover, button.lrow.res:focus-visible { border-color: var(--coin); }
+button.lrow.res b { color: var(--coin); }
 .acct-form { display: flex; gap: 8px; flex-wrap: wrap; }
 .acct-form .input { flex: 1 1 140px; }
 .chip-acct { display: inline-flex; align-items: center; gap: 8px; border: 1px solid color-mix(in srgb, var(--coin) 45%, var(--line)); background: var(--surface); border-radius: 999px; padding: 3px 12px 3px 3px; cursor: pointer; font-size: 13px; }
