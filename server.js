@@ -14,8 +14,11 @@ const Engine = require("./public/engine.js");
 const Market = require("./public/market.js");
 const Auth = require("./lib/auth.js");
 const Films = require("./lib/films.js");
-const { fix: OVERRIDES, examples: EXAMPLES, cult: CULT_LIST } = require("./public/market-films.js");
-const CULT = new Set(CULT_LIST || []);
+const MarketFilms = require("./public/market-films.js");
+const { fix: OVERRIDES, examples: EXAMPLES } = MarketFilms;
+// tags que vêm de listas feitas à mão (o resto vem do Wikidata): { cult: Set, marvel: Set, dc: Set }
+const LIST_TAGS = Object.fromEntries(["cult", "marvel", "dc"].map((k) => [k, new Set(MarketFilms[k] || [])]));
+const listTags = (id) => Object.fromEntries(Object.entries(LIST_TAGS).map(([k, s]) => [k, s.has(id)]));
 const { openStore } = require("./lib/store.js");
 const { attachWebSocket } = require("./lib/websocket.js");
 
@@ -637,8 +640,8 @@ async function bootMarket() {
     }
     EXAMPLES.forEach((f) => { if (!e.films[f.id]) Market.addFilm(e, f, now); else if (f.series && !e.films[f.id].series) e.films[f.id].series = f.series; });
     Market.refreeze(e);
-    // a tag Cult segue a lista (editar a lista vale para o catálogo inteiro); os exemplos trazem as próprias tags
-    Market.applyTags(e, Object.fromEntries(Object.keys(e.films).map((id) => [id, { cult: CULT.has(id) }])));
+    // as tags Cult, Marvel e DC seguem as listas (editar a lista vale para o catálogo inteiro); os exemplos trazem as próprias tags
+    Market.applyTags(e, Object.fromEntries(Object.keys(e.films).map((id) => [id, listTags(id)])));
     Market.applyTags(e, Object.fromEntries(EXAMPLES.map((f) => [f.id, { oscars: f.oscars || [], nacional: !!f.nacional }])));
   });
   backfillTags();
@@ -661,7 +664,7 @@ async function backfillTags() {
     if (n.n) console.log(`Mercado: tags de Oscar e cinema nacional atualizadas em ${ids.length} filmes.`);
   } catch (e) { console.warn("Mercado: não deu para buscar as tags agora:", e.message); }
 }
-// vagas reservadas para filmes com tag (Cult pela lista; Oscar e Nacional pelo Wikidata) que ainda não estão no catálogo.
+// vagas reservadas para filmes com tag (Cult, Marvel e DC pelas listas; Oscar e Nacional pelo Wikidata) que ainda não estão no catálogo.
 // A vaga do Oscar troca de família a cada rodada (Melhor filme, Atuação, Roteiro…)
 const OSCAR_FAMS = Object.keys(MC.oscarFamilies || {});
 let oscarTurn = OSCAR_FAMS.length ? crypto.randomInt(OSCAR_FAMS.length) : 0;
@@ -670,7 +673,7 @@ async function drawTagged() {
   for (const [tag, n] of Object.entries(MC.tagDraws || {})) {
     const kind = tag === "oscar" && OSCAR_FAMS.length ? "oscar:" + OSCAR_FAMS[oscarTurn++ % OSCAR_FAMS.length] : tag;
     let pool = [];
-    try { pool = kind === "cult" ? [...CULT] : await Films.loadTagPool(kind, MC.minScores); }
+    try { pool = LIST_TAGS[kind] ? [...LIST_TAGS[kind]] : await Films.loadTagPool(kind, MC.minScores); }
     catch (e) { console.warn(`Mercado: sorteio de ${kind} não respondeu:`, e.message); }
     pool = pool.filter((id) => !eco.films[id] && !out.includes(id));
     for (let i = 0; i < n && pool.length; i++) out.push(pool.splice(crypto.randomInt(pool.length), 1)[0]);
@@ -696,7 +699,7 @@ async function refillCatalog(opts) {
       for (let i = fresh.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [fresh[i], fresh[j]] = [fresh[j], fresh[i]]; }
       ids.push(...fresh.slice(0, Math.min(MC.catalogBatch, Math.ceil(need * 1.5))).map((r) => r.imdb));
     }
-    const films = (await Films.fetchFilms(ids)).map((f) => Object.assign(Market.applyOverrides(f, OVERRIDES), { cult: CULT.has(f.id) }));
+    const films = (await Films.fetchFilms(ids)).map((f) => Object.assign(Market.applyOverrides(f, OVERRIDES), listTags(f.id)));
     // o Wikidata responde fora de ordem: volta à ordem pedida, para os incluídos e os sorteados por tag entrarem primeiro
     films.sort((x, y) => ids.indexOf(x.id) - ids.indexOf(y.id));
     const room = need;

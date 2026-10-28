@@ -738,7 +738,7 @@ function scoreBox(m) {
   if (!s) return "";
   return `<div class="scorebox"><div><span class="label">Pontos da coleção</span><b class="num">${pts(s.total)}</b>
       <span class="hint num">${pts(s.base)} das notas${s.bonuses.length ? " + bônus" : ""}</span></div>
-    ${s.bonuses.length ? `<div class="chips">${bonusChips(s)}</div>` : `<p class="hint">Nenhum bônus ainda ${tip(`Bônus de conjunto: 3 filmes da mesma série, do mesmo diretor, cults, nacionais ou com Oscar da mesma família (Atuação, Roteiro…), e 4 da mesma década ou do mesmo gênero. Cada conjunto começa pequeno e cresce a cada filme a mais, até um teto. Filmes do gênero da temporada também somam. A tabela completa está no "?" do Catálogo.`)}</p>`}
+    ${s.bonuses.length ? `<div class="chips">${bonusChips(s)}</div>` : `<p class="hint">Nenhum bônus ainda ${tip(`Bônus de conjunto: 3 filmes da mesma série, do mesmo diretor, cults, nacionais, da Marvel, da DC ou com Oscar da mesma família (Atuação, Roteiro…), e 4 da mesma década ou do mesmo gênero. Cada conjunto começa pequeno e cresce a cada filme a mais, até um teto. Filmes do gênero da temporada também somam. A tabela completa está no "?" do Catálogo.`)}</p>`}
     ${caps ? `<p class="hint">Teto por jogador: ${caps}</p>` : ""}</div>`;
 }
 function seasonBanner(s) {
@@ -832,7 +832,7 @@ function catalogLegend() {
   };
   const chance = (k) => ((MC.ghostChance || {})[k] ? `${Math.round(MC.ghostChance[k] * 100)}%` : "—");
   const rarRows = MC.rarities.slice().reverse().map((r) => `<tr><td>${rarBadge(r.key)}</td><td class="num">${range(r)}</td><td class="num">${r.copies}</td><td class="num">${mny(r.minBid)}</td><td class="num">${chance(r.key)}</td></tr>`).join("");
-  const B = MC.collectionBonuses, SET_TEXT = { series: "da mesma série", director: "do mesmo diretor", decade: "da mesma década", genre: "do mesmo gênero principal", cult: "cults", nacional: "nacionais" };
+  const B = MC.collectionBonuses, SET_TEXT = { series: "da mesma série", director: "do mesmo diretor", decade: "da mesma década", genre: "do mesmo gênero principal", cult: "cults", nacional: "nacionais", marvel: "da Marvel", dc: "da DC" };
   // escada: "+2, +1 por filme a mais, até +8"
   const ladder = (b) => `+${b.pts}${b.step ? `<small>, +${b.step} por filme a mais, até +${b.max}</small>` : ""}`;
   const setRows = Object.entries(B).map(([k, b]) => `<tr><td>${BONUS_ICO[k] || "★"} ${esc(b.name)}</td><td>a partir de ${b.n} filmes ${SET_TEXT[k] || ""}</td><td>${ladder(b)}</td></tr>`).join("")

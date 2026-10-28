@@ -232,10 +232,10 @@
     eco.films[f.id] = {
       id: f.id, title: str(f.title, 140) || "Sem título", orig: str(f.orig, 140), year: Math.floor(+f.year) || "", dir: str(f.dir, 140),
       g: (Array.isArray(f.g) ? f.g : []).slice(0, 8).map((x) => str(x, 32)), img, wiki: str(f.wiki, 200), links, series: str(f.series, 140),
-      scores, ref: r.ref, spread: r.spread, unanimous: r.unanimous, garimpo, rarity: key,
-      cult: !!f.cult, nacional: !!f.nacional, oscars: oscarList(f.oscars, cfg),
+      scores, ref: r.ref, spread: r.spread, unanimous: r.unanimous, garimpo, rarity: key, oscars: oscarList(f.oscars, cfg),
       supply: rarity(key, cfg).copies, minted: 0, addedAt: now
     };
+    Object.keys(cfg.filmTags || {}).forEach((k) => (eco.films[f.id][k] = !!f[k]));   // cult, nacional, marvel, dc…
     eco.seq++;
     return null;
   }
@@ -267,7 +267,7 @@
   const oscarList = (v, cfg) => { const got = new Set(Array.isArray(v) ? v : []); return Object.keys((cfg || CONFIG).oscarFamilies || {}).filter((k) => got.has(k)); };
   // tags do filme (Cult, Nacional…): as chaves de cfg.filmTags que o filme tem
   const filmTags = (f, cfg) => Object.keys((cfg || CONFIG).filmTags || {}).filter((k) => f[k]);
-  // atualiza as tags dos filmes do catálogo: { id: { cult, nacional, oscars } } (só as chaves que vierem)
+  // atualiza as tags dos filmes do catálogo: { id: { cult, nacional, marvel, dc, oscars } } (só as chaves que vierem)
   function applyTags(eco, byId) {
     let n = 0;
     Object.entries(byId || {}).forEach(([id, t]) => {

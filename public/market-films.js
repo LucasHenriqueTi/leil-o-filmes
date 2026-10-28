@@ -2,7 +2,7 @@
    Martelo Live — filmes do Mercado que ficam no projeto
    - examples: filmes de exemplo, salvos aqui com notas e pôster. Ficam sempre no catálogo
      (funcionam até sem internet) e cobrem todas as raridades.
-   - cult: códigos do IMDb dos filmes com a tag Cult.
+   - cult, marvel, dc: códigos do IMDb dos filmes com as tags Cult, Marvel e DC (listas feitas à mão).
    - fix: correções por código do IMDb para os filmes que a Casa sorteia no Wikidata.
      scores: notas de 0 a 10 que substituem ou completam as do Wikidata
      (imdb, metacritic, rt; Metacritic 74/100 = 7.4; Rotten Tomatoes 87% = 8.7).
@@ -60,6 +60,58 @@
       "tt0087995": { film: { title: "Repo Man: A Onda Punk" } },
       "tt0097493": { film: { title: "Atração Mortal" } },
       "tt0088258": { film: { title: "Isto é Spinal Tap" } },
+      // títulos no Brasil dos filmes da Marvel e da DC (o Wikidata deixa muitos com o nome original)
+      "tt0091225": { film: { title: "Howard, o Super-Herói" } },
+      "tt0120611": { film: { title: "Blade: O Caçador de Vampiros" } },
+      "tt0187738": { film: { title: "Blade II: O Caçador de Vampiros" } },
+      "tt0120903": { film: { title: "X-Men: O Filme" } },
+      "tt0290334": { film: { title: "X-Men 2" } },
+      "tt0330793": { film: { title: "O Justiceiro" } },
+      "tt0259324": { film: { title: "Motoqueiro Fantasma" } },
+      "tt0450314": { film: { title: "O Justiceiro: Em Zona de Guerra" } },
+      "tt1270798": { film: { title: "X-Men: Primeira Classe" } },
+      "tt1071875": { film: { title: "Motoqueiro Fantasma: Espírito de Vingança" } },
+      "tt0848228": { film: { title: "Os Vingadores" } },
+      "tt0948470": { film: { title: "O Espetacular Homem-Aranha" } },
+      "tt1430132": { film: { title: "Wolverine: Imortal" } },
+      "tt1981115": { film: { title: "Thor: O Mundo Sombrio" } },
+      "tt1843866": { film: { title: "Capitão América 2: O Soldado Invernal" } },
+      "tt1872181": { film: { title: "O Espetacular Homem-Aranha 2: A Ameaça de Electro" } },
+      "tt2395427": { film: { title: "Vingadores: Era de Ultron" } },
+      "tt2250912": { film: { title: "Homem-Aranha: De Volta ao Lar" } },
+      "tt1825683": { film: { title: "Pantera Negra" } },
+      "tt4633694": { film: { title: "Homem-Aranha no Aranhaverso" } },
+      "tt4154664": { film: { title: "Capitã Marvel" } },
+      "tt6565702": { film: { title: "X-Men: Fênix Negra" } },
+      "tt9032400": { film: { title: "Eternos" } },
+      "tt10872600": { film: { title: "Homem-Aranha: Sem Volta para Casa" } },
+      "tt7097896": { film: { title: "Venom: Tempo de Carnificina" } },
+      "tt9114286": { film: { title: "Pantera Negra: Wakanda para Sempre" } },
+      "tt10676048": { film: { title: "As Marvels" } },
+      "tt16366836": { film: { title: "Venom: A Última Rodada" } },
+      "tt0060153": { film: { title: "Batman: O Homem-Morcego" } },
+      "tt0078346": { film: { title: "Superman: O Filme" } },
+      "tt0081573": { film: { title: "Superman II: A Aventura Continua" } },
+      "tt0084745": { film: { title: "O Monstro do Pântano" } },
+      "tt0094074": { film: { title: "Superman IV: Em Busca da Paz" } },
+      "tt0103776": { film: { title: "Batman: O Retorno" } },
+      "tt0112462": { film: { title: "Batman Eternamente" } },
+      "tt0327554": { film: { title: "Mulher-Gato" } },
+      "tt0348150": { film: { title: "Superman: O Retorno" } },
+      "tt0409459": { film: { title: "Watchmen: O Filme" } },
+      "tt1133985": { film: { title: "Lanterna Verde" } },
+      "tt1345836": { film: { title: "Batman: O Cavaleiro das Trevas Ressurge" } },
+      "tt0770828": { film: { title: "O Homem de Aço" } },
+      "tt2975590": { film: { title: "Batman vs Superman: A Origem da Justiça" } },
+      "tt4116284": { film: { title: "LEGO Batman: O Filme" } },
+      "tt7424200": { film: { title: "Os Jovens Titãs em Ação! Nos Cinemas" } },
+      "tt7713068": { film: { title: "Aves de Rapina: Arlequina e Sua Emancipação Fantabulosa" } },
+      "tt12361974": { film: { title: "Liga da Justiça de Zack Snyder" } },
+      "tt6334354": { film: { title: "O Esquadrão Suicida" } },
+      "tt6443346": { film: { title: "Adão Negro" } },
+      "tt9362930": { film: { title: "Besouro Azul" } },
+      "tt9663764": { film: { title: "Aquaman 2: O Reino Perdido" } },
+      "tt11315808": { film: { title: "Coringa: Delírio a Dois" } },
     },
     // filmes cult (tag Cult): a Casa traz alguns por rodada (tagDraws.cult) e a tag vale para os que já estão no catálogo.
     // Todos com pelo menos 2 notas no Wikidata (conferido em out/2026)
@@ -68,6 +120,26 @@
       "tt0094625", "tt0088846", "tt0074486", "tt0368226", "tt0117951", "tt0446029", "tt0063350", "tt0083907", "tt0084787", "tt0120669",
       "tt0151804", "tt0374900", "tt0097493", "tt0087995", "tt0079501", "tt0096256", "tt0089218", "tt0091369", "tt0093779", "tt0071853",
       "tt0109445", "tt0109707", "tt0114436", "tt1131734", "tt0090728", "tt0086541", "tt0082694", "tt0088258", "tt0062622"
+    ],
+    // filmes com personagens dos quadrinhos da Marvel e da DC (de qualquer estúdio), como os cults: a Casa traz alguns
+    // por rodada (tagDraws) e a tag vale para os que já estão no catálogo. Ficam de fora os quadrinhos dessas editoras
+    // que ninguém vê como "filme da DC" (V de Vingança, RED, The Losers). Todos com pelo menos 2 notas (out/2026)
+    marvel: [
+      "tt0091225", "tt0120611", "tt0120903", "tt0187738", "tt0145487", "tt0286716", "tt0287978", "tt0290334", "tt0316654", "tt0359013",
+      "tt0330793", "tt0120667", "tt0357277", "tt0376994", "tt0259324", "tt0413300", "tt0486576", "tt0371746", "tt0450314", "tt0800080",
+      "tt0458525", "tt1228705", "tt1270798", "tt0800369", "tt0458339", "tt1071875", "tt0848228", "tt0948470", "tt1430132", "tt1300854",
+      "tt1981115", "tt1843866", "tt2015381", "tt1872181", "tt1877832", "tt0478970", "tt2395427", "tt1502712", "tt3385516", "tt1211837",
+      "tt1431045", "tt3498820", "tt3896198", "tt3501632", "tt2250912", "tt3315342", "tt5095030", "tt1270797", "tt4154756", "tt1825683",
+      "tt5463162", "tt4633694", "tt6320628", "tt4154664", "tt4154796", "tt6565702", "tt4682266", "tt9032400", "tt3480822", "tt9376612",
+      "tt10872600", "tt7097896", "tt9419884", "tt10648342", "tt9114286", "tt5108870", "tt6791350", "tt9362722", "tt10676048", "tt10954600",
+      "tt6263850", "tt16366836", "tt8790086", "tt11057302", "tt10676052", "tt14513804", "tt20969586"
+    ],
+    dc: [
+      "tt0060153", "tt0078346", "tt0081573", "tt0084745", "tt0086393", "tt0088206", "tt0094074", "tt0096895", "tt0103776", "tt0106364",
+      "tt0112462", "tt0120207", "tt0118688", "tt0327554", "tt0372784", "tt0360486", "tt0348150", "tt0468569", "tt0409459", "tt1075747",
+      "tt1133985", "tt1345836", "tt0770828", "tt2975590", "tt1386697", "tt4116284", "tt0974015", "tt0451279", "tt1477834", "tt7424200",
+      "tt0448115", "tt7286456", "tt7126948", "tt7713068", "tt12361974", "tt6334354", "tt8912936", "tt1877830", "tt6443346", "tt0439572",
+      "tt9362930", "tt10151854", "tt9663764", "tt11315808", "tt5950044"
     ]
   };
 });

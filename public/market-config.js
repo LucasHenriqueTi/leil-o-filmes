@@ -107,12 +107,16 @@
       decade: { name: "Mesma década", n: 4, pts: 1, step: 1, max: 5 },
       genre: { name: "Mesmo gênero", n: 4, pts: 1, step: 1, max: 5 },   // gênero principal (o primeiro da lista)
       cult: { name: "Cults", n: 3, pts: 3, step: 1, max: 8 },           // filmes com a mesma tag (filmTags)
-      nacional: { name: "Cinema nacional", n: 3, pts: 3, step: 1, max: 8 }
+      nacional: { name: "Cinema nacional", n: 3, pts: 3, step: 1, max: 8 },
+      marvel: { name: "Marvel", n: 3, pts: 3, step: 1, max: 8 },
+      dc: { name: "DC", n: 3, pts: 3, step: 1, max: 8 }
     },
-    // tags dos filmes: Cult vem da lista de public/market-films.js; Nacional (país de origem Brasil), do Wikidata
+    // tags dos filmes: Cult, Marvel e DC vêm das listas de public/market-films.js; Nacional (país de origem Brasil), do Wikidata
     filmTags: {
       cult: { name: "Cult", icon: "🌀", desc: "Filme cult: ganhou um público fiel com o tempo." },
-      nacional: { name: "Nacional", icon: "🇧🇷", desc: "Cinema nacional: produção brasileira." }
+      nacional: { name: "Nacional", icon: "🇧🇷", desc: "Cinema nacional: produção brasileira." },
+      marvel: { name: "Marvel", icon: "🛡️", desc: "Personagens dos quadrinhos da Marvel." },
+      dc: { name: "DC", icon: "🦇", desc: "Personagens dos quadrinhos da DC." }
     },
     // Oscars do filme, por família (as categorias de cada uma ficam em lib/films.js); cada família é um conjunto
     oscarFamilies: {
@@ -127,7 +131,7 @@
     oscarSet: { name: "Oscar", n: 3, pts: 2, step: 1, max: 6 },   // filmes com Oscar da mesma família (escada como acima)
     // a cada rodada, a Casa reserva estas vagas do catálogo para filmes com a tag que ainda não estão lá
     // (oscar: de uma família diferente a cada rodada)
-    tagDraws: { cult: 2, oscar: 1, nacional: 1 },
+    tagDraws: { cult: 2, oscar: 1, nacional: 1, marvel: 1, dc: 1 },
     // temporada: a cada mês um gênero desta lista está em alta (sorteio fixo pelo mês)
     seasonGenres: ["Ação", "Aventura", "Comédia", "Drama", "Ficção científica", "Terror", "Suspense", "Romance", "Animação", "Crimes", "Fantasia", "Mistério"],
     seasonPts: 2,             // pontos extras por filme do gênero em alta

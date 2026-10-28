@@ -559,6 +559,8 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   X.examples.forEach((f) => M.addFilm(eco, f, MON));
   assert.deepStrictEqual([M.filmTags(eco.films.tt0068646), eco.films.tt0068646.oscars], [[], ["filme", "atuacao", "roteiro"]], "O Poderoso Chefão: Oscars por família");
   assert.ok(X.cult.length >= 30 && new Set(X.cult).size === X.cult.length, "lista de cults sem repetição");
+  ["marvel", "dc"].forEach((k) => assert.ok(X[k].length >= 40 && new Set(X[k]).size === X[k].length && X[k].every((id) => /^tt\d+$/.test(id)), `lista ${k} sem repetição`));
+  assert.ok(!X.marvel.some((id) => X.dc.includes(id)), "nenhum filme é da Marvel e da DC ao mesmo tempo");
   const film = (n, t) => M.addFilm(eco, Object.assign({ id: "tt000040" + n, title: "Filme " + n, year: 1950 + n * 10, dir: "Diretor " + n, g: ["G" + n], links: 80, scores: { imdb: 7, metacritic: 7 } }, t), MON);
   [1, 2, 3].forEach((n) => film(n, { cult: true }));
   [4, 5].forEach((n) => film(n, { nacional: true }));
@@ -575,6 +577,13 @@ const bidNG = (...x) => M.bid(...x, cfg({ ghostBuyer: false }));   // aqui o foc
   assert.deepStrictEqual(M.catalogView(eco).find((f) => f.id === "tt0000404").oscars, ["atuacao", "roteiro"], "a tela recebe as famílias");
   sc = M.collectionScore(eco, "a", MON, cfg({ seasonPts: 0 }));
   assert.deepStrictEqual(sc.bonuses.filter((b) => b.kind === "oscar").map((b) => [b.label, b.n, b.pts]), [["Atuação", 3, 2]], "3 Oscars de Atuação: +2; 2 de Roteiro ainda não");
+  // Marvel e DC: tags de lista, como Cult (4 da Marvel: +4; 2 da DC ainda não)
+  [6, 7, 8, 9].forEach((n) => film(n, { marvel: true }));
+  film(10, { dc: true }); M.addFilm(eco, { id: "tt0000411", title: "Filme 11", year: 2011, dir: "D11", g: ["G"], links: 80, scores: { imdb: 7, metacritic: 7 }, dc: true }, MON);
+  ["tt0000406", "tt0000407", "tt0000408", "tt0000409", "tt00004010", "tt0000411"].forEach((id) => M.mintCopy(eco, id, "a", MON));
+  assert.deepStrictEqual(M.catalogView(eco).find((f) => f.id === "tt0000406").tags, ["marvel"], "a tela recebe a tag Marvel");
+  sc = M.collectionScore(eco, "a", MON, cfg({ seasonPts: 0 }));
+  assert.deepStrictEqual(sc.bonuses.filter((b) => b.kind === "marvel" || b.kind === "dc").map((b) => [b.kind, b.name, b.n, b.pts]), [["marvel", "Marvel", 4, 4]], "4 da Marvel: +4; 2 da DC ainda não");
   console.log("ok tags");
 }
 console.log("Todos os testes do Mercado passaram.");

@@ -72,7 +72,7 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
   - pôster pela Wikipédia (`pageimages`), só de `upload.wikimedia.org`;
   - tags do Wikidata: `oscars` (prêmios P166 do filme, agrupados nas famílias de `OSCAR_FAMILIES`; Direção fica de fora porque o Wikidata registra no diretor, e Animação porque quase nenhum filme tem) e `nacional` (país de origem Brasil, P495 = Q155); `loadTagPool` sorteia filmes com a tag (`nacional` ou `oscar:<família>`) e notas suficientes, `fetchFacts` busca só as tags (para filmes antigos);
   - `fromSparql` é pura e testada sem rede.
-- `public/market-films.js`: `examples` (filmes de exemplo salvos no projeto), `cult` (códigos do IMDb da tag Cult, feita à mão) e `fix` (correções manuais por IMDb: `scores`, `film`, `include: true`, aplicadas só no cadastro).
+- `public/market-films.js`: `examples` (filmes de exemplo salvos no projeto), `cult`, `marvel` e `dc` (códigos do IMDb das tags Cult, Marvel e DC, feitas à mão) e `fix` (correções manuais por IMDb: `scores`, `film`, `include: true`, aplicadas só no cadastro).
 - `lib/auth.js`: senha com scrypt (sal aleatório, `timingSafeEqual`), tokens aleatórios, senha temporária e limitador de tentativas (na memória).
 - No servidor, toda mudança no Mercado passa por `mutate(fn)`: uma fila que aplica a regra numa cópia (`structuredClone`), salva e só então troca o estado. Se der `{error}` ou falhar ao salvar, nada muda. O servidor só aceita conexões depois de carregar o arquivo. A mesada roda em `marketTick` no início e a cada 60 s; a data dela fica salva, então sobrevive a reinícios.
 - `public/catalog.js`: fontes de dados gratuitas e sem chave, chamadas pelo navegador.
@@ -206,15 +206,15 @@ Leilão de filmes ao vivo para um grupo de amigos (Cibele, André, Kirito e Pinh
     | Mesmo diretor | 3 filmes | +2 | +1 | +8 |
     | Mesma década | 4 filmes | +1 | +1 | +5 |
     | Mesmo gênero | 4 filmes com o mesmo gênero principal (o primeiro da lista) | +1 | +1 | +5 |
-    | Cults, Cinema nacional | 3 filmes com a mesma tag (um filme conta em mais de um conjunto) | +3 | +1 | +8 |
+    | Cults, Cinema nacional, Marvel, DC | 3 filmes com a mesma tag (um filme conta em mais de um conjunto) | +3 | +1 | +8 |
     | Oscar por família (`oscarSet`) | 3 filmes com Oscar da mesma família: Melhor filme, Atuação, Roteiro, Música, Visual, Técnica ou Filme internacional | +2 | +1 | +6 |
     | Temporada | cada filme do gênero em alta | +`seasonPts` (2) por filme | — | — |
 
     `rankingView` ordena as contas pelos pontos.
   - **Tags dos filmes** (`filmTags` no config; `filmTags(f)` e `tags` no card enviado à tela):
-    - **Cult:** pela lista `cult` de `market-films.js`, aplicada a todo o catálogo a cada início (`applyTags`).
+    - **Cult, Marvel e DC:** pelas listas `cult`, `marvel` e `dc` de `market-films.js`, aplicadas a todo o catálogo a cada início (`applyTags`; no servidor, `LIST_TAGS`). Marvel e DC são os filmes com personagens dessas editoras, de qualquer estúdio (MCU, X-Men, Homem-Aranha da Sony, Batman de Burton e Nolan, DCEU, Coringa…); ficam de fora os quadrinhos que ninguém vê como "filme da DC" (V de Vingança, RED). O Wikidata sozinho não serve para montar essas listas: só acha os filmes do Marvel Studios e mistura intrusos na DC. Os títulos no Brasil estão em `fix`.
     - **Oscar** (`oscars`, lista de famílias de `oscarFamilies`) e **Nacional:** vêm do Wikidata no cadastro. Filmes cadastrados antes das tags são completados no início, em segundo plano (`backfillTags`). Na tela, os Oscars viram um selo só ("🏆 Oscar ×3"), com as famílias no balão.
-    - **Sorteio:** a cada rodada, a Casa reserva vagas do catálogo para filmes com tag que ainda não estão nele (`tagDraws`: 2 cults, 1 do Oscar de uma família diferente a cada rodada e 1 nacional), dentro do limite normal da rodada.
+    - **Sorteio:** a cada rodada, a Casa reserva vagas do catálogo para filmes com tag que ainda não estão nele (`tagDraws`: 2 cults, 1 do Oscar de uma família diferente a cada rodada, 1 nacional, 1 da Marvel e 1 da DC), dentro do limite normal da rodada.
     - O Clássico ficou de fora por enquanto. "Nacional" inclui coproduções com o Brasil.
   - **Temporada** (`season`): um gênero de `seasonGenres` por mês, sorteado de forma fixa pelo mês. O admin pode trocar só naquele mês (`setSeason`, `eco.house.season`). Filme do gênero em alta vale `seasonValueBoost` (1,25×) no valor de referência, mas só quando a chamada passa `now` (os testes ficam estáveis).
 - Lotes: aleatório (Wikidata, com faixas de popularidade Famosos, Conhecidos e Garimpo), por categoria ou escolhidos a dedo. A prévia dos lotes fica escondida até alguém pedir para ver.
