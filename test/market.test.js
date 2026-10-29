@@ -115,7 +115,7 @@ const books = (eco) => Object.values(eco.users).forEach((u) => assert.strictEqua
 // Raridade: bordas das faixas, Tomate Podre, Obra de Arte e Garimpo
 {
   const R = (ref, g, n) => M.rarityOf(ref, !!g, n || 2, cfg());
-  [[0, "podre"], [1.5, "podre"], [1.6, "comum"], [6.5, "comum"], [6.6, "incomum"], [7.5, "incomum"], [7.6, "raro"], [8.3, "raro"],
+  [[0, "podre"], [2.5, "podre"], [2.6, "comum"], [6.5, "comum"], [6.6, "incomum"], [7.5, "incomum"], [7.6, "raro"], [8.3, "raro"],
     [8.4, "epico"], [8.7, "epico"], [8.8, "lendario"], [9.1, "lendario"], [9.2, "obra"], [10, "obra"]]
     .forEach(([ref, key]) => assert.strictEqual(R(ref), key, `nota ${ref}`));
   assert.strictEqual(R(6.5, true), "incomum", "Garimpo sobe uma faixa");

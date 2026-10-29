@@ -667,7 +667,7 @@ function miniAuction(a, mode) {
     : secret ? `<b class="num">${a.bids} ${a.bids === 1 ? "lance" : "lances"}</b>` : `<b class="num">${mny(a.highBy ? a.high : a.minBid)}</b>`;
   const who = user ? `${FMT_ICO[fmt]} ${esc(a.formatName)} · ${esc(a.sellerName)}` : `${EVENT_ICON[a.event] || "🎬"} ${esc(a.eventName)}`;
   const goto = mode === "join" ? `data-act="market-join" data-after="${user ? "leiloes" : "estreias"}"` : `data-mtab="${user ? "leiloes" : "estreias"}"`;
-  return `<button type="button" class="mini r-${esc(f.rarity)}${hotCls(f, "list")}" ${goto}>
+  return `<button type="button" class="mini r-${esc(f.rarity)}${hotCls(f, "list")}${rarListCls(f)}" ${goto}>${rarListLayer(f)}
     <span class="mp" data-zoom="${zoomKeyOf(f, { r: f.ref, rsrc: "nota de referência" })}">${poster(f)}</span>
     <span class="mi"><span class="ev">${who}</span><b class="t">${esc(f.title)}</b>${genreLine(f, 2)}<span class="tags">${rarBadge(f.rarity)}${isHot(f) ? `<span class="chip hot">🔥 em alta</span>` : ""}<span class="hint num">${esc(a.lot)}</span></span></span>
     <span class="mr"><span class="clock num" data-clock="${a.endsAt}"></span>${price}<span class="hint">${fmt === "dutch" ? "preço agora" : secret ? "secretos" : a.highBy ? (a.highBy === "house" ? "da Casa" : a.mine ? "seu lance" : "maior lance") : "lance mínimo"}</span></span>
@@ -800,10 +800,16 @@ async function loadRanking() {
 /* ---------- catálogo do Mercado: raridade, notas e tiragem ---------- */
 const hotGenre = () => { const s = (S.ranking && S.ranking.season) || (S.showcase && S.showcase.season); return s ? s.genre : null; };
 const isHot = (f) => !!hotGenre() && (f.g || []).includes(hotGenre());
-// animação do "em alta" (styles.css, classe hf-<variante>), uma para cada modo de exibição: "grid" vale nos pôsteres
-// (catálogo, coleção e "Chegaram ao catálogo") e "list" nas linhas (lista e "Acontecendo agora"). O padrão é o hotFx
-// do market-config.js; no modo de teste, o admin troca só neste navegador no painel do canto (ml-hotfx-grid,
-// ml-hotfx-list; ml-hotfx-all mostra em todos os filmes), como os nomes das raridades
+// animações com variantes (styles.css): o padrão vem do market-config.js; no modo de teste, o admin troca só neste
+// navegador nos painéis do canto (fxEditor, ml-<prefixo>-<aba>), como os nomes das raridades
+function fxPick(prefix, lists, defs) {
+  const o = {};
+  for (const k in lists) { const v = MC.testMode && store.get(`ml-${prefix}-${k}`); o[k] = lists[k].some((x) => x.key === v) ? v : defs[k]; }
+  return o;
+}
+// animação do "em alta" (classe hf-<variante>), uma para cada modo de exibição: "grid" vale nos pôsteres
+// (catálogo, coleção e "Chegaram ao catálogo") e "list" nas linhas (lista e "Acontecendo agora");
+// padrão em hotFx, ml-hotfx-all mostra em todos os filmes
 const HOT_FX_DEFAULT = Object.assign({ grid: "brasas", list: "brasas" }, MC.hotFx);
 const HOT_FX = [
   { key: "brasas", name: "Brasas", desc: "faíscas subindo e calor na base do pôster" },
@@ -815,16 +821,60 @@ const HOT_FX = [
   { key: "fita", name: "Fita EM ALTA", desc: "faixa diagonal no canto, com reflexo" },
   { key: "nenhuma", name: "Nenhuma", desc: "só o selo 🔥 em alta" },
 ];
-const hotFx = Object.assign({ all: false }, HOT_FX_DEFAULT);
+const hotFx = { all: false };
 function applyHotFx() {
-  for (const mode of ["grid", "list"]) {
-    const k = MC.testMode && store.get("ml-hotfx-" + mode);
-    hotFx[mode] = HOT_FX.some((v) => v.key === k) ? k : HOT_FX_DEFAULT[mode];
-  }
+  Object.assign(hotFx, fxPick("hotfx", { grid: HOT_FX, list: HOT_FX }, HOT_FX_DEFAULT));
   hotFx.all = !!(MC.testMode && store.get("ml-hotfx-all"));
 }
 applyHotFx();
 const hotCls = (f, mode) => (hotFx.all || isHot(f) ? ` is-hot hf-${hotFx[mode]}` : "");
+// animação das duas faixas mais raras, uma por modo: nos Pôsteres, a moldura do card (classe rf-<variante> no .pcard);
+// na Lista, a linha inteira (classe rl-<variante> e a camada .rfx em .mfilm e no card do "Acontecendo agora").
+// Padrão em rarityFx; a primeira de cada lista é a original, sem nada a mais
+const RAR_FX = {
+  obra: [
+    { key: "arcoiris", name: "Arco-íris", desc: "a moldura original, com as cores deslizando" },
+    { key: "holo", name: "Holográfico", desc: "brilho de carta rara passando pelo pôster" },
+    { key: "ouro", name: "Moldura de ouro", desc: "ouro com reflexo e brilhos piscando nos cantos" },
+    { key: "prisma", name: "Prisma girando", desc: "as cores giram em volta e o brilho muda de cor" },
+    { key: "estrelas", name: "Céu estrelado", desc: "estrelas piscando por cima do pôster" },
+    { key: "holofote", name: "Holofotes", desc: "fachos de luz varrendo o pôster, como numa estreia" },
+    { key: "aurora", name: "Aurora", desc: "a moldura troca de cor devagar e uma aurora passa no topo" },
+  ],
+  podre: [
+    { key: "gosma", name: "Gosma", desc: "a moldura original, verde e marrom deslizando" },
+    { key: "pingando", name: "Gosma escorrendo", desc: "gotas verdes escorrem da moldura pelo pôster" },
+    { key: "moscas", name: "Moscas", desc: "moscas zumbindo em volta do card" },
+    { key: "mofo", name: "Mofo", desc: "pôster desbotado e manchas de mofo crescendo" },
+    { key: "fedor", name: "Fedor", desc: "ondas verdes de fedor subindo do card" },
+    { key: "tomatada", name: "Tomatada", desc: "tomates acertam lugares sorteados do card e escorrem" },
+    { key: "vhs", name: "Fita estragada", desc: "o pôster chia e falha como VHS ruim" },
+  ],
+};
+// uma escolha por faixa e modo, com chave "<faixa>-<modo>" (ex.: obra-grid, podre-list)
+const RAR_FX_MODES = { grid: "▦", list: "☰" };
+const RAR_FX_LISTS = {}, RAR_FX_DEFAULT = {};
+for (const r in RAR_FX) for (const m in RAR_FX_MODES) {
+  RAR_FX_LISTS[`${r}-${m}`] = RAR_FX[r];
+  RAR_FX_DEFAULT[`${r}-${m}`] = ((MC.rarityFx || {})[m] || {})[r] || RAR_FX[r][0].key;
+}
+let rarFx = {};
+function applyRarFx() {
+  // a escolha antiga, de antes dos dois modos (ml-rarfx-obra), passa para os Pôsteres
+  for (const r in RAR_FX) { const old = store.get(`ml-rarfx-${r}`); if (old) { if (store.get(`ml-rarfx-${r}-grid`) == null) store.set(`ml-rarfx-${r}-grid`, old); store.del(`ml-rarfx-${r}`); } }
+  rarFx = fxPick("rarfx", RAR_FX_LISTS, RAR_FX_DEFAULT);
+}
+applyRarFx();
+const rarFxCls = (f) => (rarFx[`${f.rarity}-grid`] ? ` rf-${rarFx[`${f.rarity}-grid`]}` : "");
+const rarListCls = (f) => (rarFx[`${f.rarity}-list`] ? ` rl-${rarFx[`${f.rarity}-list`]}` : "");
+// Tomatada: três tomates acertam lugares sorteados; a cada volta da animação da mancha, o tomate sorteia outro lugar
+// (o animationiteration abaixo), na hora em que a mancha está invisível
+const tomatoSpot = () => `--x:${Math.round(10 + Math.random() * 80)}%;--y:${Math.round(10 + Math.random() * 80)}%;--r:${Math.round(Math.random() * 360)}deg`;
+const tomatoes = (fx) => (fx === "tomatada" ? `<span class="tomatoes" aria-hidden="true">${[1, 2, 3].map(() => `<i style="${tomatoSpot()}"></i>`).join("")}</span>` : "");
+document.addEventListener("animationiteration", (e) => { if (e.pseudoElement === "::before" && e.target.matches(".tomatoes i")) e.target.setAttribute("style", tomatoSpot()); });
+// camada da animação na Lista: tem os próprios ::before e ::after, então não disputa com o "em alta".
+// O Lendário também usa, para o reflexo dos Pôsteres passar pela linha
+const rarListLayer = (f) => (rarFx[`${f.rarity}-list`] || f.rarity === "lendario" ? `<span class="rfx" aria-hidden="true">${tomatoes(rarFx[`${f.rarity}-list`])}</span>` : "");
 const hotChip = (f) => (isHot(f) ? `<span class="chip hot" tabindex="0" ${tipAttr(`Gênero da temporada (<b>${esc(hotGenre())}</b>): vale +${MC.seasonPts} pontos na coleção e ${Math.round((MC.seasonValueBoost - 1) * 100)}% a mais no valor de referência.`)}>🔥 em alta</span>` : "");
 const genreLine = (f, n) => ((f.g || []).length ? `<span class="hint fgenres">${esc(f.g.slice(0, n || 3).join(" · "))}</span>` : "");
 const rarName = (k) => (MK.rarity(k) || {}).name || k;
@@ -834,7 +884,7 @@ const SRC_SHORT = { imdb: "IMDb", metacritic: "Metacritic", rt: "RT" };
 const scoreChips = (f) => Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null)
   .map(([k, n]) => `<span class="msrc" title="${esc(n)}"><small>${esc(SRC_SHORT[k] || n)}</small><b class="num">${pts(f.scores[k])}</b></span>`).join("");
 function filmRow(f, side) {
-  return `<div class="mfilm r-${esc(f.rarity)}${hotCls(f, "list")}"><div class="ph">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}</div>
+  return `<div class="mfilm r-${esc(f.rarity)}${hotCls(f, "list")}${rarListCls(f)}">${rarListLayer(f)}<div class="ph">${zoomable(f, { r: f.ref, rsrc: "nota de referência" })}</div>
     <div class="mbody">
       <div class="mhead"><div class="mtitle"><b title="${esc(f.title)}">${esc(f.title)}</b><span class="hint">${esc(f.year)}${f.dir ? " · " + esc(f.dir) : ""}</span></div>
         <div class="mref" title="Nota de referência"><b class="num">${pts(f.ref)}</b><small>nota</small></div></div>
@@ -909,7 +959,7 @@ function posterCard(f, o) {
   o = o || {};
   const tags = `${rarBadge(f.rarity)}${f.unanimous ? `<span class="seal">Unanimidade</span>` : ""}${f.garimpo ? `<span class="chip">Garimpo</span>` : ""}${hotChip(f)}${tagChips(f)}`;
   const scores = Object.entries(MK.SOURCES).filter(([k]) => f.scores[k] != null).map(([k, n]) => `<li><span>${esc(n)}</span><b class="num">${pts(f.scores[k])}</b></li>`).join("");
-  const card = `<article class="pcard r-${esc(f.rarity)}${hotCls(f, "grid")}" tabindex="0" aria-label="${esc(f.title)}, ${esc(rarName(f.rarity))}, nota ${pts(f.ref)}${o.label ? ", " + esc(o.label) : ""}">
+  const card = `<article class="pcard r-${esc(f.rarity)}${hotCls(f, "grid")}${rarFxCls(f)}" tabindex="0" aria-label="${esc(f.title)}, ${esc(rarName(f.rarity))}, nota ${pts(f.ref)}${o.label ? ", " + esc(o.label) : ""}">
     <div class="pin">
       <div class="pimg">${poster(f)}<span class="pbadge">${esc(rarName(f.rarity))}</span>
         <div class="pdetail">
@@ -924,7 +974,7 @@ function posterCard(f, o) {
         </div>
       </div>
       <div class="pfoot"><b class="t">${esc(f.title)}</b>${o.foot || `<span class="meta num"><span>${esc(f.year)}</span><b class="ref">★ ${pts(f.ref)}</b><span title="cópias emitidas">${f.minted}/${f.supply}</span></span>`}</div>
-    </div>
+    </div>${tomatoes(rarFx[`${f.rarity}-grid`])}
   </article>`;
   return o.below ? `<div class="pcell">${card}<div class="pbelow">${o.below}</div></div>` : card;
 }
@@ -1406,7 +1456,7 @@ const testDock = document.createElement("div"); testDock.id = "testDock"; docume
 const rarEdit = document.createElement("div"); rarEdit.id = "rarEdit"; rarEdit.hidden = true; testDock.appendChild(rarEdit);
 function syncTestDock() {
   const on = !!(MC.testMode && screen() === "market" && S.me && S.me.admin);
-  syncHotEditor(on);
+  syncHotEditor(on); syncRarFxEditor(on);
   rarEdit.hidden = !on;
   if (!on || rarEdit.firstChild) return;
   const o = store.get("ml-rarnames") || {};
@@ -1429,40 +1479,53 @@ rarEdit.addEventListener("click", (e) => {
   if (e.target.closest("[data-rn-toggle]")) { const open = rarEdit.classList.toggle("open"); store.set("ml-rarnames-open", open); return; }
   if (e.target.closest("[data-rn-reset]")) { store.del("ml-rarnames"); rarEdit.querySelectorAll("[data-rn]").forEach((i) => { i.value = ""; }); applyRarNames(); render(); }
 });
-/* ---------- animação do "em alta": no modo de teste, o admin compara as variantes de cada modo só neste navegador ---------- */
-const hotEdit = document.createElement("div"); hotEdit.id = "hotEdit"; hotEdit.hidden = true; testDock.appendChild(hotEdit);
-const HF_MODES = { grid: "▦ Pôsteres", list: "☰ Lista" };
-const hfName = (k) => (HOT_FX.find((v) => v.key === k) || {}).name || k;
-// o corpo é refeito a cada escolha (não tem campo de texto); a aba aberta (qual modo está sendo escolhido) fica em ml-hotfx-mode
-function hotEditorBody() {
-  const mode = store.get("ml-hotfx-mode") === "list" ? "list" : "grid";
-  return `<div class="seg" role="group" aria-label="Modo de exibição">${Object.entries(HF_MODES).map(([m, l]) => `<button type="button" data-hf-mode="${m}" aria-pressed="${m === mode}">${l}</button>`).join("")}</div>
-    <div class="hf-list" role="group" aria-label="Variantes da animação no modo ${HF_MODES[mode]}">${HOT_FX.map((v, i) => `<button type="button" data-hf="${v.key}" aria-pressed="${v.key === hotFx[mode]}"><b>${i + 1}. ${esc(v.name)}${v.key === HOT_FX_DEFAULT[mode] ? ` <span class="pill">padrão</span>` : ""}</b><small>${esc(v.desc)}</small></button>`).join("")}</div>
-    <p class="hf-now">Pôsteres: <b>${esc(hfName(hotFx.grid))}</b> · Lista: <b>${esc(hfName(hotFx.list))}</b></p>
-    <label class="hf-all"><input type="checkbox" data-hf-all ${hotFx.all ? "checked" : ""}> Mostrar em todos os filmes</label>
-    <p class="hint">Pôsteres vale também em "Chegaram ao catálogo"; Lista, em "Acontecendo agora". Só neste navegador e só no modo de teste; o padrão é o do market-config.js.</p>
-    <button type="button" class="btn quiet" data-hf-reset>Voltar ao padrão</button>`;
+/* ---------- painéis de animação (modo de teste, admin): cada aba escolhe uma variante, só neste navegador ---------- */
+// o = { prefix, title, hint, tabs: [{key, label, list}], defs, cur() (escolha atual por aba), apply(), extra?(), onChange?(e) }.
+// Guarda a escolha em ml-<prefix>-<aba>, a aba aberta em ml-<prefix>-mode e o painel aberto em ml-<prefix>-open.
+// O corpo é refeito a cada escolha (não tem campo de texto). Devolve a função que mostra ou esconde o painel.
+function fxEditor(o) {
+  const el = document.createElement("div"); el.className = "fxedit"; el.hidden = true; testDock.appendChild(el);
+  const key = (s) => `ml-${o.prefix}-${s}`;
+  const tabNow = () => o.tabs.find((t) => t.key === store.get(key("mode"))) || o.tabs[0];
+  const nameOf = (t, v) => (t.list.find((x) => x.key === v) || {}).name || v;
+  const body = () => {
+    const t = tabNow(), cur = o.cur();
+    return `<div class="seg" role="group" aria-label="Escolher a variante de">${o.tabs.map((x) => `<button type="button" data-fx-tab="${x.key}" aria-pressed="${x === t}">${esc(x.label)}</button>`).join("")}</div>
+      <div class="hf-list" role="group" aria-label="Variantes: ${esc(t.label)}">${t.list.map((v, i) => `<button type="button" data-fx="${v.key}" aria-pressed="${v.key === cur[t.key]}"><b>${i + 1}. ${esc(v.name)}${v.key === o.defs[t.key] ? ` <span class="pill">padrão</span>` : ""}</b><small>${esc(v.desc)}</small></button>`).join("")}</div>
+      <p class="hf-now">${o.tabs.map((x) => `${esc(x.label)}: <b>${esc(nameOf(x, cur[x.key]))}</b>`).join(" · ")}</p>
+      ${o.extra ? o.extra() : ""}
+      <p class="hint">${o.hint} Só neste navegador e só no modo de teste; o padrão é o do market-config.js.</p>
+      <button type="button" class="btn quiet" data-fx-reset>Voltar ao padrão</button>`;
+  };
+  const repaint = () => { el.querySelector(".rn-body").innerHTML = body(); };
+  const changed = () => { o.apply(); repaint(); render(); };
+  el.addEventListener("click", (e) => {
+    if (e.target.closest("[data-fx-toggle]")) { store.set(key("open"), el.classList.toggle("open")); return; }
+    const t = e.target.closest("[data-fx-tab]");
+    if (t) { store.set(key("mode"), t.dataset.fxTab); return repaint(); }
+    if (e.target.closest("[data-fx-reset]")) { o.tabs.forEach((x) => store.del(key(x.key))); return changed(); }
+    const b = e.target.closest("[data-fx]");
+    if (b) { store.set(key(tabNow().key), b.dataset.fx); changed(); }
+  });
+  if (o.onChange) el.addEventListener("change", o.onChange);
+  return (on) => {
+    el.hidden = !on;
+    if (!on || el.firstChild) return;
+    el.classList.toggle("open", !!store.get(key("open")));
+    el.innerHTML = `<button type="button" class="rn-head" data-fx-toggle><span>${o.title}</span><span class="pill">teste</span></button><div class="rn-body">${body()}</div>`;
+  };
 }
-function syncHotEditor(on) {
-  hotEdit.hidden = !on;
-  if (!on || hotEdit.firstChild) return;
-  hotEdit.classList.toggle("open", !!store.get("ml-hotfx-open"));
-  hotEdit.innerHTML = `<button type="button" class="rn-head" data-hf-toggle><span>🔥 Animação "em alta"</span><span class="pill">teste</span></button>
-    <div class="rn-body">${hotEditorBody()}</div>`;
-}
-const repaintHotEditor = () => { hotEdit.querySelector(".rn-body").innerHTML = hotEditorBody(); };
-hotEdit.addEventListener("click", (e) => {
-  if (e.target.closest("[data-hf-toggle]")) { store.set("ml-hotfx-open", hotEdit.classList.toggle("open")); return; }
-  const m = e.target.closest("[data-hf-mode]");
-  if (m) { store.set("ml-hotfx-mode", m.dataset.hfMode); repaintHotEditor(); return; }
-  if (e.target.closest("[data-hf-reset]")) { store.del("ml-hotfx-grid"); store.del("ml-hotfx-list"); applyHotFx(); repaintHotEditor(); render(); return; }
-  const b = e.target.closest("[data-hf]");
-  if (!b) return;
-  store.set("ml-hotfx-" + (store.get("ml-hotfx-mode") === "list" ? "list" : "grid"), b.dataset.hf);
-  applyHotFx(); repaintHotEditor(); render();
+const syncHotEditor = fxEditor({
+  prefix: "hotfx", title: `🔥 Animação "em alta"`, defs: HOT_FX_DEFAULT, cur: () => hotFx, apply: applyHotFx,
+  tabs: [{ key: "grid", label: "▦ Pôsteres", list: HOT_FX }, { key: "list", label: "☰ Lista", list: HOT_FX }],
+  hint: `Pôsteres vale também em "Chegaram ao catálogo"; Lista, em "Acontecendo agora".`,
+  extra: () => `<label class="hf-all"><input type="checkbox" data-hf-all ${hotFx.all ? "checked" : ""}> Mostrar em todos os filmes</label>`,
+  onChange: (e) => { if (e.target.matches("[data-hf-all]")) { store.set("ml-hotfx-all", e.target.checked); applyHotFx(); render(); } },
 });
-hotEdit.addEventListener("change", (e) => {
-  if (e.target.matches("[data-hf-all]")) { store.set("ml-hotfx-all", e.target.checked); applyHotFx(); render(); }
+const syncRarFxEditor = fxEditor({
+  prefix: "rarfx", title: "✨ Molduras raras", defs: RAR_FX_DEFAULT, cur: () => rarFx, apply: applyRarFx,
+  tabs: Object.keys(RAR_FX_LISTS).map((k) => { const [r, m] = k.split("-"); return { key: k, label: `${RAR_FX_MODES[m]} ${rarName(r)}`, list: RAR_FX_LISTS[k] }; }),
+  hint: `▦ vale no modo Pôsteres do catálogo e da coleção; ☰, no modo Lista e no "Acontecendo agora".`,
 });
 
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { hideZoom(); if (S.ui.modal) { S.ui.modal = null; render(); } } });

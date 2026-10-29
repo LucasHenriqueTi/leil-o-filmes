@@ -36,13 +36,21 @@
     // 18% Raro, 9% Épico, 3% Lendário e 1% Obra de Arte (com o Garimpo abaixo de 25 páginas)
     // `key` é o id salvo no Mercado (não mude); `name` é o que aparece na tela.
     // No modo de teste, o admin pode trocar os nomes só no próprio navegador (editor no canto da tela, `ml-rarnames`).
+    // `rarityFx`: animação da Obra de Arte e do Tomate Podre, uma por modo (RAR_FX no app.js): `grid` é a moldura no
+    // modo Pôsteres; `list` é a linha inteira no modo Lista e no card do "Acontecendo agora".
+    //   obra: arcoiris (a original), holo, ouro, prisma, estrelas, holofote, aurora
+    //   podre: gosma (a original), pingando, moscas, mofo, fedor, tomatada, vhs
+    // No modo de teste, o admin pode trocar só no próprio navegador (editor no canto, `ml-rarfx-<faixa>-<modo>`).
+    rarityFx: { grid: { obra: "arcoiris", podre: "gosma" }, list: { obra: "arcoiris", podre: "gosma" } },
     rarities: [
       { key: "comum", name: "Sessão da Tarde", min: 0, copies: 20, minBid: 1 },
       { key: "incomum", name: "Bem na Crítica", min: 6.6, copies: 10, minBid: 3 },
       { key: "raro", name: "Indicado", min: 7.6, copies: 5, minBid: 6 },
       { key: "epico", name: "Aclamado", min: 8.4, copies: 3, minBid: 10 },
       { key: "lendario", name: "Imortal", min: 8.8, copies: 1, minBid: 15 },
-      { key: "podre", name: "Tomate Podre", max: 1.5, copies: 1, minBid: 25, requireScores: 2 },   // o avesso da Obra de Arte
+      // o avesso da Obra de Arte. Com a nota real do IMDb (o público quase nunca dá menos de 3), nenhum filme chegava a 1,5:
+      // em 691 filmes, o pior ficou em 1,9; com 2,5 entram 6 (0,9%)
+      { key: "podre", name: "Tomate Podre", max: 2.5, copies: 1, minBid: 25, requireScores: 2 },
       { key: "obra", name: "Absolute Cinema", min: 9.2, copies: 1, minBid: 25, requireScores: 2 }
     ],
     minScores: 2,             // notas (de IMDb, Metacritic e Rotten Tomatoes) para o filme entrar no Mercado
